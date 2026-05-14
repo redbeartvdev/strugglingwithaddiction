@@ -1,0 +1,213 @@
+/* ── Author Hero ─────────────────────────── */
+.author-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 8rem 0 5rem;
+}
+
+.author-hero-inner {
+  max-width: 780px;
+}
+
+
+.author-hero-text .section-label {
+  color: #98b8c4;
+}
+
+.author-hero-text h1 {
+  color: white;
+  margin: 0.4rem 0 0.25rem;
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+}
+
+.author-title {
+  color: #98b8c4;
+  font-size: 1rem;
+  font-style: italic;
+  margin: 0 0 1rem;
+}
+
+.author-bio {
+  color: rgba(255,255,255,0.78);
+  font-size: 1rem;
+  line-height: 1.75;
+  max-width: 620px;
+  margin: 0 0 0.75rem;
+}
+
+.author-post-count {
+  color: rgba(255,255,255,0.45);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Archive section ─────────────────────── */
+.author-archive {
+  padding: 4rem 0 6rem;
+  background: #fafaf8;
+}
+
+.author-archive-heading {
+  font-size: clamp(1.3rem, 2.5vw, 1.7rem);
+  color: #1a1a2e;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.author-empty {
+  text-align: center;
+  color: #6b7280;
+  font-size: 1.05rem;
+  padding: 4rem 0;
+}
+
+/* ── Grid ────────────────────────────────── */
+.author-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.author-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.author-card:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+  transform: translateY(-4px);
+}
+
+.author-card-img-wrap {
+  display: block;
+  height: 200px;
+  overflow: hidden;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.author-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+
+.author-card:hover .author-card-img {
+  transform: scale(1.04);
+}
+
+.author-card-img-placeholder {
+  background: linear-gradient(135deg, #98b8c4 0%, #6a9aaa 100%);
+}
+
+.author-card-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.6rem;
+}
+
+.author-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.author-card-date {
+  font-size: 0.78rem;
+  color: #98b8c4;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.author-cat-tag {
+  padding: 0.15rem 0.6rem;
+  border-radius: 100px;
+  font-family: 'PT Serif', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #98b8c4;
+  background: rgba(152, 184, 196, 0.12);
+}
+
+.author-card-body h3 {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.author-card-body h3 a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.3s;
+}
+
+.author-card-body h3 a:hover {
+  color: #8c1126;
+}
+
+.author-card-excerpt {
+  font-size: 0.88rem;
+  color: #6b7280;
+  line-height: 1.65;
+  flex: 1;
+  margin: 0;
+}
+
+.author-card-btn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.78rem;
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+/* ── Pagination ──────────────────────────── */
+.author-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 4rem;
+}
+
+.author-pagination .btn {
+  padding: 0.65rem 1.5rem;
+  font-size: 0.85rem;
+}
+
+.author-pagination .btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.author-page-info {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* ── Responsive ──────────────────────────── */
+
+@media (max-width: 1024px) {
+  .author-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .author-hero {
+    padding: 6rem 0 3.5rem;
+  }
+
+  .author-grid { grid-template-columns: 1fr; }
+}

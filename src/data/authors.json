@@ -1,0 +1,58 @@
+[
+  {
+    "id": 2,
+    "slug": "kreed-kleinkopf",
+    "name": "Kreed Kleinkopf",
+    "title": "Lead Investigative Reporter",
+    "bio": "Graduating with a political science degree from Boise State University, Kreed has been involved in politics running for local seats, as well as playing in many local & successful bands. Sci-fi fan, video game fan, TRON fan, & someone who genuinely cares about fixing what's wrong with modern drug rehabilitation."
+  },
+  {
+    "id": 3,
+    "slug": "drew-lewis",
+    "name": "Drew Lewis",
+    "title": "Executive Editor",
+    "bio": "Wants to help an industry that can truly make our world a better place. Many treatment centers are owned by individuals who have struggled with addiction themselves and to see them rise from the ashes is truly inspirational."
+  },
+  {
+    "id": 4,
+    "slug": "paul-chastain",
+    "name": "Paul Chastain",
+    "title": "Writer",
+    "bio": "Writer covering addiction science, treatment options, medications, and recovery resources for Struggling With Addiction."
+  },
+  {
+    "id": 5,
+    "slug": "pj-haarsma",
+    "name": "PJ Haarsma",
+    "title": "Executive Editor",
+    "bio": "Award winning creative and producer that creates and empowers people who want to and deserve to tell stories – from original content to comic books to digital marketing to video games to commercials."
+  },
+  {
+    "id": 6,
+    "slug": "alexandra-lafollette",
+    "name": "Alexandra LaFollette",
+    "title": "Lead Investigative Reporter",
+    "bio": "Involved in organizing & hosting music festival events, venue design by night, she also works as a CNA for terminal & non-terminal in-home care. Experienced with many forms of addiction from different environments, she brings an insightful look into when people's addiction can cross the line."
+  },
+  {
+    "id": 7,
+    "slug": "olivia-kibaba",
+    "name": "Olivia Kibaba",
+    "title": "Investigative Reporter",
+    "bio": "Writer, social media marketing expert, and unshakable optimist dedicated to helping you become the person you most want to be. She has plenty of experience in mental health and addiction-related issues and uses her writing skills to educate, motivate, and empower her audience."
+  },
+  {
+    "id": 8,
+    "slug": "brian",
+    "name": "Brian Rimer",
+    "title": "Technology",
+    "bio": "Technology and development contributor for Struggling With Addiction."
+  },
+  {
+    "id": 16,
+    "slug": "shubham",
+    "name": "Shubham",
+    "title": "Contributor",
+    "bio": "Contributor to Struggling With Addiction."
+  }
+]

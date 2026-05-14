@@ -1,0 +1,137 @@
+/* ── Shared layout for Privacy, Terms, Accessibility pages ── */
+
+.legal-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 8rem 0 5rem;
+  text-align: center;
+}
+
+.legal-hero .section-label {
+  color: #98b8c4;
+}
+
+.legal-hero h1 {
+  color: white;
+  margin: 0.5rem 0 1rem;
+}
+
+.legal-hero p {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 1rem;
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.75;
+}
+
+/* ── Content body ─────────────────────────── */
+.legal-body {
+  padding: 5rem 0 6rem;
+  background: white;
+}
+
+.legal-content {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.legal-content h2 {
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  color: #1a1a2e;
+  margin: 2.75rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.legal-content h2:first-child {
+  margin-top: 0;
+}
+
+.legal-content p {
+  color: #4b5563;
+  line-height: 1.85;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.legal-content ul,
+.legal-content ol {
+  color: #4b5563;
+  line-height: 1.85;
+  margin: 0.5rem 0 1rem 1.5rem;
+}
+
+.legal-content li {
+  margin-bottom: 0.4rem;
+}
+
+.legal-content a {
+  color: #8c1126;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-content a:hover {
+  color: #1a1a2e;
+}
+
+.legal-content .legal-meta {
+  display: inline-block;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 100px;
+  margin-bottom: 2.5rem;
+}
+
+/* ── Accessibility-specific ───────────────── */
+.legal-content .a11y-standard {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #f8f9fb;
+  border-left: 4px solid #8c1126;
+  border-radius: 0 6px 6px 0;
+  padding: 1.1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.legal-content .a11y-standard strong {
+  display: block;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+}
+
+/* ── Closing CTA ─────────────────────────── */
+.legal-cta {
+  background: #f8f9fb;
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.legal-cta h2 {
+  margin-bottom: 0.75rem;
+}
+
+.legal-cta p {
+  color: #6b7280;
+  max-width: 480px;
+  margin: 0 auto 2rem;
+  line-height: 1.75;
+}
+
+/* ── Responsive ──────────────────────────── */
+@media (max-width: 640px) {
+  .legal-hero {
+    padding: 6rem 0 3.5rem;
+  }
+
+  .legal-body {
+    padding: 3.5rem 0 4rem;
+  }
+
+  .legal-content h2 {
+    margin-top: 2rem;
+  }
+}
