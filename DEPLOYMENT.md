@@ -112,6 +112,20 @@ Link Postgres `DATABASE_URL` to the API service and redeploy.
 
 Rebuild with repo-root Docker context so `static/admin/index.html` exists in the image.
 
+### Root URL shows `{"detail":"Not Found"}`
+
+The API is up but the React site was not baked into the image (`register_static_site` skips routes when `static/index.html` is missing).
+
+1. **Recommended:** Railway → service → **Root Directory** = *(empty)*, **Config file** = `/railway.toml` → redeploy.
+2. **Alternative:** From your machine (after `railway login`):
+
+   ```bash
+   ./scripts/prepare-railway-static.sh
+   cd backend && railway up --service <your-api-service>
+   ```
+
+   `backend/.dockerignore` must **not** list `static` (otherwise Docker drops the built site).
+
 ---
 
 ## Optional: Stripe, S3

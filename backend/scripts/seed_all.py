@@ -11,7 +11,8 @@ sys.path.insert(0, str(BACKEND))
 from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_rehab_centers
 from app.database import SessionLocal, engine
 from app.db_migrate import run_migrations
-from app.models import Base
+from app.models import Base  # noqa: F401 — register all ORM models
+from app.models.blog import Post
 from app.models.rehab import RehabCenter
 from app.seed_import import import_blog_if_empty
 
@@ -27,6 +28,7 @@ def main() -> None:
         seed_rehab_centers(db)
         print(f"Rehab centers: {db.query(RehabCenter).count()}")
         import_blog_if_empty(db)
+        print(f"Posts in database: {db.query(Post).count()}")
     finally:
         db.close()
     print("Done.")

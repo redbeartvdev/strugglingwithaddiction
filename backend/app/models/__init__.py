@@ -16,6 +16,12 @@ from app.models.rehab import (
 from app.models.scrape_settings import ScrapeSettings
 from app.models.scrape_saved import ScrapeSavedItem
 from app.models.client_portal import ClientLandingPage, ClientPost, ClientPostStatus
+from app.models.billing import (
+    BillingInterval,
+    RegistrationIntent,
+    Subscription,
+    SubscriptionPlan,
+)
 
 __all__ = [
     "Base",

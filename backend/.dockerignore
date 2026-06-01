@@ -7,6 +7,6 @@ __pycache__
 .pytest_cache
 .mypy_cache
 uploads
-static
+# Keep backend/static/ in the image (built by scripts/prepare-railway-static.sh or CI).
 *.md
 .git

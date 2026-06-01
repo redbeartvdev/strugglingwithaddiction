@@ -109,6 +109,7 @@ Verify posts: `curl "https://strugglingwithaddiction-production.up.railway.app/a
 
 | Symptom | Fix |
 |---------|-----|
+| `{"detail":"Not Found"}` at `/` (API works at `/api/*`) | API-only image — no `static/index.html`. **Recommended:** Railway → service → Settings → **Root Directory** empty, **Config file** `/railway.toml`, redeploy (uses repo-root [`Dockerfile`](../Dockerfile)). **Or:** run `./scripts/prepare-railway-static.sh`, then `cd backend && railway up` (static must not be in [`backend/.dockerignore`](../backend/.dockerignore)). |
 | `"database":"unavailable"` | `DATABASE_URL` not referenced from Postgres, or redeploy not done |
 | App crashes on deploy | `ENVIRONMENT=production` but `DATABASE_URL` still localhost — add Postgres reference |
 | Postgres service not named `Postgres` | Use `${{YourPostgresServiceName.DATABASE_URL}}` or set `RAILWAY_POSTGRES_SERVICE` when running the script |
