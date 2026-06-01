@@ -31,25 +31,24 @@ In Railway → API service → **Settings**:
 - **Option A (recommended):** Root Directory = empty, Config = `/railway.toml` → builds from [`Dockerfile`](Dockerfile) at repo root.
 - **Option B:** Root Directory = `backend`, Config = `/backend/railway.toml` → GitHub Actions runs `prepare-railway-static.sh` then deploys [`backend/Dockerfile`](backend/Dockerfile).
 
-### 2. Database + environment variables (CLI)
+### 2. PostgreSQL + database connection
+
+**Full guide (dashboard + CLI):** [docs/RAILWAY-POSTGRES.md](docs/RAILWAY-POSTGRES.md)
+
+**One command** (after `railway login` or `export RAILWAY_TOKEN=...`):
 
 ```bash
-railway login
-cd /path/to/strugglingwithaddiction   # repo root
-# Project ID: 407fa40d-6608-4441-905c-f3fab0182421
-railway link --project 407fa40d-6608-4441-905c-f3fab0182421 -s strugglingwithaddiction-production
-
-# Optional: your Railway URL if you already have a domain
-export PUBLIC_SITE_URL="https://strugglingwithaddiction-production.up.railway.app"
-
-./backend/scripts/railway-setup.sh
+cd /path/to/strugglingwithaddiction
+./backend/scripts/railway-provision.sh
 ```
 
-The script:
+This adds **PostgreSQL**, wires `DATABASE_URL=${{Postgres.DATABASE_URL}}`, sets production env vars, and redeploys.
 
-- Adds **PostgreSQL** if missing
-- Sets `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `ENVIRONMENT=production`, CORS, bootstrap admin
-- Generates a public domain if needed
+Manual link:
+
+```bash
+railway link --project 407fa40d-6608-4441-905c-f3fab0182421 -s strugglingwithaddiction-production
+```
 
 ### 3. Manual variable checklist
 
