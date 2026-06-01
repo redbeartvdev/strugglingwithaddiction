@@ -1,0 +1,42 @@
+[
+  {
+    "id": 2,
+    "name": "Advice",
+    "slug": "drug-addiction-help"
+  },
+  {
+    "id": 3,
+    "name": "Drug Policy",
+    "slug": "drug-policy"
+  },
+  {
+    "id": 4,
+    "name": "General",
+    "slug": "general"
+  },
+  {
+    "id": 5,
+    "name": "Health",
+    "slug": "health"
+  },
+  {
+    "id": 6,
+    "name": "Lifestyle",
+    "slug": "lifestyle"
+  },
+  {
+    "id": 7,
+    "name": "Technology",
+    "slug": "technology"
+  },
+  {
+    "id": 1,
+    "name": "Uncategorized",
+    "slug": "uncategorized"
+  },
+  {
+    "id": 8,
+    "name": "Videos",
+    "slug": "video"
+  }
+]
