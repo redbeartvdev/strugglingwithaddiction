@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 
 from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users
 from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_rehab_centers
@@ -17,10 +19,10 @@ from app.models import Base
 
 settings = get_settings()
 limiter = Limiter(key_func=get_remote_address)
+logger = logging.getLogger("swa")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def _run_startup_tasks() -> None:
     Base.metadata.create_all(bind=engine)
     run_migrations(engine)
     db = SessionLocal()
@@ -30,6 +32,18 @@ async def lifespan(app: FastAPI):
         seed_rehab_centers(db)
     finally:
         db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        _run_startup_tasks()
+        logger.info("Startup tasks completed")
+    except Exception:
+        logger.exception(
+            "Startup tasks failed — API will still listen. "
+            "Check DATABASE_URL is linked to Postgres on Railway."
+        )
     yield
 
 
@@ -67,4 +81,11 @@ app.include_router(search.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    db_ok = False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        pass
+    return {"status": "ok", "database": "connected" if db_ok else "unavailable"}

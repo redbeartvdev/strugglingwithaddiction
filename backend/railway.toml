@@ -3,6 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "./start.sh"
+# Use Dockerfile CMD (/app/start.sh) — do not override with exec-form uvicorn or $PORT won't expand.
 healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
