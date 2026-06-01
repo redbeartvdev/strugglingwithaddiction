@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
-import GlobalSearch, { useGlobalSearchShortcut } from './GlobalSearch'
+import GlobalSearch from './GlobalSearch'
 import Eyebrow from './ui/Eyebrow'
 import {
-  IconHome, IconUsers, IconFile, IconBuilding, IconInbox, IconCard, IconScrape, IconSettings, IconSearch,
+  IconHome, IconUsers, IconFile, IconBuilding, IconInbox, IconCard, IconScrape, IconSettings,
 } from './Icons'
 
 const NAV_BY_ROLE = {
@@ -44,23 +43,13 @@ export default function Shell({ children, pendingClaims = 0 }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const nav = NAV_BY_ROLE[user?.role] || []
-  const [searchOpen, setSearchOpen] = useState(false)
-  const openSearch = useCallback(() => setSearchOpen(true), [])
-  const closeSearch = useCallback(() => setSearchOpen(false), [])
-  useGlobalSearchShortcut(openSearch)
-  const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
 
   return (
     <div className="app-shell">
-      <GlobalSearch open={searchOpen} onClose={closeSearch} nav={nav} role={user?.role} />
       <header className="top-nav">
         <div className="wordmark">SWA Studio</div>
         <div className="top-nav-spacer" />
-        <button type="button" className="search-pill" aria-label="Search" onClick={openSearch}>
-          <span className="search-pill-icon" aria-hidden><IconSearch size={16} /></span>
-          <span className="search-pill-label">Search posts, centers, users…</span>
-          <kbd>{modKey}K</kbd>
-        </button>
+        <GlobalSearch nav={nav} role={user?.role} />
         <button
           type="button"
           className="avatar-btn"

@@ -63,13 +63,15 @@ function filterNav(nav, query) {
     }))
 }
 
-export default function GlobalSearch({ open, onClose, nav, role }) {
+export default function GlobalSearch({ nav, role }) {
   const navigate = useNavigate()
+  const wrapRef = useRef(null)
   const inputRef = useRef(null)
   const listRef = useRef(null)
   const [query, setQuery] = useState('')
   const [apiResults, setApiResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const modKey = isMac() ? '⌘' : 'Ctrl'
 
@@ -93,29 +95,17 @@ export default function GlobalSearch({ open, onClose, nav, role }) {
     return groups
   }, [navHits, apiResults])
 
-  const flatResults = useMemo(
-    () => Object.values(grouped).flat(),
-    [grouped],
-  )
+  const flatResults = useMemo(() => Object.values(grouped).flat(), [grouped])
+
+  const showDropdown = open && (loading || flatResults.length > 0 || query.trim().length >= 1)
 
   useEffect(() => {
-    if (!open) return
-    setQuery('')
-    setApiResults([])
-    setActiveIndex(0)
-    const t = setTimeout(() => inputRef.current?.focus(), 0)
-    return () => clearTimeout(t)
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
     setActiveIndex(i => Math.min(i, Math.max(flatResults.length - 1, 0)))
-  }, [flatResults.length, open])
+  }, [flatResults.length])
 
   useEffect(() => {
-    if (!open) return undefined
     const q = query.trim()
-    if (q.length < 2) {
+    if (q.length < 1) {
       setApiResults([])
       setLoading(false)
       return undefined
@@ -126,90 +116,118 @@ export default function GlobalSearch({ open, onClose, nav, role }) {
         .then(data => setApiResults(data.results || []))
         .catch(() => setApiResults([]))
         .finally(() => setLoading(false))
-    }, 180)
+    }, 200)
     return () => clearTimeout(timer)
-  }, [query, open])
+  }, [query])
 
   const selectHit = useCallback((hit) => {
-    onClose()
+    setOpen(false)
+    setQuery('')
+    setApiResults([])
+    inputRef.current?.blur()
     navigate(resolvePath(hit, role))
-  }, [navigate, onClose, role])
+  }, [navigate, role])
 
   useEffect(() => {
-    if (!open) return undefined
+    function onPointerDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [])
+
+  useEffect(() => {
     function onKeyDown(e) {
-      if (e.key === 'Escape') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        onClose()
-        return
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setActiveIndex(i => Math.min(i + 1, flatResults.length - 1))
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveIndex(i => Math.max(i - 1, 0))
-        return
-      }
-      if (e.key === 'Enter' && flatResults[activeIndex]) {
-        e.preventDefault()
-        selectHit(flatResults[activeIndex])
+        inputRef.current?.focus()
+        setOpen(true)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, flatResults, activeIndex, onClose, selectHit])
+  }, [])
 
   useEffect(() => {
     const el = listRef.current?.querySelector('[data-active="true"]')
     el?.scrollIntoView({ block: 'nearest' })
   }, [activeIndex])
 
-  if (!open) return null
+  function onInputKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      inputRef.current?.blur()
+      return
+    }
+    if (!showDropdown) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(i => Math.min(i + 1, flatResults.length - 1))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(i => Math.max(i - 1, 0))
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (flatResults[activeIndex]) selectHit(flatResults[activeIndex])
+    }
+  }
 
   let runningIndex = -1
 
   return (
-    <div className="search-overlay" onClick={onClose} role="presentation">
-      <div
-        className="search-palette"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Search"
-      >
-        <div className="search-palette-input-wrap">
-          <span className="search-palette-icon" aria-hidden><IconSearch size={18} /></span>
-          <input
-            ref={inputRef}
-            type="search"
-            className="search-palette-input"
-            placeholder="Search posts, centers, users…"
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              setActiveIndex(0)
-            }}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <kbd className="search-palette-kbd">{modKey}K</kbd>
-        </div>
+    <div className="search-bar-wrap" ref={wrapRef}>
+      <div className={`search-bar${open ? ' search-bar--focused' : ''}`}>
+        <span className="search-bar-icon" aria-hidden><IconSearch size={16} /></span>
+        <input
+          ref={inputRef}
+          type="search"
+          className="search-bar-input"
+          placeholder="Search posts, centers, users…"
+          value={query}
+          onChange={e => {
+            setQuery(e.target.value)
+            setActiveIndex(0)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onInputKeyDown}
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Search"
+          aria-expanded={showDropdown}
+          aria-controls="global-search-results"
+          aria-autocomplete="list"
+          role="combobox"
+        />
+        <kbd className="search-bar-kbd">{modKey}K</kbd>
+      </div>
 
-        <div className="search-palette-body" ref={listRef}>
-          {loading && query.trim().length >= 2 && (
-            <p className="search-palette-empty">Searching…</p>
+      {showDropdown && (
+        <div
+          id="global-search-results"
+          className="search-dropdown"
+          ref={listRef}
+          role="listbox"
+          aria-label="Search results"
+        >
+          {loading && (
+            <p className="search-dropdown-empty">Searching…</p>
           )}
 
           {!loading && flatResults.length === 0 && (
-            <p className="search-palette-empty">
-              {query.trim().length >= 2 ? 'No results found.' : 'Type to search or pick a page below.'}
+            <p className="search-dropdown-empty">
+              {query.trim() ? 'No results found.' : 'Type to search…'}
             </p>
           )}
 
-          {Object.entries(grouped).map(([type, items]) => {
+          {!loading && Object.entries(grouped).map(([type, items]) => {
             const meta = TYPE_META[type] || TYPE_META.page
             const GroupIcon = meta.Icon
             return (
@@ -229,7 +247,10 @@ export default function GlobalSearch({ open, onClose, nav, role }) {
                           type="button"
                           className={`search-result${active ? ' active' : ''}`}
                           data-active={active ? 'true' : undefined}
+                          role="option"
+                          aria-selected={active}
                           onMouseEnter={() => setActiveIndex(idx)}
+                          onMouseDown={e => e.preventDefault()}
                           onClick={() => selectHit(hit)}
                         >
                           <span className="search-result-label">{hit.label}</span>
@@ -243,17 +264,12 @@ export default function GlobalSearch({ open, onClose, nav, role }) {
             )
           })}
         </div>
-
-        <div className="search-palette-foot">
-          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> open</span>
-          <span><kbd>esc</kbd> close</span>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
 
+/** @deprecated use GlobalSearch inline — kept for compatibility */
 export function useGlobalSearchShortcut(onOpen) {
   useEffect(() => {
     function onKeyDown(e) {
