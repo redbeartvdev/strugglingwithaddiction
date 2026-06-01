@@ -3,7 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Use Dockerfile CMD (/app/start.sh) — do not override with exec-form uvicorn or $PORT won't expand.
+# Shell form so $PORT expands; do not use exec-form `uvicorn ... --port $PORT` in the Railway UI.
+startCommand = "/bin/sh /app/start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

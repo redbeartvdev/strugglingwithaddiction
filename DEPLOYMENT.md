@@ -307,6 +307,17 @@ railway open
 
 ## Troubleshooting
 
+### `502 Bad Gateway` on Railway
+
+Usually the proxy cannot reach the app on `$PORT` yet. Common causes:
+
+1. **Custom start command in Railway UI** — remove it or set exactly `/bin/sh /app/start.sh` (exec-form `uvicorn ... --port $PORT` does not expand `$PORT`).
+2. **Root Directory** must be `backend` when deploying from GitHub.
+3. **`DATABASE_URL` not linked** — API service → Variables → reference Postgres `DATABASE_URL`. Without it, startup can hang on a bad URL.
+4. **Stale deploy** — push to `main` or run **Deploy** after pulling the latest backend (startup runs in the background so `/health` responds immediately).
+
+Check logs: `railway logs` — you should see `Starting uvicorn on 0.0.0.0:<port>` and `Application startup complete` within a few seconds.
+
 ### API build fails on Railway
 
 - Confirm **Root Directory** is `backend`

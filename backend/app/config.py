@@ -1,9 +1,22 @@
+import os
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _env_file() -> str | None:
+    """Avoid baking local .env into production images overriding Railway variables."""
+    if os.getenv("ENVIRONMENT", "development").lower() == "production":
+        return None
+    return ".env"
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_env_file(),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     database_url: str = "postgresql://swa:swa_dev_password@localhost:5432/swa"
 

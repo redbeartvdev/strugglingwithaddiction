@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 import logging
+import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,16 +35,21 @@ def _run_startup_tasks() -> None:
         db.close()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def _startup_worker() -> None:
     try:
         _run_startup_tasks()
         logger.info("Startup tasks completed")
     except Exception:
         logger.exception(
-            "Startup tasks failed — API will still listen. "
+            "Startup tasks failed — API is still listening. "
             "Check DATABASE_URL is linked to Postgres on Railway."
         )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run DB bootstrap in the background so uvicorn binds to $PORT before Railway health checks.
+    threading.Thread(target=_startup_worker, daemon=True, name="swa-startup").start()
     yield
 
 
