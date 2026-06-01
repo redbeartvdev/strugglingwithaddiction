@@ -64,13 +64,13 @@ npm run dev            # http://127.0.0.1:5173
 
 ## Deployment
 
-**Full production guide:** [DEPLOYMENT.md](../DEPLOYMENT.md) (Railway API + Postgres, Netlify frontends)
+**Full production guide:** [DEPLOYMENT.md](../DEPLOYMENT.md) (Railway monolith + Postgres)
 
 Quick summary:
 
 1. Deploy `backend/` on **Railway** with PostgreSQL (root directory: `backend`, Dockerfile build).
 2. Set `DATABASE_URL`, `JWT_SECRET`, `ENVIRONMENT=production`, and `CORS_ORIGINS`.
-3. Deploy public site and `admin/` on **Netlify** with `VITE_API_URL` pointing to your Railway API URL.
+3. Deploy from repo root on **Railway** (Dockerfile builds API + public site + admin).
 4. Register Stripe webhook: `POST https://your-api.example.com/api/billing/webhook` (when billing is enabled).
 
 ## API overview

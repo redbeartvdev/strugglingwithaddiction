@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Provision Railway Postgres + API env vars for production.
-# Prerequisite: railway login && railway link (from backend/)
+# Provision Railway Postgres + production env for the monolith service.
+# Run from repo root after: railway login && railway link -s <api-service>
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
 
-API_SERVICE="${RAILWAY_API_SERVICE:-strugglingwithaddiction}"
+API_SERVICE="${RAILWAY_API_SERVICE:-strugglingwithaddiction-production}"
 POSTGRES_SERVICE="${RAILWAY_POSTGRES_SERVICE:-Postgres}"
 ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
 
@@ -22,7 +23,7 @@ die() {
 require_cli() {
   command -v railway >/dev/null || die "Install Railway CLI: npm install -g @railway/cli"
   railway whoami >/dev/null 2>&1 || die "Not logged in. Run: railway login"
-  railway status >/dev/null 2>&1 || die "Not linked. Run: railway link -s ${API_SERVICE}"
+  railway status >/dev/null 2>&1 || die "Not linked. From repo root run: railway link -s ${API_SERVICE}"
 }
 
 has_postgres() {
@@ -47,17 +48,67 @@ ensure_postgres() {
     echo "Adding PostgreSQL..."
     railway add --database postgres
     echo "Waiting for Postgres to deploy..."
-    sleep 15
+    sleep 20
   fi
+}
+
+read_service_url() {
+  railway domain --service "$API_SERVICE" --json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+for key in ('domain', 'url', 'hostname'):
+    v = d.get(key)
+    if v:
+        v = str(v).strip()
+        if not v.startswith('http'):
+            v = 'https://' + v.lstrip('/')
+        print(v.rstrip('/'))
+        sys.exit(0)
+# CLI sometimes returns a list
+if isinstance(d, list) and d:
+    v = d[0].get('domain') or d[0].get('url')
+    if v:
+        v = str(v).strip()
+        if not v.startswith('http'):
+            v = 'https://' + v.lstrip('/')
+        print(v.rstrip('/'))
+" 2>/dev/null || true
+}
+
+ensure_domain() {
+  local url
+  url="$(read_service_url)"
+  if [[ -n "$url" ]]; then
+    echo "Service URL: $url"
+    return
+  fi
+  echo "Generating Railway domain for ${API_SERVICE}..."
+  railway domain --service "$API_SERVICE"
+  sleep 3
+  url="$(read_service_url)"
+  [[ -n "$url" ]] || die "Could not read service URL. Set PUBLIC_SITE_URL manually."
+  echo "Service URL: $url"
+}
+
+resolve_urls() {
+  if [[ -z "$PUBLIC_SITE_URL" ]]; then
+    PUBLIC_SITE_URL="$(read_service_url)"
+  fi
+  [[ -n "$PUBLIC_SITE_URL" ]] || die "Set PUBLIC_SITE_URL or generate a Railway domain first."
+  PUBLIC_SITE_URL="${PUBLIC_SITE_URL%/}"
+  if [[ -z "$ADMIN_SITE_URL" ]]; then
+    ADMIN_SITE_URL="${PUBLIC_SITE_URL}/admin"
+  fi
+  ADMIN_SITE_URL="${ADMIN_SITE_URL%/}"
 }
 
 build_cors() {
   if [[ -n "${CORS_ORIGINS:-}" ]]; then
     echo "$CORS_ORIGINS"
     return
-  fi
-  if [[ -z "$PUBLIC_SITE_URL" || -z "$ADMIN_SITE_URL" ]]; then
-    die "Set PUBLIC_SITE_URL and ADMIN_SITE_URL, or set CORS_ORIGINS directly."
   fi
   echo "${PUBLIC_SITE_URL},${ADMIN_SITE_URL}"
 }
@@ -89,27 +140,21 @@ set_api_variables() {
     --environment "$ENV_NAME"
 }
 
-ensure_domain() {
-  if railway domain --service "$API_SERVICE" --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('domain') or d.get('url') or '')" 2>/dev/null | grep -q .; then
-    echo "Domain already configured for ${API_SERVICE}."
-    railway domain --service "$API_SERVICE" 2>/dev/null || true
-    return
-  fi
-  echo "Generating Railway domain for ${API_SERVICE}..."
-  railway domain --service "$API_SERVICE"
-}
-
 print_next_steps() {
   cat <<EOF
 
-Done. Next steps:
-  1. Confirm API health: curl https://YOUR-SERVICE.up.railway.app/health
-  2. GitHub Actions secrets (repo → Settings → Secrets):
-       RAILWAY_TOKEN  = project token (Railway → Project → Settings → Tokens)
-       RAILWAY_SERVICE_ID = ${API_SERVICE}
-  3. GitHub variable: VITE_API_URL = your Railway API URL
-  4. Redeploy API: railway redeploy --service ${API_SERVICE}
-     or push to main to run the Deploy workflow
+Done.
+
+  Public site:  ${PUBLIC_SITE_URL}/
+  Admin CMS:    ${ADMIN_SITE_URL}/
+  Health:       ${PUBLIC_SITE_URL}/health
+
+Railway dashboard:
+  - Root Directory must be "." (repo root), Dockerfile: backend/Dockerfile
+  - Redeploy after changing Root Directory
+
+GitHub Actions secrets:
+  RAILWAY_TOKEN, RAILWAY_SERVICE_ID=${API_SERVICE}
 
 EOF
 }
@@ -117,8 +162,9 @@ EOF
 main() {
   require_cli
   ensure_postgres
-  set_api_variables
   ensure_domain
+  resolve_urls
+  set_api_variables
   print_next_steps
 }
 

@@ -7,6 +7,9 @@ export function getApiBase() {
 
 export function apiEnabled() {
   if (import.meta.env.DEV) return true
+  // Empty VITE_API_URL = same-origin API (Railway monolith)
+  const url = import.meta.env.VITE_API_URL
+  if (url === undefined || url === null || String(url).trim() === '') return true
   return Boolean(getApiBase())
 }
 

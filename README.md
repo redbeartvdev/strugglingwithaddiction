@@ -21,7 +21,7 @@ A full-stack addiction recovery resource platform: public marketing site, rehab 
 ├── public/           Static assets (images, icons)
 ├── scripts/          Dev helpers, blog import, image tools
 ├── docker-compose.yml   Local Postgres (+ Redis)
-└── DEPLOYMENT.md     Production setup (Railway + Netlify)
+└── DEPLOYMENT.md     Production setup (Railway)
 ```
 
 ### Features
@@ -127,14 +127,14 @@ Rehab centers are seeded automatically on first API start.
 
 | Variable | Local | Production |
 |----------|-------|------------|
-| `VITE_API_URL` | *(empty — uses proxy)* | `https://your-api.up.railway.app` |
+| `VITE_API_URL` | *(empty — uses proxy)* | *(empty — same origin on Railway)* |
 
 ### Admin (`admin/.env`)
 
 | Variable | Local | Production |
 |----------|-------|------------|
-| `VITE_API_URL` | *(empty)* | Railway API URL |
-| `VITE_PUBLIC_SITE_URL` | `http://127.0.0.1:5173` | Your public Netlify URL |
+| `VITE_API_URL` | *(empty)* | *(empty — same origin)* |
+| `VITE_PUBLIC_SITE_URL` | `http://127.0.0.1:5173` | Railway public URL (optional; defaults to `/blog/...`) |
 
 ### API (`backend/.env`)
 
@@ -157,13 +157,7 @@ Full reference: [`BACKEND.md`](BACKEND.md)
 
 ## Production deployment
 
-**Recommended stack:**
-
-| Service | Host | Auto-deploy |
-|---------|------|-------------|
-| API + PostgreSQL | [Railway](https://railway.app) | GitHub Actions on push to `main` |
-| Public site | [Netlify](https://netlify.com) | GitHub Actions on push to `main` |
-| Admin CMS | Netlify (`admin/`) | GitHub Actions on push to `main` |
+**Recommended stack:** single [Railway](https://railway.app) project — PostgreSQL + one web service (API, public site, admin at `/admin`). Auto-deploy on push to `main` via GitHub Actions.
 
 Step-by-step setup (secrets, database, first deploy): **[DEPLOYMENT.md](DEPLOYMENT.md)**
 
@@ -213,10 +207,10 @@ Ensure `DATABASE_URL` in `backend/.env` uses port **5433**.
 
 ### CORS errors in production
 
-Set `CORS_ORIGINS` on Railway to your exact Netlify URLs (no trailing slash):
+Set `CORS_ORIGINS` on Railway to your app URL and admin path (no trailing slash):
 
 ```
-https://your-site.netlify.app,https://your-admin.netlify.app
+https://your-app.up.railway.app,https://your-app.up.railway.app/admin
 ```
 
 ---
