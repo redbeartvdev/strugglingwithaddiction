@@ -22,11 +22,14 @@ In Railway → API service → **Settings**:
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `.` (repository root, not `backend`) |
-| **Dockerfile** | `backend/Dockerfile` |
-| **Start command** | `/bin/sh /app/start.sh` (or leave empty to use `railway.toml`) |
+| **Root Directory** | *(empty — repo root)* **or** `backend` (both supported; see below) |
+| **Config file** | `/railway.toml` (repo root, full site) **or** `/backend/railway.toml` (API + prebuilt static) |
+| **Start command** | `/bin/sh /app/start.sh` |
 
-[`railway.toml`](railway.toml) in the repo root configures health checks and the start command.
+**Build failed with `"/admin": not found`?** Root Directory was `backend` but Docker used the monolith file. Use either:
+
+- **Option A (recommended):** Root Directory = empty, Config = `/railway.toml` → builds from [`Dockerfile`](Dockerfile) at repo root.
+- **Option B:** Root Directory = `backend`, Config = `/backend/railway.toml` → GitHub Actions runs `prepare-railway-static.sh` then deploys [`backend/Dockerfile`](backend/Dockerfile).
 
 ### 2. Database + environment variables (CLI)
 
@@ -80,7 +83,7 @@ open https://your-app.up.railway.app/
 open https://your-app.up.railway.app/admin
 ```
 
-`{"detail":"Not Found"}` on `/` means the **old API-only image** is still deployed — set Root Directory to `.` and redeploy.
+`{"detail":"Not Found"}` on `/` means the **API-only image** without frontends — redeploy after a successful monolith build, or use Option A above.
 
 ---
 

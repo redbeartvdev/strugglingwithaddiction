@@ -1,11 +1,11 @@
-# Prefer repo-root railway.toml when Root Directory is "."
-# If this service still uses Root Directory "backend", change it to "." in Railway settings.
+# Used only if this service's config file is set to /backend/railway.toml
+# (API-only build; Root Directory = backend). Prefer repo-root /railway.toml + Root Directory empty.
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Shell form so $PORT expands; do not use exec-form `uvicorn ... --port $PORT` in the Railway UI.
 startCommand = "/bin/sh /app/start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300

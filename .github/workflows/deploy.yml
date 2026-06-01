@@ -1,4 +1,4 @@
-# Auto-deploy on push to main: single Railway service (API + public site + admin).
+# Auto-deploy on push to main: Railway (API + static site + admin).
 # Required secrets: RAILWAY_TOKEN, RAILWAY_SERVICE_ID — see DEPLOYMENT.md
 
 name: Deploy
@@ -16,9 +16,13 @@ jobs:
   deploy:
     name: Railway
     runs-on: ubuntu-latest
-    container: ghcr.io/railwayapp/cli:latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
       - name: Validate Railway secrets
         env:
@@ -34,7 +38,14 @@ jobs:
             exit 1
           fi
 
+      - name: Build frontends into backend/static
+        run: ./scripts/prepare-railway-static.sh
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy to Railway
+        working-directory: backend
         run: railway up --ci --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
