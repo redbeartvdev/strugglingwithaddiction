@@ -12,6 +12,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users
+from app.static_site import register_static_site
 from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_rehab_centers
 from app.config import get_settings
 from app.db_migrate import run_migrations
@@ -95,3 +96,6 @@ def health():
     except Exception:
         pass
     return {"status": "ok", "database": "connected" if db_ok else "unavailable"}
+
+
+register_static_site(app)

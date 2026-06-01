@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react'
 
 const apiTarget = 'http://127.0.0.1:8000'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/admin/' : '/',
   plugins: [react()],
   server: {
     port: 5180,
@@ -15,4 +16,4 @@ export default defineConfig({
       '/images': { target: 'http://127.0.0.1:5173', changeOrigin: true },
     },
   },
-})
+}))
