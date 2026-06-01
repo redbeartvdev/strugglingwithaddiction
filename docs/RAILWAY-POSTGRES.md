@@ -86,12 +86,30 @@ Expected:
 
 On first successful boot the API creates tables and an admin user (from bootstrap variables).
 
+### Import site content (blog, categories, authors)
+
+After Postgres is connected, **redeploy** so the API imports `src/data/*.json` automatically when the posts table is empty.
+
+Manual import (CLI):
+
+```bash
+railway login
+cd backend
+railway link --project 407fa40d-6608-4441-905c-f3fab0182421 -s strugglingwithaddiction-production
+railway run --service strugglingwithaddiction-production python scripts/seed_all.py
+```
+
+Or from repo root after push (data is bundled in the Docker image at `/app/seed-data`).
+
+Verify posts: `curl "https://strugglingwithaddiction-production.up.railway.app/api/posts?limit=3"`
+
 ---
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
+| `{"detail":"Not Found"}` at `/` (API works at `/api/*`) | API-only image — no `static/index.html`. **Recommended:** Railway → service → Settings → **Root Directory** empty, **Config file** `/railway.toml`, redeploy (uses repo-root [`Dockerfile`](../Dockerfile)). **Or:** run `./scripts/prepare-railway-static.sh`, then `cd backend && railway up` (static must not be in [`backend/.dockerignore`](../backend/.dockerignore)). |
 | `"database":"unavailable"` | `DATABASE_URL` not referenced from Postgres, or redeploy not done |
 | App crashes on deploy | `ENVIRONMENT=production` but `DATABASE_URL` still localhost — add Postgres reference |
 | Postgres service not named `Postgres` | Use `${{YourPostgresServiceName.DATABASE_URL}}` or set `RAILWAY_POSTGRES_SERVICE` when running the script |

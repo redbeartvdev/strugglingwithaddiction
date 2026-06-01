@@ -18,4 +18,9 @@ mkdir -p backend/static/admin
 cp -r dist/* backend/static/
 cp -r admin/dist/* backend/static/admin/
 
-echo "Done. backend/static is ready for backend/Dockerfile."
+echo "Copying JSON seed data into backend/seed-data..."
+rm -rf backend/seed-data
+mkdir -p backend/seed-data
+cp src/data/*.json backend/seed-data/
+
+echo "Done. backend/static and backend/seed-data are ready for backend/Dockerfile."

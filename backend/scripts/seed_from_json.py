@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import app.models  # noqa: F401 — register all ORM models
 from app.database import SessionLocal
 from app.models.blog import Author, Category, Post, PostStatus, post_categories
 from app.models.user import User

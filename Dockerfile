@@ -30,6 +30,7 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
+COPY src/data ./seed-data
 COPY --from=public-build /build/dist ./static
 COPY --from=admin-build /build/admin/dist ./static/admin
 RUN chmod +x start.sh
