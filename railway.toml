@@ -1,6 +1,9 @@
+# Config path is from repo root (does not follow per-service Root Directory).
+# Service settings: Root Directory = empty (repo root), Config file = /railway.toml
+
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "/bin/sh /app/start.sh"

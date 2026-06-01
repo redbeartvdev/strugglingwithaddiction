@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+RAILWAY_PROJECT_ID="${RAILWAY_PROJECT_ID:-407fa40d-6608-4441-905c-f3fab0182421}"
 API_SERVICE="${RAILWAY_API_SERVICE:-strugglingwithaddiction-production}"
 POSTGRES_SERVICE="${RAILWAY_POSTGRES_SERVICE:-Postgres}"
 ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
@@ -20,10 +21,22 @@ die() {
   exit 1
 }
 
+ensure_linked() {
+  if railway status >/dev/null 2>&1; then
+    return
+  fi
+  echo "Linking project ${RAILWAY_PROJECT_ID} (service ${API_SERVICE})..."
+  railway link --project "$RAILWAY_PROJECT_ID" --service "$API_SERVICE" --environment "$ENV_NAME"
+}
+
 require_cli() {
   command -v railway >/dev/null || die "Install Railway CLI: npm install -g @railway/cli"
-  railway whoami >/dev/null 2>&1 || die "Not logged in. Run: railway login"
-  railway status >/dev/null 2>&1 || die "Not linked. From repo root run: railway link -s ${API_SERVICE}"
+  if [[ -n "${RAILWAY_TOKEN:-}" ]]; then
+    export RAILWAY_TOKEN
+  elif ! railway whoami >/dev/null 2>&1; then
+    die "Not logged in. Run: railway login (or export RAILWAY_TOKEN=project-token)"
+  fi
+  ensure_linked
 }
 
 has_postgres() {

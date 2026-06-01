@@ -5,6 +5,7 @@ dist/
 backend/.venv/
 backend/.env
 backend/uploads/
+backend/static/
 admin/.env
 admin/dist/
 *.pyc
