@@ -5,15 +5,28 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+RAILWAY_PROJECT_ID="${RAILWAY_PROJECT_ID:-407fa40d-6608-4441-905c-f3fab0182421}"
 API_SERVICE="${RAILWAY_API_SERVICE:-strugglingwithaddiction-production}"
 POSTGRES_SERVICE="${RAILWAY_POSTGRES_SERVICE:-Postgres}"
 ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
 
 die() { echo "error: $*" >&2; exit 1; }
 
+ensure_linked() {
+  if railway status >/dev/null 2>&1; then
+    return
+  fi
+  echo "Linking project ${RAILWAY_PROJECT_ID} (service ${API_SERVICE})..."
+  railway link --project "$RAILWAY_PROJECT_ID" --service "$API_SERVICE" --environment "$ENV_NAME"
+}
+
 command -v railway >/dev/null || die "Install CLI: npm install -g @railway/cli"
-railway whoami >/dev/null 2>&1 || die "Run: railway login"
-railway status >/dev/null 2>&1 || die "From repo root run: railway link -s ${API_SERVICE}"
+if [[ -n "${RAILWAY_TOKEN:-}" ]]; then
+  export RAILWAY_TOKEN
+elif ! railway whoami >/dev/null 2>&1; then
+  die "Run: railway login   (or export RAILWAY_TOKEN=your-project-token)"
+fi
+ensure_linked
 
 has_postgres() {
   railway environment config --json 2>/dev/null | python3 -c "

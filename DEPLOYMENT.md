@@ -36,7 +36,8 @@ In Railway → API service → **Settings**:
 ```bash
 railway login
 cd /path/to/strugglingwithaddiction   # repo root
-railway link -s strugglingwithaddiction
+# Project ID: 407fa40d-6608-4441-905c-f3fab0182421
+railway link --project 407fa40d-6608-4441-905c-f3fab0182421 -s strugglingwithaddiction-production
 
 # Optional: your Railway URL if you already have a domain
 export PUBLIC_SITE_URL="https://strugglingwithaddiction-production.up.railway.app"
