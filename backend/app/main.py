@@ -14,6 +14,7 @@ from sqlalchemy import text
 from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users
 from app.static_site import register_static_site
 from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_rehab_centers
+from app.seed_import import import_blog_if_empty
 from app.config import get_settings
 from app.db_migrate import run_migrations
 from app.database import SessionLocal, engine
@@ -32,6 +33,7 @@ def _run_startup_tasks() -> None:
         bootstrap_admin(db)
         bootstrap_plans(db)
         seed_rehab_centers(db)
+        import_blog_if_empty(db)
     finally:
         db.close()
 

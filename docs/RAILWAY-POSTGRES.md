@@ -86,6 +86,23 @@ Expected:
 
 On first successful boot the API creates tables and an admin user (from bootstrap variables).
 
+### Import site content (blog, categories, authors)
+
+After Postgres is connected, **redeploy** so the API imports `src/data/*.json` automatically when the posts table is empty.
+
+Manual import (CLI):
+
+```bash
+railway login
+cd backend
+railway link --project 407fa40d-6608-4441-905c-f3fab0182421 -s strugglingwithaddiction-production
+railway run --service strugglingwithaddiction-production python scripts/seed_all.py
+```
+
+Or from repo root after push (data is bundled in the Docker image at `/app/seed-data`).
+
+Verify posts: `curl "https://strugglingwithaddiction-production.up.railway.app/api/posts?limit=3"`
+
 ---
 
 ## Troubleshooting
