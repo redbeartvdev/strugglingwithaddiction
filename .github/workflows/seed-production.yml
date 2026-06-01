@@ -1,0 +1,38 @@
+# One-click blog import into Railway Postgres.
+# Add secret PRODUCTION_DATABASE_URL (Railway → Postgres → Connect → copy URL)
+# or ensure RAILWAY_TOKEN + RAILWAY_SERVICE_ID are set like the Deploy workflow.
+
+name: Seed production database
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    name: Import blog JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Import via DATABASE_URL
+        if: ${{ secrets.PRODUCTION_DATABASE_URL != '' }}
+        run: python backend/scripts/seed_all.py
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          ENVIRONMENT: production
+
+      - name: Import via Railway CLI
+        if: ${{ secrets.PRODUCTION_DATABASE_URL == '' }}
+        run: |
+          npm install -g @railway/cli
+          cd backend
+          railway run --service "${{ secrets.RAILWAY_SERVICE_ID }}" python scripts/seed_all.py
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
