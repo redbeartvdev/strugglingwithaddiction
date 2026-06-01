@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:5174"
     admin_bootstrap_email: str = "admin@example.com"
     admin_bootstrap_password: str = "changeme123"
+    import_users_default_password: str = "ChangeMeOnFirstLogin!"
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_monthly: str = ""

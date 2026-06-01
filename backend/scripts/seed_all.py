@@ -14,7 +14,8 @@ from app.db_migrate import run_migrations
 from app.models import Base  # noqa: F401 — register all ORM models
 from app.models.blog import Post
 from app.models.rehab import RehabCenter
-from app.seed_import import import_blog_if_empty
+from app.models.user import User
+from app.seed_import import import_blog_if_empty, import_users_from_dir, resolve_data_dir
 
 
 def main() -> None:
@@ -29,6 +30,10 @@ def main() -> None:
         print(f"Rehab centers: {db.query(RehabCenter).count()}")
         import_blog_if_empty(db)
         print(f"Posts in database: {db.query(Post).count()}")
+        data_dir = resolve_data_dir()
+        if data_dir:
+            import_users_from_dir(db, data_dir)
+        print(f"Users in database: {db.query(User).count()}")
     finally:
         db.close()
     print("Done.")

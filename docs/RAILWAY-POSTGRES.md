@@ -63,8 +63,8 @@ On **strugglingwithaddiction-production** → **Variables** → **RAW** editor o
 | `PUBLIC_SITE_URL` | `https://strugglingwithaddiction-production.up.railway.app` |
 | `ADMIN_SITE_URL` | `https://strugglingwithaddiction-production.up.railway.app/admin` |
 | `CORS_ORIGINS` | `https://strugglingwithaddiction-production.up.railway.app,https://strugglingwithaddiction-production.up.railway.app/admin` |
-| `ADMIN_BOOTSTRAP_EMAIL` | Your email |
-| `ADMIN_BOOTSTRAP_PASSWORD` | Strong password (used only when no admin exists) |
+| `ADMIN_BOOTSTRAP_EMAIL` | Your real email (must contain `@` — never use a random token) |
+| `ADMIN_BOOTSTRAP_PASSWORD` | Strong password (creates admin on first boot if that email is missing) |
 
 Do **not** set `DATABASE_URL` to `localhost` or copy from `backend/.env`.
 
@@ -102,6 +102,41 @@ railway run --service strugglingwithaddiction-production python scripts/seed_all
 Or from repo root after push (data is bundled in the Docker image at `/app/seed-data`).
 
 Verify posts: `curl "https://strugglingwithaddiction-production.up.railway.app/api/posts?limit=3"`
+
+### Import WordPress users (editors / admin)
+
+Generate `src/data/users.json` from the live site (once):
+
+```bash
+node scripts/extract-users.mjs
+```
+
+On deploy, the API imports `users.json` when only the bootstrap admin exists. Default password for imported accounts: `IMPORT_USERS_DEFAULT_PASSWORD` (falls back to `ChangeMeOnFirstLogin!`). Users should reset passwords after first login.
+
+### Admin cannot log in
+
+If `ADMIN_BOOTSTRAP_EMAIL` was set to a random string (no `@`), bootstrap created a broken admin. Fix:
+
+```bash
+# Set valid email/password on Railway, then:
+export DATABASE_URL="..."   # Postgres public URL
+export ENVIRONMENT=production
+export ADMIN_BOOTSTRAP_EMAIL=you@yourdomain.com
+export ADMIN_BOOTSTRAP_PASSWORD=YourSecurePassword123
+cd backend && python scripts/ensure_admin.py
+```
+
+Or use the imported WordPress admin: **`pj@redbear.tv`** / **`ChangeMeOnFirstLogin!`** (change after login).
+
+The admin login form no longer defaults to `admin@example.com` (that only exists if bootstrap created it).
+
+Force import on production:
+
+```bash
+export DATABASE_URL="..."   # Railway Postgres public URL
+export ENVIRONMENT=production
+cd backend && python scripts/seed_all.py
+```
 
 ---
 

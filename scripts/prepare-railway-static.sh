@@ -22,5 +22,8 @@ echo "Copying JSON seed data into backend/seed-data..."
 rm -rf backend/seed-data
 mkdir -p backend/seed-data
 cp src/data/*.json backend/seed-data/
+if [[ ! -f src/data/users.json ]]; then
+  echo "Tip: run node scripts/extract-users.mjs to generate users.json for import."
+fi
 
 echo "Done. backend/static and backend/seed-data are ready for backend/Dockerfile."

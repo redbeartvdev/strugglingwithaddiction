@@ -1,7 +1,14 @@
+import logging
+import re
+
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.core.security import hash_password
+
+logger = logging.getLogger("swa")
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 from app.models.billing import SubscriptionPlan
 from app.models.profile import UserProfile
 from app.models.rehab import RehabCenter, ListingStatus, CenterSource
@@ -80,10 +87,46 @@ REHAB_SEED = [
 ]
 
 
+def _valid_admin_email(email: str) -> bool:
+    return bool(_EMAIL_RE.match(email.strip()))
+
+
+def _normalize_admin_email() -> str:
+    email = settings.admin_bootstrap_email.strip().lower()
+    if _valid_admin_email(email):
+        return email
+    logger.warning(
+        "Invalid ADMIN_BOOTSTRAP_EMAIL=%r — using admin@strugglingwithaddiction.com",
+        settings.admin_bootstrap_email,
+    )
+    return "admin@strugglingwithaddiction.com"
+
+
 def bootstrap_admin(db: Session) -> None:
-    email = settings.admin_bootstrap_email.lower()
-    if db.query(User).filter(User.email == email).first():
+    """Ensure a real admin account exists; remove admins with invalid emails."""
+    email = _normalize_admin_email()
+
+    for bad in db.query(User).filter(User.role == UserRole.admin).all():
+        if not _valid_admin_email(bad.email):
+            logger.warning("Removing invalid admin account email=%r id=%s", bad.email, bad.id)
+            if bad.profile:
+                db.delete(bad.profile)
+            db.delete(bad)
+    db.commit()
+
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        changed = False
+        if user.role != UserRole.admin:
+            user.role = UserRole.admin
+            changed = True
+        if not user.is_active:
+            user.is_active = True
+            changed = True
+        if changed:
+            db.commit()
         return
+
     user = User(
         email=email,
         password_hash=hash_password(settings.admin_bootstrap_password),
@@ -94,6 +137,7 @@ def bootstrap_admin(db: Session) -> None:
     db.flush()
     db.add(UserProfile(user_id=user.id, display_name="Administrator", slug="admin"))
     db.commit()
+    logger.info("Created bootstrap admin %s", email)
 
 
 def bootstrap_plans(db: Session) -> None:
