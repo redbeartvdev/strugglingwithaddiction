@@ -1,12 +1,23 @@
 import os
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _running_on_railway() -> bool:
+    return bool(
+        os.getenv("RAILWAY_ENVIRONMENT")
+        or os.getenv("RAILWAY_PROJECT_ID")
+        or os.getenv("RAILWAY_SERVICE_ID")
+    )
+
+
 def _env_file() -> str | None:
-    """Avoid baking local .env into production images overriding Railway variables."""
+    """Never load local .env on Railway or in production."""
     if os.getenv("ENVIRONMENT", "development").lower() == "production":
+        return None
+    if _running_on_railway():
         return None
     return ".env"
 
@@ -55,6 +66,21 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def uses_local_database(self) -> bool:
+        url = self.database_url.lower()
+        return "localhost" in url or "127.0.0.1" in url
+
+    @model_validator(mode="after")
+    def require_remote_database_on_deploy(self) -> "Settings":
+        if self.uses_local_database and (self.is_production or _running_on_railway()):
+            raise ValueError(
+                "DATABASE_URL points at localhost. On Railway: add PostgreSQL, open the API "
+                "service → Variables → Add Reference → Postgres → DATABASE_URL, set "
+                "ENVIRONMENT=production, then redeploy. Or run: ./backend/scripts/railway-setup.sh"
+            )
+        return self
 
     @property
     def s3_configured(self) -> bool:

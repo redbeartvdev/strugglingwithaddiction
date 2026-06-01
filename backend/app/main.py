@@ -95,7 +95,13 @@ def health():
         db_ok = True
     except Exception:
         pass
-    return {"status": "ok", "database": "connected" if db_ok else "unavailable"}
+    payload: dict = {"status": "ok", "database": "connected" if db_ok else "unavailable"}
+    if not db_ok and settings.uses_local_database:
+        payload["hint"] = (
+            "DATABASE_URL is not linked to Railway Postgres. "
+            "Add PostgreSQL in Railway and reference ${{Postgres.DATABASE_URL}} on this service."
+        )
+    return payload
 
 
 register_static_site(app)
