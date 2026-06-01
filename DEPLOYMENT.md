@@ -138,24 +138,30 @@ Recommended: **GitHub Actions** for all three apps (single pipeline).
    - API service → **Settings** → **Networking** → **Generate Domain**
    - Copy the URL (e.g. `https://swa-api-production.up.railway.app`) — you need this for Netlify.
 
-### Option B — Railway CLI
+### Option B — Railway CLI (automated)
 
 ```bash
-# One-time login (opens browser)
 railway login
-
 cd backend
-railway link          # link to existing project, or: railway init
+railway link -s strugglingwithaddiction   # or your API service name
+
+# Set Netlify URLs (or copy scripts/railway-setup.env.example → railway-setup.env)
+export PUBLIC_SITE_URL="https://your-public.netlify.app"
+export ADMIN_SITE_URL="https://your-admin.netlify.app"
+
+./scripts/railway-setup.sh
+```
+
+The script adds PostgreSQL (if missing), wires `DATABASE_URL=${{Postgres.DATABASE_URL}}`, sets `JWT_SECRET`, `ENVIRONMENT=production`, CORS, bootstrap admin, and generates a public domain.
+
+Manual alternative:
+
+```bash
 railway add --database postgres
-railway variables set JWT_SECRET="$(openssl rand -hex 32)"
-railway variables set ENVIRONMENT=production
-railway variables set CORS_ORIGINS="https://your-public.netlify.app,https://your-admin.netlify.app"
-railway variables set PUBLIC_SITE_URL="https://your-public.netlify.app"
-railway variables set ADMIN_SITE_URL="https://your-admin.netlify.app"
-railway variables set ADMIN_BOOTSTRAP_EMAIL="you@example.com"
-railway variables set ADMIN_BOOTSTRAP_PASSWORD="your-secure-password"
-railway up
-railway domain        # generate public URL
+railway variable set DATABASE_URL='${{Postgres.DATABASE_URL}}' --service strugglingwithaddiction
+railway variable set JWT_SECRET="$(openssl rand -hex 32)" ENVIRONMENT=production --service strugglingwithaddiction
+railway up --detach
+railway domain --service strugglingwithaddiction
 ```
 
 ### First deploy — what happens automatically
