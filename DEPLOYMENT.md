@@ -33,6 +33,59 @@ Railway is already connected to GitHub for this repo. Follow the steps below to 
 
 ---
 
+## Auto-deploy (GitHub Actions)
+
+Every push to **`main`** triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+
+1. **Railway** — builds & deploys `backend/`
+2. **Netlify** — builds & deploys public site (`dist/`)
+3. **Netlify** — builds & deploys admin (`admin/dist/`)
+
+Pull requests run [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (build only, no deploy).
+
+You can also trigger a deploy manually: **GitHub → Actions → Deploy → Run workflow**.
+
+### One-time setup: GitHub secrets & variables
+
+Go to **GitHub repo → Settings → Secrets and variables → Actions**.
+
+**Secrets** (encrypted):
+
+| Name | Where to get it |
+|------|-----------------|
+| `RAILWAY_TOKEN` | [Railway → Account → Tokens](https://railway.app/account/tokens) |
+| `RAILWAY_SERVICE_ID` | Railway → API service → Settings → Service ID |
+| `NETLIFY_AUTH_TOKEN` | [Netlify → User settings → Applications](https://app.netlify.com/user/applications) → New access token |
+| `NETLIFY_SITE_ID` | Netlify → public site → Site configuration → Site ID |
+| `NETLIFY_ADMIN_SITE_ID` | Netlify → admin site → Site configuration → Site ID |
+
+**Variables** (plain text, repo → Variables tab):
+
+| Name | Example |
+|------|---------|
+| `VITE_API_URL` | `https://your-api.up.railway.app` |
+| `VITE_PUBLIC_SITE_URL` | `https://your-public.netlify.app` |
+
+### Railway still needs Postgres + env vars
+
+GitHub Actions deploys the API code, but you must **once** set up on Railway:
+
+- PostgreSQL database (linked `DATABASE_URL`)
+- `JWT_SECRET`, `ENVIRONMENT=production`, `CORS_ORIGINS`, bootstrap admin credentials
+
+See Part 1 below. After that, every push to `main` redeploys automatically.
+
+### Disable Railway native GitHub hook (optional)
+
+If Railway **also** auto-deploys from GitHub, you may get double deploys. Either:
+
+- Use **GitHub Actions only** → disable auto-deploy on the Railway service, **or**
+- Use **Railway native hook only** → delete/disable the Deploy workflow
+
+Recommended: **GitHub Actions** for all three apps (single pipeline).
+
+---
+
 ## Part 1 — Railway (API + database)
 
 ### Option A — Railway dashboard (recommended if GitHub is already linked)

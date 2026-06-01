@@ -1,0 +1,54 @@
+# Build check on pull requests — no deploy
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build-public:
+    name: Public site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_URL: https://example.com
+
+  build-admin:
+    name: Admin CMS
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_URL: https://example.com
+          VITE_PUBLIC_SITE_URL: https://example.com
+
+  build-api:
+    name: Backend Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: swa-api:ci

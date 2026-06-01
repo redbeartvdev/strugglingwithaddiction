@@ -159,13 +159,13 @@ Full reference: [`BACKEND.md`](BACKEND.md)
 
 **Recommended stack:**
 
-| Service | Host | Notes |
-|---------|------|-------|
-| API + PostgreSQL | [Railway](https://railway.app) | Docker deploy from `backend/` |
-| Public site | [Netlify](https://netlify.com) | Root of repo |
-| Admin CMS | Netlify | `admin/` subdirectory |
+| Service | Host | Auto-deploy |
+|---------|------|-------------|
+| API + PostgreSQL | [Railway](https://railway.app) | GitHub Actions on push to `main` |
+| Public site | [Netlify](https://netlify.com) | GitHub Actions on push to `main` |
+| Admin CMS | Netlify (`admin/`) | GitHub Actions on push to `main` |
 
-Step-by-step guide: **[DEPLOYMENT.md](DEPLOYMENT.md)**
+Step-by-step setup (secrets, database, first deploy): **[DEPLOYMENT.md](DEPLOYMENT.md)**
 
 ---
 
