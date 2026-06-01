@@ -30,6 +30,7 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway
+        # RAILWAY_TOKEN must be a project token (Railway → project → Settings → Tokens)
         run: railway up --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

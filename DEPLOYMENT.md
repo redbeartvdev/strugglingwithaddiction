@@ -53,8 +53,8 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions**.
 
 | Name | Where to get it |
 |------|-----------------|
-| `RAILWAY_TOKEN` | [Railway → Account → Tokens](https://railway.app/account/tokens) |
-| `RAILWAY_SERVICE_ID` | Railway → API service → Settings → Service ID |
+| `RAILWAY_TOKEN` | Railway → Project → **Settings → Tokens** (project token, not account token) |
+| `RAILWAY_SERVICE_ID` | Service name (`strugglingwithaddiction`) or UUID from Railway → service → Settings |
 | `NETLIFY_AUTH_TOKEN` | [Netlify → User settings → Applications](https://app.netlify.com/user/applications) → New access token |
 | `NETLIFY_SITE_ID` | Netlify → public site → Site configuration → Site ID |
 | `NETLIFY_ADMIN_SITE_ID` | Netlify → admin site → Site configuration → Site ID |
