@@ -1,20 +1,23 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import posts from '../data/posts.json'
-import categories from '../data/categories.json'
-import authors from '../data/authors.json'
+import { usePosts, useCategories, useAuthors } from '../hooks/useBlogData'
 import './Blog.css'
 
-const authorMap = Object.fromEntries(authors.map(a => [a.id, a]))
-
 const PER_PAGE = 12
-const DISPLAY_CATS = categories.filter(c => c.name !== 'Uncategorized')
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+function postHasCategory(post, catId) {
+  if (post.categoryNames?.some(c => c.id === catId)) return true
+  return post.categories?.includes(catId)
+}
+
 export default function Blog() {
+  const { posts, loading } = usePosts()
+  const categories = useCategories()
+  const authors = useAuthors()
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -23,27 +26,35 @@ export default function Blog() {
   const [activeIdx, setActiveIdx] = useState(-1)
   const wrapRef = useRef(null)
 
+  const authorMap = useMemo(
+    () => Object.fromEntries(authors.map(a => [a.id, a])),
+    [authors],
+  )
+
+  const displayCats = useMemo(
+    () => categories.filter(c => c.name !== 'Uncategorized'),
+    [categories],
+  )
+
   const suggestions = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return []
     const results = []
 
-    // Author matches first
     authors.forEach(a => {
       if (a.name.toLowerCase().includes(q))
         results.push({ type: 'author', label: a.name, sub: a.title, to: `/author/${a.slug}` })
     })
 
-    // Article title matches (up to 6 total)
     for (const p of posts) {
       if (results.length >= 8) break
-      const title = p.title.replace(/<[^>]*>/g, '')
+      const title = (p.title || '').replace(/<[^>]*>/g, '')
       if (title.toLowerCase().includes(q))
         results.push({ type: 'post', label: title, sub: null, to: `/blog/${p.slug}` })
     }
 
     return results.slice(0, 8)
-  }, [search])
+  }, [search, posts, authors])
 
   useEffect(() => {
     function onOutside(e) {
@@ -70,25 +81,40 @@ export default function Blog() {
 
   const filtered = useMemo(() => {
     let result = posts
-    if (activeCat) result = result.filter(p => p.categories.includes(activeCat))
-    const q = search.toLowerCase()
-    if (q) result = result.filter(p => {
-      const authorName = authorMap[p.authorId]?.name.toLowerCase() ?? ''
-      return p.title.toLowerCase().includes(q) || p.excerpt.toLowerCase().includes(q) || authorName.includes(q)
-    })
+    if (activeCat) result = result.filter(p => postHasCategory(p, activeCat))
+    const q = search.toLowerCase().trim()
+    if (q) {
+      result = result.filter(p => {
+        const title = (p.title || '').replace(/<[^>]*>/g, '').toLowerCase()
+        const excerpt = (p.excerpt || '').toLowerCase()
+        const authorName = authorMap[p.authorId]?.name?.toLowerCase() ?? ''
+        return title.includes(q) || excerpt.includes(q) || authorName.includes(q)
+      })
+    }
     return result
-  }, [search, activeCat])
+  }, [search, activeCat, posts, authorMap])
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
   const visible = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   const handleSearch = e => { setSearch(e.target.value); setPage(1); setShowSuggestions(true); setActiveIdx(-1) }
   const handleCat = id => { setActiveCat(prev => prev === id ? null : id); setPage(1) }
 
+  if (loading) {
+    return (
+      <main className="blog-page">
+        <section className="blog-archive">
+          <div className="container" style={{ padding: '4rem 0', textAlign: 'center' }}>
+            Loading articles…
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="blog-page">
 
-      {/* ── Hero ─────────────────────────────────── */}
       <section className="blog-hero">
         <div className="blog-hero-overlay" />
         <div className="container blog-hero-content">
@@ -130,11 +156,9 @@ export default function Blog() {
         </div>
       </section>
 
-      {/* ── Grid ─────────────────────────────────── */}
       <section className="blog-archive">
         <div className="container">
 
-          {/* Category filter pills */}
           <div className="blog-cats">
             <button
               className={`cat-pill${activeCat === null ? ' active' : ''}`}
@@ -142,7 +166,7 @@ export default function Blog() {
             >
               All
             </button>
-            {DISPLAY_CATS.map(c => (
+            {displayCats.map(c => (
               <button
                 key={c.id}
                 className={`cat-pill${activeCat === c.id ? ' active' : ''}`}
@@ -189,7 +213,9 @@ export default function Blog() {
                     <h2>
                       <Link to={`/blog/${post.slug}`} dangerouslySetInnerHTML={{ __html: post.title }} />
                     </h2>
-                    <p className="blog-card-excerpt">{post.excerpt.slice(0, 140)}{post.excerpt.length > 140 ? '…' : ''}</p>
+                    <p className="blog-card-excerpt">
+                      {(post.excerpt || '').slice(0, 140)}{(post.excerpt || '').length > 140 ? '…' : ''}
+                    </p>
                     <Link to={`/blog/${post.slug}`} className="btn blog-card-btn">Read Article</Link>
                   </div>
                 </article>
@@ -197,7 +223,6 @@ export default function Blog() {
             </div>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="blog-pagination">
               <button

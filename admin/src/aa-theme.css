@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --aa-graphite-00: #ffffff;
+  --aa-graphite-05: #f7f8f9;
+  --aa-graphite-10: #eef0f2;
+  --aa-graphite-20: #dde1e5;
+  --aa-graphite-30: #b9bfc5;
+  --aa-graphite-40: #878f97;
+  --aa-graphite-50: #5b636b;
+  --aa-graphite-60: #3b4248;
+  --aa-graphite-80: #14181c;
+  --aa-graphite-90: #0a0c0e;
+  --aa-pulse-50: #e6f6ff;
+  --aa-pulse-400: #0a95ef;
+  --aa-pulse-500: #0077cc;
+  --aa-success: #30c16a;
+  --aa-warning: #ffb020;
+  --aa-danger: #ff3b30;
+
+  --bg: var(--aa-graphite-05);
+  --surface: var(--aa-graphite-00);
+  --surface-2: var(--aa-graphite-10);
+  --hairline: var(--aa-graphite-20);
+  --border: var(--aa-graphite-30);
+  --fg: var(--aa-graphite-90);
+  --fg-1: var(--aa-graphite-60);
+  --fg-2: var(--aa-graphite-50);
+  --fg-3: var(--aa-graphite-40);
+  --accent: var(--aa-pulse-400);
+  --accent-hover: var(--aa-pulse-500);
+  --link: var(--aa-pulse-500);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --fs-micro: 11px;
+  --fs-caption: 13px;
+  --fs-body: 15px;
+  --fs-body-lg: 17px;
+  --fs-h3: 32px;
+  --fs-h2: 44px;
+
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+  --control-height: 42px;
+  --shadow-1: 0 1px 0 rgba(20,24,28,0.04), 0 1px 2px rgba(20,24,28,0.04);
+  --shadow-2: 0 2px 4px rgba(20,24,28,0.04), 0 6px 16px rgba(20,24,28,0.06);
+  --ring-focus: 0 0 0 3px rgba(10,149,239,0.35);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 120ms;
+  --t-base: 220ms;
+}

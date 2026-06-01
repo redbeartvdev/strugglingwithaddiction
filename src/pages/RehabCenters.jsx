@@ -1,8 +1,12 @@
-import { useState } from 'react'
-import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar } from 'react-icons/fa'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar, FaSearch } from 'react-icons/fa'
+import { fetchApi, apiEnabled } from '../lib/api'
+import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService } from '../lib/rehabServices'
+import RehabSearch from '../components/RehabSearch'
 import './RehabCenters.css'
 
-const centers = [
+const STATIC_CENTERS = [
   {
     id: 1,
     name: 'Hazelden Betty Ford Foundation',
@@ -11,7 +15,7 @@ const centers = [
     website: 'https://www.hazeldenbettyford.org',
     image: '/images/rehab/hazelden-betty-ford.webp',
     specialties: ['Inpatient Residential', 'Medical Detox', 'Dual Diagnosis', 'Telehealth'],
-    description: 'The Betty Ford Center is a world-renowned inpatient addiction treatment facility co-founded in 1982 by former First Lady Betty Ford. Located on a serene 20-acre campus south of Palm Springs, the center combines the Minnesota Model approach with 12-Step principles and multidisciplinary care — integrating treatment for body, mind, and spirit.',
+    description: 'The Betty Ford Center is a world-renowned inpatient addiction treatment facility co-founded in 1982 by former First Lady Betty Ford.',
     rating: 5,
     claimed: true,
   },
@@ -23,7 +27,7 @@ const centers = [
     website: 'https://www.caron.org',
     image: '/images/rehab/caron-treatment-centers.webp',
     specialties: ['Medical Detox', 'Inpatient', 'Dual Diagnosis', 'Executive Program'],
-    description: 'Caron is a nationally recognized nonprofit provider of comprehensive addiction and behavioral health treatment, named one of America\'s best addiction treatment centers by Newsweek. The facility features state-of-the-art detoxification services, on-site medical staff, and evidence-based therapies including CBT, DBT, and equine therapy.',
+    description: 'Caron is a nationally recognized nonprofit provider of comprehensive addiction and behavioral health treatment.',
     rating: 5,
     claimed: true,
   },
@@ -35,7 +39,7 @@ const centers = [
     website: 'https://www.sierratucson.com',
     image: '/images/rehab/sierra-tucson.webp',
     specialties: ['Residential', 'Trauma & PTSD', 'Eating Disorders', 'Equine Therapy'],
-    description: 'Ranked #1 in Newsweek\'s Best Addiction Treatment Centers in Arizona for 2025, Sierra Tucson sits on a stunning 160-acre campus with views of the Santa Catalina Mountains. Serving over 27,000 patients across 40+ years, the Sierra Tucson Model integrates medical, psychological, and family systems approaches for lasting recovery.',
+    description: 'Ranked #1 in Newsweek\'s Best Addiction Treatment Centers in Arizona for 2025.',
     rating: 5,
   },
   {
@@ -46,7 +50,7 @@ const centers = [
     website: 'https://www.theranch.com',
     image: '/images/rehab/the-ranch-tennessee.webp',
     specialties: ['Substance Use', 'Mental Health', 'Equine Therapy', 'Extended Care'],
-    description: 'Located on peaceful grounds along the Piney River, The Ranch combines traditional and alternative therapies to address the whole person. The center is known for its unique equine therapy program that helps clients build trust and emotional resilience, along with extended care options for those who need additional time to establish strong recovery foundations.',
+    description: 'Located on peaceful grounds along the Piney River, The Ranch combines traditional and alternative therapies.',
     rating: 4,
   },
   {
@@ -57,17 +61,41 @@ const centers = [
     website: 'https://www.mcleanhospital.org',
     image: '/images/rehab/mclean-hospital.webp',
     specialties: ['Harvard-Affiliated', 'Medical Detox', 'Inpatient & IOP', 'Co-occurring Disorders'],
-    description: 'The largest psychiatric teaching hospital of Harvard Medical School and ranked #1 by U.S. News & World Report, McLean Hospital offers comprehensive addiction treatment integrated with world-class psychiatric care. Programs span medical detox, inpatient residential, partial hospitalization, and intensive outpatient services using the most advanced evidence-based practices.',
+    description: 'The largest psychiatric teaching hospital of Harvard Medical School.',
     rating: 5,
   },
 ]
 
 function ClaimModal({ center, onClose }) {
   const [submitted, setSubmitted] = useState(false)
+  const [ticket, setTicket] = useState('')
+  const [error, setError] = useState('')
+  const [form, setForm] = useState({
+    full_name: '',
+    job_title: '',
+    work_email: '',
+    phone: '',
+    affiliation_text: '',
+    facility_role: 'other',
+  })
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
-    setSubmitted(true)
+    setError('')
+    if (apiEnabled()) {
+      try {
+        const res = await fetchApi('/api/rehab/claims', {
+          method: 'POST',
+          body: JSON.stringify({ rehab_center_id: center.id, ...form }),
+        })
+        setTicket(res.ticket_number)
+        setSubmitted(true)
+      } catch (err) {
+        setError(err.message)
+      }
+    } else {
+      setSubmitted(true)
+    }
   }
 
   return (
@@ -78,7 +106,14 @@ function ClaimModal({ center, onClose }) {
           <div className="modal-success">
             <div className="modal-success-icon">✓</div>
             <h3>Request Received!</h3>
-            <p>Thank you for claiming <strong>{center.name}</strong>. Our team will review your request and reach out within 1–2 business days.</p>
+            {ticket ? (
+              <>
+                <p>Your ticket number: <strong>{ticket}</strong></p>
+                <p><Link to={`/claim-status/${ticket}`}>Track your claim status →</Link></p>
+              </>
+            ) : (
+              <p>Thank you for claiming <strong>{center.name}</strong>. Our team will review your request.</p>
+            )}
             <button className="btn" onClick={onClose}>Close</button>
           </div>
         ) : (
@@ -86,18 +121,28 @@ function ClaimModal({ center, onClose }) {
             <div className="modal-header">
               <span className="section-label">Claim This Listing</span>
               <h3>{center.name}</h3>
-              <p>Fill out the form below and our team will verify your ownership and get your listing updated.</p>
+              <p>Fill out the form below and our team will verify your ownership.</p>
             </div>
+            {error && <p style={{ color: '#8c1126', marginBottom: '0.5rem' }}>{error}</p>}
             <form className="modal-form" onSubmit={handleSubmit}>
               <div className="form-row">
-                <label>Your Name<input type="text" required placeholder="Full name" /></label>
-                <label>Job Title<input type="text" required placeholder="e.g. Marketing Director" /></label>
+                <label>Your Name<input type="text" required value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} /></label>
+                <label>Job Title<input type="text" required value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} /></label>
               </div>
-              <label>Work Email<input type="email" required placeholder="you@facility.com" /></label>
-              <label>Phone Number<input type="tel" placeholder="(555) 000-0000" /></label>
+              <label>Work Email<input type="email" required value={form.work_email} onChange={e => setForm(f => ({ ...f, work_email: e.target.value }))} /></label>
+              <label>Phone Number<input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></label>
+              <label>Your role
+                <select value={form.facility_role} onChange={e => setForm(f => ({ ...f, facility_role: e.target.value }))}>
+                  <option value="owner">Owner</option>
+                  <option value="director">Director</option>
+                  <option value="marketing">Marketing</option>
+                  <option value="staff">Staff</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
               <label>
                 How are you affiliated with this center?
-                <textarea rows="3" placeholder="Briefly describe your role or ownership..." required />
+                <textarea rows="3" required value={form.affiliation_text} onChange={e => setForm(f => ({ ...f, affiliation_text: e.target.value }))} />
               </label>
               <button type="submit" className="btn">Submit Claim Request</button>
             </form>
@@ -108,39 +153,112 @@ function ClaimModal({ center, onClose }) {
   )
 }
 
+function filterCenters(centers, { query, state, service }) {
+  const q = normalizeText(query)
+  return centers.filter(center => {
+    if (state) {
+      const centerState = extractStateFromLocation(center.location)
+      if (!centerState || normalizeText(centerState) !== normalizeText(state)) return false
+    }
+    if (service && !centerMatchesService(center.specialties, service)) return false
+    if (q) {
+      const blob = normalizeText([
+        center.name,
+        center.location,
+        center.description,
+        ...(center.specialties || []),
+      ].join(' '))
+      if (!blob.includes(q)) return false
+    }
+    return true
+  })
+}
+
 export default function RehabCenters() {
   const [claimCenter, setClaimCenter] = useState(null)
+  const [centers, setCenters] = useState(STATIC_CENTERS)
+  const [loading, setLoading] = useState(apiEnabled())
+  const [query, setQuery] = useState('')
+  const [stateFilter, setStateFilter] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('')
+
+  useEffect(() => {
+    if (!apiEnabled()) return
+    fetchApi('/api/rehab-centers')
+      .then(data => {
+        if (data?.length) setCenters(data)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const hasActiveFilters = Boolean(query || stateFilter || serviceFilter)
+  const filteredCenters = useMemo(
+    () => filterCenters(centers, { query, state: stateFilter, service: serviceFilter }),
+    [centers, query, stateFilter, serviceFilter],
+  )
+
+  function clearFilters() {
+    setQuery('')
+    setStateFilter('')
+    setServiceFilter('')
+  }
 
   return (
     <main className="rehab-page">
-
-      {/* ── Hero ─────────────────────────────────── */}
       <section className="rehab-hero">
         <div className="rehab-hero-overlay" />
         <div className="container rehab-hero-content">
           <span className="section-label" style={{ color: '#98b8c4' }}>Find Help Near You</span>
           <h1>Trusted Rehab Centers<br />Across the USA</h1>
-          <p>
-            Accredited treatment facilities with proven track records of helping
-            people reclaim their lives from addiction.
-          </p>
+          <p>Accredited treatment facilities with proven track records of helping people reclaim their lives from addiction.</p>
         </div>
       </section>
 
-      {/* ── Intro bar ────────────────────────────── */}
+      <div className="container">
+        <RehabSearch
+          query={query}
+          onQueryChange={setQuery}
+          state={stateFilter}
+          onStateChange={setStateFilter}
+          service={serviceFilter}
+          onServiceChange={setServiceFilter}
+          resultCount={filteredCenters.length}
+          totalCount={centers.length}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
+      </div>
+
       <div className="rehab-intro-bar">
         <div className="container rehab-intro-inner">
-          <p>Showing <strong>5 featured centers</strong> — Are you a treatment provider? Claim your listing to update your information.</p>
+          <p>
+            {loading ? (
+              <>Loading featured centers…</>
+            ) : hasActiveFilters ? (
+              <>Refine your search above or browse all <strong>{centers.length} centers</strong>.</>
+            ) : (
+              <>Are you a treatment provider? <strong>Claim your listing</strong> to update your information.</>
+            )}
+          </p>
         </div>
       </div>
 
-      {/* ── Centers list ─────────────────────────── */}
       <section className="rehab-list-section">
         <div className="container rehab-list">
-          {centers.map(center => (
+          {loading && <p style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>Loading centers…</p>}
+          {!loading && filteredCenters.length === 0 && (
+            <div className="rehab-empty-state">
+              <div className="rehab-empty-state-icon" aria-hidden="true"><FaSearch /></div>
+              <h3>No centers match your search</h3>
+              <p>Try adjusting your filters or search term — we&apos;re adding new accredited facilities regularly.</p>
+              <button type="button" className="btn" onClick={clearFilters}>Clear all filters</button>
+            </div>
+          )}
+          {!loading && filteredCenters.map(center => (
             <article className="rehab-card" key={center.id}>
               <div className="rehab-card-img-wrap">
-                <img src={center.image} alt={center.name} loading="lazy" />
+                {center.image && <img src={center.image} alt={center.name} loading="lazy" />}
               </div>
               <div className="rehab-card-body">
                 <div className="rehab-card-top">
@@ -150,9 +268,7 @@ export default function RehabCenters() {
                       {center.claimed && <span className="rehab-claimed-badge">✓ Claimed</span>}
                     </div>
                     <div className="rehab-card-meta">
-                      <span className="rehab-location">
-                        <FaMapMarkerAlt aria-hidden="true" /> {center.location}
-                      </span>
+                      <span className="rehab-location"><FaMapMarkerAlt aria-hidden="true" /> {center.location}</span>
                       <span className="rehab-stars" aria-label={`${center.rating} out of 5 stars`}>
                         {Array.from({ length: 5 }).map((_, i) => (
                           <FaStar key={i} style={{ color: i < center.rating ? '#8c1126' : '#e5e7eb' }} />
@@ -161,40 +277,31 @@ export default function RehabCenters() {
                     </div>
                   </div>
                   {!center.claimed && (
-                    <button
-                      className="btn rehab-claim-btn"
-                      onClick={() => setClaimCenter(center)}
-                    >
-                      Claim This Center
-                    </button>
+                    <button className="btn rehab-claim-btn" onClick={() => setClaimCenter(center)}>Claim This Center</button>
                   )}
                 </div>
-
                 <div className="rehab-specialties">
-                  {center.specialties.map(s => (
-                    <span className="rehab-tag" key={s}>{s}</span>
+                  {(center.specialties || []).map(s => (
+                    <span
+                      className={`rehab-tag${serviceFilter && specialtyMatchesAnyService(s, [serviceFilter]) ? ' rehab-tag--match' : ''}`}
+                      key={s}
+                    >
+                      {s}
+                    </span>
                   ))}
                 </div>
-
                 <p className="rehab-description">{center.description}</p>
-
                 <div className="rehab-card-footer">
-                  {center.claimed ? (
+                  {center.claimed && center.phone ? (
                     <>
-                      <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="rehab-contact">
-                        <FaPhone aria-hidden="true" /> {center.phone}
-                      </a>
-                      <a href={center.website} target="_blank" rel="noopener noreferrer" className="rehab-contact">
-                        <FaGlobe aria-hidden="true" /> Visit Website
-                      </a>
-                      <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="btn rehab-call-btn">
-                        Call Now
-                      </a>
+                      <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="rehab-contact"><FaPhone aria-hidden="true" /> {center.phone}</a>
+                      {center.website && (
+                        <a href={center.website} target="_blank" rel="noopener noreferrer" className="rehab-contact"><FaGlobe aria-hidden="true" /> Visit Website</a>
+                      )}
+                      <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="btn rehab-call-btn">Call Now</a>
                     </>
                   ) : (
-                    <p className="rehab-unclaimed-notice">
-                      <FaPhone aria-hidden="true" /> Contact info available after claiming this listing.
-                    </p>
+                    <p className="rehab-unclaimed-notice"><FaPhone aria-hidden="true" /> Contact info available after claiming this listing.</p>
                   )}
                 </div>
               </div>
@@ -203,12 +310,11 @@ export default function RehabCenters() {
         </div>
       </section>
 
-      {/* ── Bottom CTA ───────────────────────────── */}
       <section className="rehab-cta-section">
         <div className="container rehab-cta-inner">
           <div>
             <h2>Is Your Facility Missing?</h2>
-            <p>We list accredited, high-quality treatment centers committed to ethical care. Apply to be featured on our directory.</p>
+            <p>We list accredited, high-quality treatment centers committed to ethical care.</p>
           </div>
           <div className="rehab-cta-btns">
             <button className="btn btn-white" onClick={() => setClaimCenter(centers[0])}>Submit Your Center</button>
@@ -217,9 +323,7 @@ export default function RehabCenters() {
         </div>
       </section>
 
-      {/* ── Modal ────────────────────────────────── */}
       {claimCenter && <ClaimModal center={claimCenter} onClose={() => setClaimCenter(null)} />}
-
     </main>
   )
 }

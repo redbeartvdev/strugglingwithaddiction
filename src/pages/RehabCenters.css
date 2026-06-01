@@ -21,7 +21,7 @@
   position: relative;
   z-index: 1;
   padding-top: 3.5rem;
-  padding-bottom: 3.5rem;
+  padding-bottom: 5.5rem;
   max-width: 700px;
 }
 
@@ -199,6 +199,14 @@
   padding: 0.25rem 0.75rem;
   border-radius: 100px;
   border: 1px solid rgba(152,184,196,0.3);
+  transition: background 0.25s, border-color 0.25s, transform 0.2s;
+}
+
+.rehab-tag--match {
+  background: rgba(140, 17, 38, 0.08);
+  border-color: rgba(140, 17, 38, 0.35);
+  color: #8c1126;
+  transform: scale(1.03);
 }
 
 /* ── Description ──────────────────────────── */

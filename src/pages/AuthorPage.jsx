@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
-import posts from '../data/posts.json'
-import authors from '../data/authors.json'
+import { usePosts, useAuthors } from '../hooks/useBlogData'
 import './AuthorPage.css'
 
 const PER_PAGE = 12
@@ -13,12 +12,14 @@ function formatDate(iso) {
 export default function AuthorPage() {
   const { slug } = useParams()
   const [page, setPage] = useState(1)
+  const posts = usePosts().posts
+  const authors = useAuthors()
 
-  const author = useMemo(() => authors.find(a => a.slug === slug), [slug])
+  const author = useMemo(() => authors.find(a => a.slug === slug), [slug, authors])
   const authorPosts = useMemo(() => {
     if (!author) return []
     return posts.filter(p => p.authorId === author.id)
-  }, [author])
+  }, [author, posts])
 
   if (!author) return <Navigate to="/blog" replace />
 

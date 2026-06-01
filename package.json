@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:admin": "npm run dev --prefix admin",
+    "dev:api": "cd backend && .venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "prebuild": "node scripts/generate-recent-posts.mjs",
     "build": "vite build",
     "lint": "eslint .",

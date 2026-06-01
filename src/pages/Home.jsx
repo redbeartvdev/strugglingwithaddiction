@@ -8,7 +8,7 @@ import {
   FaBookOpen,
   FaPhoneAlt,
 } from 'react-icons/fa'
-import recentPosts from '../data/recentPosts.json'
+import { useRecentPosts } from '../hooks/useBlogData'
 import './Home.css'
 
 function formatDate(iso) {
@@ -125,6 +125,7 @@ const HERO_IMAGES = [
 ]
 
 export default function Home() {
+  const recentPosts = useRecentPosts()
   const [slide, setSlide] = useState(0)
   const [statsTriggered, setStatsTriggered] = useState(false)
   const statsRef = useRef(null)

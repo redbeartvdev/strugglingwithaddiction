@@ -1,10 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
-import posts from '../data/posts.json'
-import authors from '../data/authors.json'
+import postsStatic from '../data/posts.json'
+import { usePost, usePosts, useAuthors } from '../hooks/useBlogData'
+import { usePostSeo } from '../hooks/usePageSeo'
 import './BlogPost.css'
-
-const authorMap = Object.fromEntries(authors.map(a => [a.id, a]))
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -12,17 +11,64 @@ function formatDate(iso) {
 
 export default function BlogPost() {
   const { slug } = useParams()
-  const post = useMemo(() => posts.find(p => p.slug === slug), [slug])
-  const author = useMemo(() => post ? authorMap[post.authorId] : null, [post])
+  const [passwordInput, setPasswordInput] = useState('')
+  const [submittedPassword, setSubmittedPassword] = useState('')
+  const { post, loading, passwordRequired } = usePost(slug, submittedPassword || undefined)
+  usePostSeo(post)
+  const allPosts = usePosts().posts
+  const authors = useAuthors()
+  const authorMap = useMemo(() => Object.fromEntries(authors.map(a => [a.id, a])), [authors])
+  const author = useMemo(() => {
+    if (post?.author) return post.author
+    return post ? authorMap[post.authorId] : null
+  }, [post, authorMap])
   const related = useMemo(() => {
     if (!post) return []
-    const catSet = new Set(post.categories)
-    const matches = posts.filter(p => p.slug !== slug && p.categories.some(c => catSet.has(c)))
+    const catIds = new Set((post.categoryNames || []).map(c => c.id))
+    const catLegacy = new Set(post.categories || [])
+    const pool = allPosts.length ? allPosts : postsStatic
+    const matches = pool.filter(p => {
+      if (p.slug === slug) return false
+      if (p.categoryNames?.some(c => catIds.has(c.id))) return true
+      return p.categories?.some(c => catLegacy.has(c))
+    })
     // fill up to 3 with recent posts if not enough category matches
     if (matches.length >= 3) return matches.slice(0, 3)
-    const fallback = posts.filter(p => p.slug !== slug && !matches.includes(p))
+    const fallback = pool.filter(p => p.slug !== slug && !matches.includes(p))
     return [...matches, ...fallback].slice(0, 3)
-  }, [slug, post])
+  }, [slug, post, allPosts])
+
+  if (loading) return <main style={{ padding: '4rem', textAlign: 'center' }}>Loading…</main>
+
+  if (passwordRequired) {
+    return (
+      <main className="post-page">
+        <div className="container" style={{ maxWidth: 420, margin: '4rem auto', padding: '0 1rem' }}>
+          <Link to="/blog" className="post-back">← Back to Blog</Link>
+          <h1 style={{ marginTop: '1.5rem' }}>Password protected</h1>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted, #666)' }}>
+            This article is private. Enter the password to continue.
+          </p>
+          <form
+            onSubmit={e => {
+              e.preventDefault()
+              setSubmittedPassword(passwordInput)
+            }}
+          >
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={e => setPasswordInput(e.target.value)}
+              placeholder="Password"
+              required
+              style={{ width: '100%', padding: '0.75rem', marginBottom: '0.75rem' }}
+            />
+            <button type="submit" className="btn">View article</button>
+          </form>
+        </div>
+      </main>
+    )
+  }
 
   if (!post) return <Navigate to="/blog" replace />
 
@@ -57,7 +103,7 @@ export default function BlogPost() {
         <article className="post-body">
           <div
             className="post-content wp-content"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: post.content || post.content_html }}
           />
 
           {/* Author bio */}
