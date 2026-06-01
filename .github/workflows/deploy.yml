@@ -20,18 +20,30 @@ jobs:
   deploy-api:
     name: Railway API
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
+      - name: Validate Railway secrets
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::error::RAILWAY_TOKEN is not set. Railway → Project → Settings → Tokens → create a project token (not an account token)."
+            exit 1
+          fi
+          if [ -z "${RAILWAY_SERVICE_ID:-}" ]; then
+            echo "::error::RAILWAY_SERVICE_ID is not set. Use the API service name or UUID from Railway → service → Settings."
+            exit 1
+          fi
 
       - name: Deploy to Railway
         # RAILWAY_TOKEN must be a project token (Railway → project → Settings → Tokens)
-        run: railway up --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
+        run: railway up --ci --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
