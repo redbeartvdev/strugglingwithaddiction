@@ -10,6 +10,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import Home from './pages/Home'
 import About from './pages/About'
+import NotFound from './pages/NotFound'
 import './App.css'
 
 const Blog = lazy(() => import('./pages/Blog'))
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/terms" element={<TermsOfUse />} />
           <Route path="/accessibility" element={<Accessibility />} />
           <Route path="/author/:slug" element={<AuthorPage />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
       <Footer />
