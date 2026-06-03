@@ -27,7 +27,9 @@ A full-stack addiction recovery resource platform: public marketing site, rehab 
 ### Features
 
 - **Blog** — posts, authors, categories, SEO fields, Editor.js in admin
-- **Rehab directory** — searchable listings with state & service filters, claim workflow
+- **Rehab directory** — searchable listings with state & service filters, facility profiles, state/city SEO pages, claim workflow
+- **Directory SEO** — admin-managed pillar pages, XML sitemap, JSON-LD schema
+- **SAMHSA import** — `python backend/scripts/import_samhsa.py path/to/facilities.json`
 - **Admin** — users, posts, rehab centers, billing, AI scrape tools
 - **Client portal** — claimed centers manage their listing & posts
 - **Billing** — Stripe subscriptions (optional)

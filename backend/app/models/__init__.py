@@ -12,6 +12,7 @@ from app.models.rehab import (
     CenterSource,
     ScrapeJob,
     ScrapeJobStatus,
+    ListingTier,
 )
 from app.models.scrape_settings import ScrapeSettings
 from app.models.scrape_saved import ScrapeSavedItem
@@ -22,6 +23,7 @@ from app.models.billing import (
     Subscription,
     SubscriptionPlan,
 )
+from app.models.directory_page import DirectoryPage, DirectoryPageStatus, DirectoryPageType
 
 __all__ = [
     "Base",
@@ -40,8 +42,12 @@ __all__ = [
     "FacilityRole",
     "ListingStatus",
     "CenterSource",
+    "ListingTier",
     "ScrapeJob",
     "ScrapeJobStatus",
+    "DirectoryPage",
+    "DirectoryPageType",
+    "DirectoryPageStatus",
     "ScrapeSettings",
     "ScrapeSavedItem",
     "SubscriptionPlan",

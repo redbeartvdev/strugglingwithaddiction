@@ -16,6 +16,11 @@ import './App.css'
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogPost = lazy(() => import('./pages/BlogPost'))
 const RehabCenters = lazy(() => import('./pages/RehabCenters'))
+const RehabCenterDetail = lazy(() => import('./pages/RehabCenterDetail'))
+const DirectoryLocationPage = lazy(() => import('./pages/DirectoryLocationPage'))
+const Advertise = lazy(() => import('./pages/Advertise'))
+const AdvertisingPolicy = lazy(() => import('./pages/AdvertisingPolicy'))
+const EditorialPolicy = lazy(() => import('./pages/EditorialPolicy'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'))
 const Accessibility = lazy(() => import('./pages/Accessibility'))
@@ -39,6 +44,12 @@ export default function App() {
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/rehab-centers" element={<RehabCenters />} />
+          <Route path="/rehab-centers/location/:state/:city" element={<DirectoryLocationPage />} />
+          <Route path="/rehab-centers/location/:state" element={<DirectoryLocationPage />} />
+          <Route path="/rehab-centers/:slug" element={<RehabCenterDetail />} />
+          <Route path="/advertise" element={<Advertise />} />
+          <Route path="/advertising-policy" element={<AdvertisingPolicy />} />
+          <Route path="/editorial-policy" element={<EditorialPolicy />} />
           <Route path="/claim-status/:ticket" element={<ClaimStatus />} />
           <Route path="/partners/:slug" element={<PartnerPage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />

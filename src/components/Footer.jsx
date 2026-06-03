@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import SocialLinks from './SocialLinks'
+import { HELPLINE_DISPLAY, HELPLINE_TEL } from '../lib/helpline'
 import './Footer.css'
 
 const year = new Date().getFullYear()
@@ -20,8 +21,8 @@ export default function Footer() {
           <p className="footer-tagline">
             You are not alone. Recovery is possible — one day at a time.
           </p>
-          <a href="tel:18005551234" className="btn footer-call-btn">
-            Call Us: 1-800-555-1234
+          <a href={HELPLINE_TEL} className="btn footer-call-btn">
+            Call Us: {HELPLINE_DISPLAY}
           </a>
           <SocialLinks className="footer-socials" iconSize={20} />
         </div>
@@ -34,6 +35,7 @@ export default function Footer() {
               <li><Link to="/about">About</Link></li>
               <li><Link to="/blog">Blog</Link></li>
               <li><Link to="/rehab-centers">Rehab Centers</Link></li>
+              <li><Link to="/advertise">Advertise</Link></li>
             </ul>
           </div>
           <div className="footer-col">
@@ -47,7 +49,7 @@ export default function Footer() {
           <div className="footer-col">
             <h4>Contact</h4>
             <ul>
-              <li><a href="tel:18005551234">1-800-555-1234</a></li>
+              <li><a href={HELPLINE_TEL}>{HELPLINE_DISPLAY}</a></li>
               <li><a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a></li>
             </ul>
           </div>
@@ -64,6 +66,10 @@ export default function Footer() {
             <a href="/terms">Terms of Use</a>
             <span aria-hidden="true">·</span>
             <a href="/accessibility">Accessibility</a>
+            <span aria-hidden="true">·</span>
+            <a href="/advertising-policy">Advertising</a>
+            <span aria-hidden="true">·</span>
+            <a href="/editorial-policy">Editorial</a>
           </div>
         </div>
       </div>

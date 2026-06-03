@@ -14,6 +14,8 @@ import RehabEditor from './pages/admin/rehab/RehabEditor'
 import AdminClaims from './pages/admin/Claims'
 import AdminBilling from './pages/admin/Billing'
 import AdminScrape from './pages/admin/Scrape'
+import AdminDirectory from './pages/admin/Directory'
+import DirectoryEditor from './pages/admin/DirectoryEditor'
 import EditorDashboard from './pages/editor/Dashboard'
 import EditorPosts from './pages/editor/Posts'
 import ClientDashboard from './pages/client/Dashboard'
@@ -49,6 +51,9 @@ export default function App() {
       <Route path="/admin/claims" element={<ProtectedRoute roles={['admin']}><AdminLayout><AdminClaims /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/billing" element={<ProtectedRoute roles={['admin']}><AdminLayout><AdminBilling /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/scrape" element={<ProtectedRoute roles={['admin']}><AdminLayout><AdminScrape /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/directory" element={<ProtectedRoute roles={['admin']}><AdminLayout><AdminDirectory /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/directory/new" element={<ProtectedRoute roles={['admin']}><AdminLayout><DirectoryEditor /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/directory/:id/edit" element={<ProtectedRoute roles={['admin']}><AdminLayout><DirectoryEditor /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']}><AdminLayout><ProfilePage /></AdminLayout></ProtectedRoute>} />
 
       <Route path="/editor" element={<ProtectedRoute roles={['editor', 'admin']}><EditorLayout><EditorDashboard /></EditorLayout></ProtectedRoute>} />

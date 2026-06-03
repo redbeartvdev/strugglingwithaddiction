@@ -47,7 +47,11 @@ def register_static_site(app: FastAPI) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def public_spa(full_path: str) -> FileResponse:
-        if full_path.startswith(("api/", "uploads/", "health")) or full_path == "health":
+        if full_path.startswith(("api/", "uploads/", "health")) or full_path in (
+            "health",
+            "sitemap.xml",
+            "robots.txt",
+        ):
             raise HTTPException(status_code=404)
         if full_path == "admin" or full_path.startswith("admin/"):
             raise HTTPException(status_code=404)

@@ -41,6 +41,13 @@ class ScrapeJobStatus(str, enum.Enum):
     failed = "failed"
 
 
+class ListingTier(str, enum.Enum):
+    free = "free"
+    standard = "standard"
+    premium = "premium"
+    custom = "custom"
+
+
 class RehabCenter(Base, TimestampMixin):
     __tablename__ = "rehab_centers"
 
@@ -68,6 +75,13 @@ class RehabCenter(Base, TimestampMixin):
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     source: Mapped[CenterSource] = mapped_column(Enum(CenterSource), default=CenterSource.manual)
     scraped_from_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True, index=True)
+    insurance_accepted: Mapped[list[str] | None] = mapped_column(ARRAY(String), default=list)
+    treatment_levels: Mapped[list[str] | None] = mapped_column(ARRAY(String), default=list)
+    accreditations: Mapped[list[str] | None] = mapped_column(ARRAY(String), default=list)
+    gallery_keys: Mapped[list[str] | None] = mapped_column(ARRAY(String), default=list)
+    listing_tier: Mapped[ListingTier] = mapped_column(Enum(ListingTier), default=ListingTier.free)
+    is_sponsored: Mapped[bool] = mapped_column(Boolean, default=False)
 
     owner: Mapped["User | None"] = relationship(back_populates="owned_center")
     claims: Mapped[list["RehabCenterClaim"]] = relationship(back_populates="center")

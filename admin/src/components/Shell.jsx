@@ -12,6 +12,7 @@ const NAV_BY_ROLE = {
     { to: '/admin/users', label: 'Users', Icon: IconUsers },
     { to: '/admin/posts', label: 'Posts', Icon: IconFile },
     { to: '/admin/rehab', label: 'Rehab', Icon: IconBuilding },
+    { to: '/admin/directory', label: 'Directory SEO', Icon: IconFile },
     { to: '/admin/claims', label: 'Claims', Icon: IconInbox, badgeKey: 'claims' },
     { to: '/admin/billing', label: 'Billing', Icon: IconCard },
     { to: '/admin/scrape', label: 'Scrape', Icon: IconScrape },

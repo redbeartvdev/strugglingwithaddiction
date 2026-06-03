@@ -2,7 +2,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.rehab import ClaimStatus, FacilityRole, ListingStatus, CenterSource, ScrapeJobStatus
+from app.models.rehab import (
+    ClaimStatus,
+    FacilityRole,
+    ListingStatus,
+    CenterSource,
+    ListingTier,
+    ScrapeJobStatus,
+)
 
 
 class RehabCenterPublic(BaseModel):
@@ -10,13 +17,23 @@ class RehabCenterPublic(BaseModel):
     slug: str
     name: str
     location: str
+    city: str | None = None
+    state: str | None = None
+    zip: str | None = None
+    address_line: str | None = None
     phone: str | None = None
     website: str | None = None
     image: str | None = None
+    gallery: list[str] = Field(default_factory=list)
     specialties: list[str]
+    treatment_levels: list[str] = Field(default_factory=list)
+    insurance_accepted: list[str] = Field(default_factory=list)
+    accreditations: list[str] = Field(default_factory=list)
     description: str
     rating: float
     claimed: bool
+    listing_tier: ListingTier = ListingTier.free
+    is_sponsored: bool = False
 
 
 class RehabCenterAdmin(BaseModel):
@@ -41,6 +58,13 @@ class RehabCenterAdmin(BaseModel):
     owner_user_id: int | None
     source: CenterSource
     scraped_from_url: str | None
+    external_id: str | None = None
+    insurance_accepted: list[str] = Field(default_factory=list)
+    treatment_levels: list[str] = Field(default_factory=list)
+    accreditations: list[str] = Field(default_factory=list)
+    gallery_keys: list[str] = Field(default_factory=list)
+    listing_tier: ListingTier = ListingTier.free
+    is_sponsored: bool = False
     published_at: datetime | None = None
     deleted_at: datetime | None = None
     created_at: datetime | None = None
@@ -64,6 +88,13 @@ class RehabCenterCreate(BaseModel):
     specialties: list[str] = Field(default_factory=list)
     listing_status: ListingStatus = ListingStatus.draft
     source: CenterSource = CenterSource.manual
+    external_id: str | None = None
+    insurance_accepted: list[str] = Field(default_factory=list)
+    treatment_levels: list[str] = Field(default_factory=list)
+    accreditations: list[str] = Field(default_factory=list)
+    gallery_keys: list[str] = Field(default_factory=list)
+    listing_tier: ListingTier = ListingTier.free
+    is_sponsored: bool = False
     published_at: datetime | None = None
 
 
@@ -85,6 +116,13 @@ class RehabCenterUpdate(BaseModel):
     contact_visible: bool | None = None
     listing_status: ListingStatus | None = None
     owner_user_id: int | None = None
+    external_id: str | None = None
+    insurance_accepted: list[str] | None = None
+    treatment_levels: list[str] | None = None
+    accreditations: list[str] | None = None
+    gallery_keys: list[str] | None = None
+    listing_tier: ListingTier | None = None
+    is_sponsored: bool | None = None
     published_at: datetime | None = None
 
 

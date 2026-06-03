@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-function setMeta(name, content, attr = 'name') {
+export function setPageMeta(name, content, attr = 'name') {
   if (!content) return
   let el = document.querySelector(`meta[${attr}="${name}"]`)
   if (!el) {
@@ -25,14 +25,14 @@ export function usePostSeo(post) {
     const site = 'Struggling With Addiction'
     document.title = `${title} | ${site}`
 
-    setMeta('description', description)
-    setMeta('og:title', title, 'property')
-    setMeta('og:description', description, 'property')
-    setMeta('og:type', 'article', 'property')
-    if (post.featuredImage) setMeta('og:image', post.featuredImage, 'property')
+    setPageMeta('description', description)
+    setPageMeta('og:title', title, 'property')
+    setPageMeta('og:description', description, 'property')
+    setPageMeta('og:type', 'article', 'property')
+    if (post.featuredImage) setPageMeta('og:image', post.featuredImage, 'property')
 
     if (post.seoNoindex) {
-      setMeta('robots', 'noindex, nofollow')
+      setPageMeta('robots', 'noindex, nofollow')
     } else {
       const robots = document.querySelector('meta[name="robots"]')
       if (robots) robots.remove()

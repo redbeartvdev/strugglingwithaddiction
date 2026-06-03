@@ -1,0 +1,61 @@
+.advertise-page {
+  background: #fafaf8;
+  min-height: 60vh;
+}
+
+.advertise-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d3a4a 100%);
+  color: white;
+  padding: 6rem 0 3rem;
+}
+
+.advertise-hero h1 {
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.advertise-hero p {
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.7;
+}
+
+.advertise-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 3rem 0;
+}
+
+.advertise-tier {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.advertise-tier h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+
+.advertise-price {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #8c1126;
+  margin-bottom: 1rem;
+}
+
+.advertise-tier ul {
+  margin: 0 0 1.25rem;
+  padding-left: 1.2rem;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.advertise-footer-note {
+  padding-bottom: 4rem;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
