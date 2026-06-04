@@ -218,6 +218,27 @@
   transition: box-shadow 0.3s, transform 0.3s;
 }
 
+@keyframes blog-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.blog-card--enter {
+  animation: blog-card-enter 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-card--enter {
+    animation: none;
+  }
+}
+
 .blog-card:hover {
   box-shadow: 0 12px 32px rgba(0,0,0,0.1);
   transform: translateY(-4px);
@@ -305,28 +326,26 @@
   margin-top: 0.5rem;
 }
 
-/* ── Pagination ───────────────────────────── */
-.blog-pagination {
+/* ── Load more ────────────────────────────── */
+.blog-load-more {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 1.5rem;
   margin-top: 4rem;
 }
 
-.blog-pagination .btn {
-  padding: 0.65rem 1.5rem;
+.blog-load-more .btn {
+  padding: 0.75rem 2rem;
   font-size: 0.85rem;
 }
 
-.blog-pagination .btn:disabled {
-  opacity: 0.35;
-  pointer-events: none;
+.blog-load-more-btn {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.blog-page-info {
-  font-size: 0.9rem;
-  color: #6b7280;
+.blog-load-more-btn.is-loading {
+  opacity: 0.65;
+  transform: scale(0.97);
+  pointer-events: none;
 }
 
 /* ── Responsive ───────────────────────────── */

@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { usePosts, useCategories, useAuthors } from '../hooks/useBlogData'
 import './Blog.css'
 
-const PER_PAGE = 12
+const INITIAL_POSTS = 6
+const LOAD_MORE_POSTS = 6
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -15,11 +16,13 @@ function postHasCategory(post, catId) {
 }
 
 export default function Blog() {
-  const { posts, loading } = usePosts()
+  const { posts, loading } = usePosts({ limit: 200 })
   const categories = useCategories()
   const authors = useAuthors()
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(INITIAL_POSTS)
+  const [enteringFrom, setEnteringFrom] = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [activeCat, setActiveCat] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -94,11 +97,37 @@ export default function Blog() {
     return result
   }, [search, activeCat, posts, authorMap])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
-  const visible = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  useEffect(() => {
+    if (enteringFrom === null) return undefined
+    const timer = window.setTimeout(() => setEnteringFrom(null), 1500)
+    return () => window.clearTimeout(timer)
+  }, [enteringFrom, visibleCount])
 
-  const handleSearch = e => { setSearch(e.target.value); setPage(1); setShowSuggestions(true); setActiveIdx(-1) }
-  const handleCat = id => { setActiveCat(prev => prev === id ? null : id); setPage(1) }
+  const visible = filtered.slice(0, visibleCount)
+  const hasMore = visibleCount < filtered.length
+
+  const resetVisiblePosts = () => {
+    setEnteringFrom(null)
+    setVisibleCount(INITIAL_POSTS)
+  }
+
+  const handleSearch = e => {
+    setSearch(e.target.value)
+    resetVisiblePosts()
+    setShowSuggestions(true)
+    setActiveIdx(-1)
+  }
+  const handleCat = id => {
+    setActiveCat(prev => prev === id ? null : id)
+    resetVisiblePosts()
+  }
+  const handleLoadMore = () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    setEnteringFrom(visibleCount)
+    setVisibleCount(count => count + LOAD_MORE_POSTS)
+    window.setTimeout(() => setLoadingMore(false), 400)
+  }
 
   if (loading) {
     return (
@@ -162,7 +191,7 @@ export default function Blog() {
           <div className="blog-cats">
             <button
               className={`cat-pill${activeCat === null ? ' active' : ''}`}
-              onClick={() => { setActiveCat(null); setPage(1) }}
+              onClick={() => { setActiveCat(null); resetVisiblePosts() }}
             >
               All
             </button>
@@ -181,8 +210,14 @@ export default function Blog() {
             <p className="blog-empty">No articles match your search. Try different keywords.</p>
           ) : (
             <div className="blog-grid">
-              {visible.map(post => (
-                <article className="blog-card" key={post.id}>
+              {visible.map((post, index) => {
+                const isEntering = enteringFrom !== null && index >= enteringFrom
+                return (
+                <article
+                  className={`blog-card${isEntering ? ' blog-card--enter' : ''}`}
+                  key={post.id}
+                  style={isEntering ? { animationDelay: `${(index - enteringFrom) * 0.1}s` } : undefined}
+                >
                   <Link to={`/blog/${post.slug}`} className="blog-card-img-wrap" tabIndex={-1} aria-hidden="true">
                     {post.featuredImage
                       ? <img src={post.featuredImage} alt="" loading="lazy" className="blog-card-img" />
@@ -219,26 +254,21 @@ export default function Blog() {
                     <Link to={`/blog/${post.slug}`} className="btn blog-card-btn">Read Article</Link>
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="blog-pagination">
+          {hasMore && (
+            <div className="blog-load-more">
               <button
-                className="btn btn-outline"
-                onClick={() => { setPage(p => p - 1); window.scrollTo(0, 0) }}
-                disabled={page === 1}
+                type="button"
+                className={`btn btn-outline blog-load-more-btn${loadingMore ? ' is-loading' : ''}`}
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                aria-busy={loadingMore}
               >
-                ← Previous
-              </button>
-              <span className="blog-page-info">Page {page} of {totalPages}</span>
-              <button
-                className="btn btn-outline"
-                onClick={() => { setPage(p => p + 1); window.scrollTo(0, 0) }}
-                disabled={page === totalPages}
-              >
-                Next →
+                Load More
               </button>
             </div>
           )}
