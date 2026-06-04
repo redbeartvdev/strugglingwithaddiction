@@ -249,7 +249,7 @@
 .steps-grid::before {
   content: '';
   position: absolute;
-  top: 2.5rem;
+  top: calc(2rem + 2.5rem);
   left: calc(16.67% + 1.25rem);
   right: calc(16.67% + 1.25rem);
   height: 2px;
