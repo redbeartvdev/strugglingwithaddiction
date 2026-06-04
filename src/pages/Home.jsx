@@ -316,7 +316,7 @@ export default function Home() {
           </div>
           <div className="how-ctas">
             <a href="tel:18005551234" className="btn">Call Now — It's Free</a>
-            <a href="#find-help" className="btn btn-outline">Search Treatment Centers</a>
+            <Link to="/rehab-centers" className="btn btn-outline">Search Treatment Centers</Link>
           </div>
         </div>
       </section>
