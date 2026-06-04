@@ -105,8 +105,8 @@ export default function About() {
           </div>
           <div className="mission-image">
             <img
-              src="/images/valid-resource-addiction-treatment-marketing-21.webp"
-              alt="Counselor speaking with someone"
+              src="/images/recovery-community-hope-v2.jpg"
+              alt="A diverse group of people smiling together outdoors, supporting one another in recovery"
               loading="lazy"
             />
           </div>
