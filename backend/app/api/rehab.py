@@ -3,9 +3,10 @@ from typing import Annotated
 import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.rehab_helpers import center_to_public
+from app.api.rehab_helpers import center_to_public, sort_centers_for_listing
 from app.core.deps import AdminUser, ClientUser, CurrentUser, get_current_user_optional
 from app.core.security import hash_password
 from app.database import get_db
@@ -47,13 +48,44 @@ router = APIRouter(tags=["rehab"])
 
 
 @router.get("/api/rehab-centers", response_model=list[RehabCenterPublic])
-def list_centers(db: Annotated[Session, Depends(get_db)]):
-    centers = (
-        db.query(RehabCenter)
-        .filter(RehabCenter.listing_status == ListingStatus.published, RehabCenter.deleted_at.is_(None))
-        .order_by(RehabCenter.name)
-        .all()
+def list_centers(
+    db: Annotated[Session, Depends(get_db)],
+    state: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    insurance: str | None = None,
+    service: str | None = None,
+    q: str | None = None,
+):
+    query = db.query(RehabCenter).filter(
+        RehabCenter.listing_status == ListingStatus.published,
+        RehabCenter.deleted_at.is_(None),
     )
+    if state:
+        query = query.filter(RehabCenter.state.ilike(state.strip()))
+    if city:
+        query = query.filter(RehabCenter.city.ilike(city.strip()))
+    if zip_code:
+        query = query.filter(RehabCenter.zip.ilike(zip_code.strip()[:10]))
+    if insurance:
+        needle = f"%{insurance.strip().lower()}%"
+        query = query.filter(
+            func.coalesce(func.array_to_string(RehabCenter.insurance_accepted, ","), "").ilike(needle)
+        )
+    if service:
+        needle = f"%{service.strip().lower()}%"
+        query = query.filter(
+            func.coalesce(func.array_to_string(RehabCenter.specialties, ","), "").ilike(needle)
+        )
+    if q:
+        needle = f"%{q.strip().lower()}%"
+        query = query.filter(
+            (RehabCenter.name.ilike(needle))
+            | (RehabCenter.description.ilike(needle))
+            | (RehabCenter.location_display.ilike(needle))
+            | (RehabCenter.city.ilike(needle))
+        )
+    centers = sort_centers_for_listing(query.all())
     return [center_to_public(db, c) for c in centers]
 
 

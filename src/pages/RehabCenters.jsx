@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar, FaSearch } from 'react-icons/fa'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService } from '../lib/rehabServices'
 import RehabSearch from '../components/RehabSearch'
+import { STATE_DIRECTORY_LINKS } from '../lib/stateSlugs'
+import { Link } from 'react-router-dom'
 import './RehabCenters.css'
 
 const STATIC_CENTERS = [
   {
     id: 1,
+    slug: 'hazelden-betty-ford-foundation',
     name: 'Hazelden Betty Ford Foundation',
     location: 'Rancho Mirage, California',
     phone: '1-866-831-5700',
@@ -21,6 +23,7 @@ const STATIC_CENTERS = [
   },
   {
     id: 2,
+    slug: 'caron-treatment-centers',
     name: 'Caron Treatment Centers',
     location: 'Wernersville, Pennsylvania',
     phone: '1-800-854-6023',
@@ -33,6 +36,7 @@ const STATIC_CENTERS = [
   },
   {
     id: 3,
+    slug: 'sierra-tucson',
     name: 'Sierra Tucson',
     location: 'Tucson, Arizona',
     phone: '(844) 276-1469',
@@ -44,6 +48,7 @@ const STATIC_CENTERS = [
   },
   {
     id: 4,
+    slug: 'the-ranch-tennessee',
     name: 'The Ranch Tennessee',
     location: 'Nunnelly, Tennessee',
     phone: '(931) 416-1559',
@@ -55,6 +60,7 @@ const STATIC_CENTERS = [
   },
   {
     id: 5,
+    slug: 'mclean-hospital',
     name: 'McLean Hospital',
     location: 'Belmont, Massachusetts',
     phone: '617-855-2000',
@@ -184,13 +190,18 @@ export default function RehabCenters() {
 
   useEffect(() => {
     if (!apiEnabled()) return
-    fetchApi('/api/rehab-centers')
+    const params = new URLSearchParams()
+    if (stateFilter) params.set('state', stateFilter)
+    if (serviceFilter) params.set('service', serviceFilter)
+    if (query.trim()) params.set('q', query.trim())
+    const qs = params.toString()
+    fetchApi(`/api/rehab-centers${qs ? `?${qs}` : ''}`)
       .then(data => {
         if (data?.length) setCenters(data)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [stateFilter, serviceFilter, query])
 
   const hasActiveFilters = Boolean(query || stateFilter || serviceFilter)
   const filteredCenters = useMemo(
@@ -264,8 +275,15 @@ export default function RehabCenters() {
                 <div className="rehab-card-top">
                   <div>
                     <div className="rehab-name-row">
-                      <h2>{center.name}</h2>
+                      <h2>
+                        {center.slug ? (
+                          <Link to={`/rehab-centers/${center.slug}`}>{center.name}</Link>
+                        ) : (
+                          center.name
+                        )}
+                      </h2>
                       {center.claimed && <span className="rehab-claimed-badge">✓ Claimed</span>}
+                      {center.is_sponsored && <span className="rehab-sponsored-badge">Sponsored</span>}
                     </div>
                     <div className="rehab-card-meta">
                       <span className="rehab-location"><FaMapMarkerAlt aria-hidden="true" /> {center.location}</span>
@@ -307,6 +325,18 @@ export default function RehabCenters() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="rehab-states-section">
+        <div className="container">
+          <h2>Browse by state</h2>
+          <p className="rehab-states-intro">Find treatment centers and guides for your state.</p>
+          <ul className="rehab-states-grid">
+            {STATE_DIRECTORY_LINKS.map(({ name, href }) => (
+              <li key={href}><Link to={href}>{name}</Link></li>
+            ))}
+          </ul>
         </div>
       </section>
 

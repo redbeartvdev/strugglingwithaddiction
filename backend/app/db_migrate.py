@@ -37,6 +37,61 @@ def run_migrations(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN published_at TIMESTAMPTZ"))
             if "deleted_at" not in cols:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN deleted_at TIMESTAMPTZ"))
+            if "external_id" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN external_id VARCHAR(128)"))
+                conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_rehab_centers_external_id "
+                        "ON rehab_centers (external_id) WHERE external_id IS NOT NULL"
+                    )
+                )
+            if "insurance_accepted" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN insurance_accepted VARCHAR[]"))
+            if "treatment_levels" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN treatment_levels VARCHAR[]"))
+            if "accreditations" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN accreditations VARCHAR[]"))
+            if "gallery_keys" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN gallery_keys VARCHAR[]"))
+            if "listing_tier" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN listing_tier VARCHAR(32) NOT NULL DEFAULT 'free'"))
+            if "is_sponsored" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN is_sponsored BOOLEAN NOT NULL DEFAULT FALSE"))
+
+    if "directory_pages" not in insp.get_table_names():
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE directory_pages (
+                        id SERIAL PRIMARY KEY,
+                        page_type VARCHAR(32) NOT NULL,
+                        status VARCHAR(32) NOT NULL DEFAULT 'draft',
+                        state_slug VARCHAR(100) NOT NULL,
+                        city_slug VARCHAR(100),
+                        title VARCHAR(500) NOT NULL,
+                        body_html TEXT NOT NULL DEFAULT '',
+                        faq_json JSONB DEFAULT '[]',
+                        meta_title VARCHAR(255),
+                        meta_description VARCHAR(512),
+                        filter_state VARCHAR(100),
+                        filter_city VARCHAR(100),
+                        filter_insurance VARCHAR(100),
+                        published_at TIMESTAMPTZ,
+                        deleted_at TIMESTAMPTZ,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX ix_directory_pages_state_city "
+                    "ON directory_pages (state_slug, COALESCE(city_slug, '')) "
+                    "WHERE deleted_at IS NULL"
+                )
+            )
 
     if "scrape_jobs" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("scrape_jobs")}

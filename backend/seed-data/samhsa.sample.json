@@ -1,0 +1,14 @@
+[
+  {
+    "id": "samhsa-sample-001",
+    "name1": "Sample Recovery Center",
+    "street1": "100 Main St",
+    "city": "Phoenix",
+    "state": "AZ",
+    "zip": "85001",
+    "phone": "6025550100",
+    "website": "https://example.org",
+    "services": ["Detox", "Inpatient", "Dual Diagnosis"],
+    "insurance": ["Medicaid", "Private Insurance"]
+  }
+]

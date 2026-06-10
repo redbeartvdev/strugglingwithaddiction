@@ -24,6 +24,11 @@ const empty = {
   specialties: '',
   listing_status: 'draft',
   published_at: '',
+  listing_tier: 'free',
+  is_sponsored: false,
+  insurance_accepted: '',
+  treatment_levels: '',
+  external_id: '',
 }
 
 export default function RehabEditor() {
@@ -53,6 +58,11 @@ export default function RehabEditor() {
         specialties: (c.specialties || []).join(', '),
         listing_status: c.listing_status,
         published_at: toDatetimeLocal(c.published_at),
+        listing_tier: c.listing_tier || 'free',
+        is_sponsored: Boolean(c.is_sponsored),
+        insurance_accepted: (c.insurance_accepted || []).join(', '),
+        treatment_levels: (c.treatment_levels || []).join(', '),
+        external_id: c.external_id || '',
       }))
       .finally(() => setLoading(false))
   }, [id, isEdit])
@@ -76,6 +86,11 @@ export default function RehabEditor() {
         specialties: form.specialties.split(',').map(s => s.trim()).filter(Boolean),
         listing_status: form.listing_status,
         published_at: fromDatetimeLocal(form.published_at),
+        listing_tier: form.listing_tier,
+        is_sponsored: form.is_sponsored,
+        insurance_accepted: form.insurance_accepted.split(',').map(s => s.trim()).filter(Boolean),
+        treatment_levels: form.treatment_levels.split(',').map(s => s.trim()).filter(Boolean),
+        external_id: form.external_id || null,
       }
       if (isEdit) {
         await api(`/api/admin/rehab-centers/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
@@ -151,9 +166,37 @@ export default function RehabEditor() {
               <label>Publish date</label>
               <input type="datetime-local" value={form.published_at} onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))} />
             </div>
+            <div>
+              <label>Listing tier</label>
+              <select value={form.listing_tier} onChange={e => setForm(f => ({ ...f, listing_tier: e.target.value }))}>
+                <option value="free">Free</option>
+                <option value="standard">Standard</option>
+                <option value="premium">Premium</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div>
+              <label>Sponsored listing</label>
+              <select value={form.is_sponsored ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_sponsored: e.target.value === 'yes' }))}>
+                <option value="no">No</option>
+                <option value="yes">Yes (paid ad)</option>
+              </select>
+            </div>
+            <div className="form-span-2">
+              <label>SAMHSA / external ID</label>
+              <input value={form.external_id} onChange={e => setForm(f => ({ ...f, external_id: e.target.value }))} />
+            </div>
             <div className="form-span-2">
               <label>Services (comma-separated)</label>
               <input value={form.specialties} onChange={e => setForm(f => ({ ...f, specialties: e.target.value }))} placeholder="Inpatient, Detox, Dual Diagnosis" />
+            </div>
+            <div className="form-span-2">
+              <label>Insurance accepted</label>
+              <input value={form.insurance_accepted} onChange={e => setForm(f => ({ ...f, insurance_accepted: e.target.value }))} placeholder="Medicaid, Private Insurance" />
+            </div>
+            <div className="form-span-2">
+              <label>Treatment levels</label>
+              <input value={form.treatment_levels} onChange={e => setForm(f => ({ ...f, treatment_levels: e.target.value }))} placeholder="Detox, Inpatient, Outpatient" />
             </div>
             <div className="form-span-2">
               <label>Description</label>
