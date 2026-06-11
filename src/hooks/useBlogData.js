@@ -23,6 +23,16 @@ function normalizePosts(list) {
   return Array.isArray(list) ? list.map(normalizePost) : []
 }
 
+/** Prefer API posts; fill in any JSON-only entries not yet synced to the database. */
+function mergeWithStaticPosts(apiPosts, staticList) {
+  const api = normalizePosts(apiPosts)
+  if (!api.length) return normalizePosts(staticList)
+  const apiSlugs = new Set(api.map(p => p.slug))
+  const extras = normalizePosts(staticList).filter(p => !apiSlugs.has(p.slug))
+  if (!extras.length) return api
+  return [...api, ...extras].sort((a, b) => new Date(b.date) - new Date(a.date))
+}
+
 export function usePosts(options = {}) {
   const [posts, setPosts] = useState(() => normalizePosts(staticPosts))
   const [loading, setLoading] = useState(apiEnabled())
@@ -41,8 +51,8 @@ export function usePosts(options = {}) {
     const qs = params.toString()
     fetchApi(`/api/posts${qs ? `?${qs}` : ''}`)
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) setPosts(normalizePosts(data))
-        else if (Array.isArray(data)) setPosts([])
+        if (Array.isArray(data) && data.length > 0) setPosts(mergeWithStaticPosts(data, staticPosts))
+        else if (Array.isArray(data)) setPosts(normalizePosts(staticPosts))
       })
       .catch(() => setPosts(normalizePosts(staticPosts)))
       .finally(() => setLoading(false))
@@ -122,7 +132,9 @@ export function useRecentPosts() {
   useEffect(() => {
     if (!apiEnabled()) return
     fetchApi('/api/posts?limit=3')
-      .then(d => { if (Array.isArray(d) && d.length) setPosts(normalizePosts(d)) })
+      .then(d => {
+        if (Array.isArray(d) && d.length) setPosts(mergeWithStaticPosts(d, staticRecent))
+      })
       .catch(() => {})
   }, [])
   return posts
