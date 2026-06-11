@@ -1,5 +1,25 @@
 [
   {
+    "id": 5662,
+    "slug": "gas-station-heroin-what-tianeptine-is-and-whos-at-risk",
+    "date": "2026-06-11T23:33:27",
+    "title": "Gas Station Heroin: What Tianeptine Is and Who's at Risk",
+    "excerpt": "If you have seen a product called Tianaa, Zaza, Neptune's Fix, or TD Red at a gas station or smoke shop, you may not have known what you were looking at. These products contain tianeptine, a substance the U.S. Food and Drug Administration has not approved for any medical use. They are sold as \"dietary …",
+    "featuredImage": "/images/blog/SWA_Gas-Station-Heroin_1258513378.webp",
+    "categoryNames": [
+      {
+        "id": 3,
+        "name": "Drug Policy",
+        "slug": "drug-policy"
+      },
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      }
+    ]
+  },
+  {
     "id": 5605,
     "slug": "mindfulness-in-recovery-cultivating-inner-peace-after-addiction",
     "date": "2024-04-24T19:01:35",
@@ -36,21 +56,6 @@
         "id": 6,
         "name": "Lifestyle",
         "slug": "lifestyle"
-      }
-    ]
-  },
-  {
-    "id": 5570,
-    "slug": "medications-used-in-drug-addiction-treatment",
-    "date": "2024-04-02T06:43:24",
-    "title": "What Medications Are Used in Addiction Treatment?",
-    "excerpt": "Addiction affects the mind, body and spirit. It alters the brain's chemistry and function, causes various physical health issues, and profoundly affects one’s sense of purpose, values, and connection to others. That’s why an effective drug addiction treatment center integrates interventions that address each of these dimensions. Medications, along with behavioral therapy and counseling, provide …",
-    "featuredImage": "/images/blog/ai-generated-8596839_1280-e1712766341461.webp",
-    "categoryNames": [
-      {
-        "id": 4,
-        "name": "General",
-        "slug": "general"
       }
     ]
   }

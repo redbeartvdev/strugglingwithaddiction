@@ -55,6 +55,8 @@ def main():
                 status=status,
                 author_id=p.get("authorId"),
                 published_at=datetime.fromisoformat(p["date"]) if p.get("date") else datetime.now(timezone.utc),
+                meta_title=p.get("metaTitle") or None,
+                meta_description=p.get("metaDescription") or None,
             )
             db.add(post)
             db.flush()
