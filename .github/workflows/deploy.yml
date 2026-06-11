@@ -49,3 +49,9 @@ jobs:
         run: railway up --ci --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Sync blog posts to database
+        working-directory: backend
+        run: railway run --service "${{ secrets.RAILWAY_SERVICE_ID }}" python scripts/sync_blog.py
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
