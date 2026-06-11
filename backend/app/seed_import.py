@@ -43,16 +43,17 @@ def resolve_data_dir() -> Path | None:
 
 
 def import_blog_if_empty(db: Session) -> int:
-    if db.query(Post).count() > 0:
-        logger.info("Blog posts already in database — skipping JSON import")
-        return 0
-
+    """Seed blog from JSON on first run; on later runs, import any posts missing from the DB."""
     data_dir = resolve_data_dir()
     if not data_dir:
         logger.warning("No posts.json found (checked /app/seed-data and src/data)")
         return 0
 
-    logger.info("Importing blog data from %s", data_dir)
+    existing = db.query(Post).count()
+    if existing > 0:
+        logger.info("Blog posts in database (%s) — syncing missing entries from %s", existing, data_dir)
+    else:
+        logger.info("Importing blog data from %s", data_dir)
     return _import_blog_from_dir(db, data_dir)
 
 
