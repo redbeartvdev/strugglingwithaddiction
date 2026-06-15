@@ -18,6 +18,10 @@ mkdir -p backend/static/admin
 cp -r dist/* backend/static/
 cp -r admin/dist/* backend/static/admin/
 
+echo "Syncing blog images into backend/static/images..."
+mkdir -p backend/static/images/blog
+cp -r public/images/blog/. backend/static/images/blog/
+
 echo "Copying JSON seed data into backend/seed-data..."
 rm -rf backend/seed-data
 mkdir -p backend/seed-data

@@ -32,6 +32,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY src/data ./seed-data
 COPY --from=public-build /build/dist ./static
+COPY public/images ./static/images
+COPY public/images ./image-assets
 COPY --from=admin-build /build/admin/dist ./static/admin
 RUN chmod +x start.sh
 ENV PYTHONPATH=/app
