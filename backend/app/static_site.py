@@ -77,16 +77,22 @@ def register_static_site(app: FastAPI) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def public_spa(full_path: str) -> FileResponse:
-        if full_path.startswith(("api/", "uploads/", "images/", "health")) or full_path == "health":
+        if full_path.startswith(("api/", "uploads/", "health")) or full_path == "health":
             raise HTTPException(status_code=404)
         if full_path == "admin" or full_path.startswith("admin/"):
             raise HTTPException(status_code=404)
-        # Never SPA-fallback for static asset paths (would return HTML as image/script).
-        if full_path.startswith(("assets/", "images/", "favicon")) or "." in Path(full_path).name:
+        # /images is served by mount_image_assets; avoid SPA fallback for missing files there.
+        if full_path.startswith("images/"):
             raise HTTPException(status_code=404)
+
         candidate = STATIC_ROOT / full_path
         if candidate.is_file():
             return _file_response(candidate)
+
+        # Missing static files must 404 — returning index.html breaks script/img tags.
+        if full_path.startswith(("assets/", "favicon")) or "." in Path(full_path).name:
+            raise HTTPException(status_code=404)
+
         return _file_response(index)
 
     logger.info("Serving public site from %s and admin from %s", STATIC_ROOT, ADMIN_ROOT)
