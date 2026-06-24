@@ -1,5 +1,25 @@
 [
   {
+    "id": 5688,
+    "slug": "online-buprenorphine-what-new-dea-telehealth-rules-mean",
+    "date": "2026-06-24T06:00:55",
+    "title": "Online Buprenorphine: What New DEA Telehealth Rules Mean",
+    "excerpt": "For years, getting a buprenorphine prescription required an in-person visit with a licensed prescriber before treatment could begin. For many people with opioid use disorder, that single requirement was an insurmountable barrier. Transportation, work schedules, childcare, geography, stigma, and fear of judgment all kept people away from a medication that the evidence shows reduces opioid …",
+    "featuredImage": "/images/blog/SWA_You-Can-Now-Get-Buprenorphine-Treatment-Online_2451838189.webp",
+    "categoryNames": [
+      {
+        "id": 3,
+        "name": "Drug Policy",
+        "slug": "drug-policy"
+      },
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      }
+    ]
+  },
+  {
     "id": 5677,
     "slug": "tranq-dope-the-xylazine-fentanyl-crisis-explained",
     "date": "2026-06-15T23:14:43",
@@ -36,26 +56,6 @@
         "id": 5,
         "name": "Health",
         "slug": "health"
-      }
-    ]
-  },
-  {
-    "id": 5605,
-    "slug": "mindfulness-in-recovery-cultivating-inner-peace-after-addiction",
-    "date": "2024-04-24T19:01:35",
-    "title": "Mindfulness in Recovery: Cultivating Inner Peace After Addiction",
-    "excerpt": "Addiction is a disease of the brain. It changes how you perceive the world, how you respond to stress, and how you navigate life's challenges. Even in recovery, the neural pathways affected by addiction can continue to influence thoughts, emotions, and behaviors. This is why cultivating mindfulness in recovery from addiction is so crucial. Mindfulness …",
-    "featuredImage": "/images/blog/Mindfulness-in-Recovery-Cultivating-Inner-Peace-After-Addiction_2426878099.webp",
-    "categoryNames": [
-      {
-        "id": 5,
-        "name": "Health",
-        "slug": "health"
-      },
-      {
-        "id": 6,
-        "name": "Lifestyle",
-        "slug": "lifestyle"
       }
     ]
   }
