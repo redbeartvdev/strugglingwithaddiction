@@ -44,11 +44,9 @@ export default function GuidedFinder({ variant = 'full' }) {
     <div className={`directory-tool-card guided-finder guided-finder--${variant}`}>
       <div className="directory-tool-header">
         <span className="section-label">Find a Center</span>
-        <h2>
-          {variant === 'hero'
-            ? 'Answer 3 quick questions'
-            : 'Answer 3 questions to see matching centers'}
-        </h2>
+        {variant !== 'hero' && (
+          <h2>Answer 3 questions to see matching centers</h2>
+        )}
         {variant === 'full' && (
           <p className="directory-tool-desc">
             Filter our directory by location, level of care, and insurance accepted.
