@@ -177,12 +177,6 @@ export default function Home() {
             Whether you are struggling yourself or watching someone you love suffer,
             real help is available right now — free, confidential, and compassionate.
           </p>
-          <div className="hero-ctas">
-            <a href="tel:18005551234" className="btn">Call the Helpline</a>
-          </div>
-          <p className="hero-note">
-            Available 24/7 · Free &amp; Confidential · No Insurance Required
-          </p>
         </div>
         <div className="hero-dots">
           {HERO_IMAGES.map((_, i) => (
@@ -314,8 +308,7 @@ export default function Home() {
             ))}
           </div>
           <div className="how-ctas">
-            <a href="tel:18005551234" className="btn">Call Now — It's Free</a>
-            <Link to="/rehab-centers" className="btn btn-outline">Search Treatment Centers</Link>
+            <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
           </div>
         </div>
       </section>

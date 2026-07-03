@@ -20,9 +20,6 @@ export default function Footer() {
           <p className="footer-tagline">
             You are not alone. Recovery is possible — one day at a time.
           </p>
-          <a href="tel:18005551234" className="btn footer-call-btn">
-            Call Us: 1-800-555-1234
-          </a>
           <SocialLinks className="footer-socials" iconSize={20} />
         </div>
 

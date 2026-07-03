@@ -39,9 +39,6 @@ export default function Header() {
           <NavLink to="/portal" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Portal
           </NavLink>
-          <a href="tel:18005551234" className="btn btn-header" onClick={close}>
-            Get Help Now
-          </a>
         </nav>
 
         <button
