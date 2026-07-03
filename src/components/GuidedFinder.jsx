@@ -20,7 +20,10 @@ export default function GuidedFinder({ variant = 'full' }) {
   const [state, setState] = useState('')
   const [service, setService] = useState('')
   const [insurance, setInsurance] = useState('')
-  const idPrefix = variant === 'sidebar' ? 'sidebar-guided-finder' : 'guided-finder'
+  const idPrefix =
+    variant === 'sidebar' ? 'sidebar-guided-finder'
+    : variant === 'hero' ? 'hero-guided-finder'
+    : 'guided-finder'
 
   const isLastStep = step === STEPS.length - 1
 
@@ -41,11 +44,20 @@ export default function GuidedFinder({ variant = 'full' }) {
     <div className={`directory-tool-card guided-finder guided-finder--${variant}`}>
       <div className="directory-tool-header">
         <span className="section-label">Find a Center</span>
-        <h2>Answer 3 questions to see matching centers</h2>
+        <h2>
+          {variant === 'hero'
+            ? 'Answer 3 quick questions'
+            : 'Answer 3 questions to see matching centers'}
+        </h2>
         {variant === 'full' && (
           <p className="directory-tool-desc">
             Filter our directory by location, level of care, and insurance accepted.
             This does not verify your specific plan — it shows listings that may match.
+          </p>
+        )}
+        {variant === 'hero' && (
+          <p className="directory-tool-desc directory-tool-desc--hero">
+            Filter by location, care type, and insurance — listings that may match.
           </p>
         )}
       </div>

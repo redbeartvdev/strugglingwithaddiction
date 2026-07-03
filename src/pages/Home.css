@@ -75,15 +75,8 @@
   font-size: 1.2rem;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.88);
-  margin-bottom: 2.25rem;
-  max-width: 600px;
-}
-
-.hero-ctas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
   margin-bottom: 1.5rem;
+  max-width: 600px;
 }
 
 .hero-note {
@@ -545,10 +538,6 @@
 }
 
 @media (max-width: 640px) {
-  .hero-ctas {
-    flex-direction: column;
-  }
-
   .services-grid,
   .testimonials-grid {
     grid-template-columns: 1fr;

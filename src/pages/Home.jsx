@@ -180,9 +180,7 @@ export default function Home() {
             Find a licensed treatment center near you, browse by state or by the kind of care you need,
             and get straight answers about what recovery actually looks like.
           </p>
-          <div className="hero-ctas">
-            <Link to="/rehab-centers" className="btn">Find a treatment center</Link>
-          </div>
+          <GuidedFinder variant="hero" />
         </div>
         <div className="hero-dots">
           {HERO_IMAGES.map((_, i) => (
@@ -205,13 +203,6 @@ export default function Home() {
               <span className="stat-label">{s.label}</span>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* ── Guided Finder ───────────────────────── */}
-      <section className="home-directory-tools" id="find-a-center">
-        <div className="container">
-          <GuidedFinder variant="full" />
         </div>
       </section>
 

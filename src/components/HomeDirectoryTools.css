@@ -167,6 +167,151 @@
   }
 }
 
+/* ── Hero embed variant ─────────────────────── */
+.guided-finder--hero {
+  padding: 1.25rem 1.35rem 1.35rem;
+  max-width: 34rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.guided-finder--hero .directory-tool-header {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.guided-finder--hero .directory-tool-header .section-label {
+  color: #98b8c4;
+  font-size: 0.68rem;
+}
+
+.guided-finder--hero .directory-tool-header h2 {
+  font-size: 1.05rem;
+  margin: 0.35rem 0 0.4rem;
+  color: #fff;
+}
+
+.guided-finder--hero .directory-tool-desc--hero {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0;
+  max-width: none;
+  text-align: left;
+}
+
+.guided-finder--hero .guided-finder-steps {
+  margin-bottom: 1rem;
+  gap: 0.35rem;
+}
+
+.guided-finder--hero .guided-finder-step-marker {
+  opacity: 0.5;
+}
+
+.guided-finder--hero .guided-finder-step-marker.is-active,
+.guided-finder--hero .guided-finder-step-marker.is-done {
+  opacity: 1;
+}
+
+.guided-finder--hero .guided-finder-step-num {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.guided-finder--hero .guided-finder-step-marker.is-active .guided-finder-step-num {
+  background: var(--brand-blue);
+  color: var(--white);
+}
+
+.guided-finder--hero .guided-finder-step-marker.is-done .guided-finder-step-num {
+  background: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.guided-finder--hero .guided-finder-step-label {
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.guided-finder--hero .directory-tool-field {
+  margin-bottom: 0;
+}
+
+.guided-finder--hero .directory-tool-field label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 0.35rem;
+}
+
+.guided-finder--hero .directory-tool-field select {
+  font-size: 0.88rem;
+  padding: 0.55rem 0.75rem;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.guided-finder--hero .guided-finder-actions {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.guided-finder--hero .guided-finder-back {
+  min-width: 0;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.78rem;
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+  background: transparent;
+}
+
+.guided-finder--hero .guided-finder-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #fff;
+}
+
+.guided-finder--hero .guided-finder-submit {
+  min-width: 0;
+  padding: 0.55rem 1rem;
+  font-size: 0.78rem;
+}
+
+@media (min-width: 540px) {
+  .guided-finder--hero .guided-finder-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem 1rem;
+    align-items: end;
+  }
+}
+
+@media (max-width: 539px) {
+  .guided-finder--hero {
+    padding: 1.1rem 1.15rem 1.2rem;
+  }
+
+  .guided-finder--hero .guided-finder-actions {
+    flex-direction: column;
+    margin-top: 0.75rem;
+  }
+
+  .guided-finder--hero .guided-finder-back,
+  .guided-finder--hero .guided-finder-submit {
+    width: 100%;
+  }
+
+  .guided-finder--hero .guided-finder-step-label {
+    font-size: 0.52rem;
+  }
+}
+
 /* ── Blog sidebar variant ───────────────────── */
 .guided-finder--sidebar {
   padding: 0;
