@@ -1,14 +1,12 @@
-/* ── Homepage directory tools (Guided Finder + Insurance Check) ── */
+/* ── Homepage Guided Finder ─────────────────── */
 .home-directory-tools {
   padding: 4rem 0;
   background: var(--off-white);
 }
 
-.home-directory-tools-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 2rem;
-  align-items: stretch;
+.home-directory-tools-inner {
+  max-width: 36rem;
+  margin: 0 auto;
 }
 
 .directory-tool-card {
@@ -16,18 +14,13 @@
   border-radius: 12px;
   padding: 2.25rem;
   border: 1px solid #e5e7eb;
-  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.insurance-check {
-  border-color: var(--brand-blue);
-  box-shadow: 0 8px 28px rgba(152, 184, 196, 0.18);
-}
-
 .directory-tool-header {
   margin-bottom: 1.75rem;
+  text-align: center;
 }
 
 .directory-tool-header h2 {
@@ -102,7 +95,6 @@
 .guided-finder-form {
   display: flex;
   flex-direction: column;
-  flex: 1;
 }
 
 .directory-tool-field {
@@ -138,43 +130,18 @@
 .guided-finder-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
-  margin-top: auto;
 }
 
 .guided-finder-back {
-  flex: 1;
   min-width: 7rem;
   text-align: center;
 }
 
 .guided-finder-submit {
-  flex: 2;
   min-width: 10rem;
   text-align: center;
-}
-
-/* ── Insurance Check ───────────────────────── */
-.insurance-check-form {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.insurance-check-submit {
-  width: 100%;
-  margin-top: auto;
-  text-align: center;
-}
-
-@media (max-width: 900px) {
-  .home-directory-tools-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .insurance-check {
-    order: -1;
-  }
 }
 
 @media (max-width: 480px) {
@@ -196,7 +163,6 @@
 
   .guided-finder-back,
   .guided-finder-submit {
-    flex: none;
     width: 100%;
   }
 }
