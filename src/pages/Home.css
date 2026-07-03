@@ -524,6 +524,7 @@
   .hope-inner,
   .find-help-inner,
   .newsletter-inner,
+  .home-state-map-layout,
   .home-provider-upsell-inner {
     grid-template-columns: 1fr;
     gap: 2.5rem;
@@ -589,8 +590,27 @@
   background: var(--white);
 }
 
-.home-state-map-section .section-header {
-  margin-bottom: 2rem;
+.home-state-map-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.home-state-map-text h2 {
+  margin: 0.5rem 0 1rem;
+}
+
+.home-state-map-text .section-desc {
+  margin: 0;
+  max-width: none;
+  font-size: 1.05rem;
+  color: var(--gray);
+  line-height: 1.75;
+}
+
+.home-state-map-visual {
+  min-width: 0;
 }
 
 .home-state-map-section h2 {

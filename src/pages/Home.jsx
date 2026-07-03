@@ -367,16 +367,20 @@ export default function Home() {
       {/* ── State Map ───────────────────────────── */}
       <section className="home-state-map-section" id="find-by-state">
         <div className="container">
-          <div className="section-header text-center">
-            <span className="section-label">Treatment Directory</span>
-            <h2>Browse Treatment by State</h2>
-            <p className="section-desc">
-              Hover over a state to preview, then click to view accredited rehab centers in that region.
-            </p>
+          <div className="home-state-map-layout">
+            <div className="home-state-map-text">
+              <span className="section-label">Treatment Directory</span>
+              <h2>Browse Treatment by State</h2>
+              <p className="section-desc">
+                Hover over a state to preview, then click to view accredited rehab centers in that region.
+              </p>
+            </div>
+            <div className="home-state-map-visual">
+              <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
+                <USStateMap />
+              </Suspense>
+            </div>
           </div>
-          <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
-            <USStateMap />
-          </Suspense>
           <div className="home-provider-upsell">
             <div className="home-provider-upsell-inner">
               <div>
