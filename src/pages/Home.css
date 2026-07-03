@@ -238,6 +238,10 @@
   color: white;
 }
 
+.how-section .section-desc {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .steps-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

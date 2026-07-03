@@ -86,18 +86,18 @@ const services = [
 const steps = [
   {
     num: '01',
-    title: 'Reach Out',
-    body: 'Call our helpline or fill out our confidential intake form. No judgment — just compassionate support.',
+    title: 'Search your area',
+    body: 'Pick your state or filter by the type of care you need — detox, inpatient, outpatient, and more.',
   },
   {
     num: '02',
-    title: 'Get a Plan',
-    body: 'Work with our team to identify the right resources and treatment path tailored to your unique situation.',
+    title: 'Compare facilities',
+    body: 'Review locations, specialties, and program details to see which centers fit what you are looking for.',
   },
   {
     num: '03',
-    title: 'Begin Recovery',
-    body: 'Take the first step with confidence. We stay by your side through treatment, sobriety, and beyond.',
+    title: 'Contact directly',
+    body: 'Reach out to the center you choose. We connect you to licensed providers; treatment happens on their end.',
   },
 ]
 
@@ -328,8 +328,12 @@ export default function Home() {
       <section className="how-section" id="how-it-works">
         <div className="container">
           <div className="section-header text-center">
-            <span className="section-label">Getting Started</span>
-            <h2>Three Steps to a Different Life</h2>
+            <span className="section-label">How It Works</span>
+            <h2>Find care in three steps</h2>
+            <p className="section-desc">
+              We are a directory, not a treatment provider. Use the steps below to search,
+              compare, and connect with a licensed facility near you.
+            </p>
           </div>
           <div className="steps-grid">
             {steps.map(s => (
@@ -341,7 +345,7 @@ export default function Home() {
             ))}
           </div>
           <div className="how-ctas">
-            <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
+            <Link to="/rehab-centers" className="btn">Find a treatment center</Link>
           </div>
         </div>
       </section>
