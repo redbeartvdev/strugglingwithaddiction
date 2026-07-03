@@ -567,6 +567,10 @@
     flex-direction: column;
   }
 
+  .hope-ctas .btn {
+    width: 100%;
+  }
+
   .newsletter-form {
     flex-direction: column;
   }
