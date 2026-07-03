@@ -238,10 +238,6 @@
   color: white;
 }
 
-.how-section .section-desc {
-  color: rgba(255, 255, 255, 0.72);
-}
-
 .steps-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -296,10 +292,29 @@
 /* ── How it works CTAs ────────────────────── */
 .how-ctas {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 1rem;
   margin-top: 3.5rem;
+}
+
+.how-crisis-note {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.6;
+  max-width: 36rem;
+}
+
+.how-crisis-note a {
+  color: var(--brand-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.how-crisis-note a:hover {
+  color: var(--white);
 }
 
 /* ── Testimonials ─────────────────────────── */

@@ -86,18 +86,18 @@ const services = [
 const steps = [
   {
     num: '01',
-    title: 'Search your area',
-    body: 'Pick your state or filter by the type of care you need — detox, inpatient, outpatient, and more.',
+    title: 'Search',
+    body: 'Browse verified treatment centers by state, level of care, and insurance accepted.',
   },
   {
     num: '02',
-    title: 'Compare facilities',
-    body: 'Review locations, specialties, and program details to see which centers fit what you are looking for.',
+    title: 'Compare',
+    body: 'See license and accreditation, specialties, and what each center offers — side by side, no pressure.',
   },
   {
     num: '03',
-    title: 'Contact directly',
-    body: 'Reach out to the center you choose. We connect you to licensed providers; treatment happens on their end.',
+    title: 'Reach Out',
+    body: 'Contact centers directly, on your terms. Always free, always confidential.',
   },
 ]
 
@@ -328,24 +328,33 @@ export default function Home() {
       <section className="how-section" id="how-it-works">
         <div className="container">
           <div className="section-header text-center">
-            <span className="section-label">How It Works</span>
-            <h2>Find care in three steps</h2>
-            <p className="section-desc">
-              We are a directory, not a treatment provider. Use the steps below to search,
-              compare, and connect with a licensed facility near you.
-            </p>
+            <span className="section-label">Getting Started</span>
+            <h2>Three Steps to a Different Life</h2>
           </div>
           <div className="steps-grid">
             {steps.map(s => (
               <div className="step" key={s.num}>
-                <div className="step-num">{s.num}</div>
+                <div className="step-num" aria-hidden="true">{s.num}</div>
                 <h3>{s.title}</h3>
                 <p>{s.body}</p>
               </div>
             ))}
           </div>
           <div className="how-ctas">
-            <Link to="/rehab-centers" className="btn">Find a treatment center</Link>
+            <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
+            <p className="how-crisis-note">
+              In crisis? Call or text{' '}
+              <a href="tel:988" aria-label="988 Suicide and Crisis Lifeline">988</a>{' '}
+              (free, 24/7). Find treatment now at{' '}
+              <a
+                href="https://findtreatment.gov"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="FindTreatment.gov (opens in new tab)"
+              >
+                FindTreatment.gov
+              </a>.
+            </p>
           </div>
         </div>
       </section>
