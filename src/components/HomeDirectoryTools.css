@@ -172,11 +172,11 @@
   padding: 1rem 1.25rem 1.15rem;
   width: 100%;
   max-width: none;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  background: rgba(26, 26, 46, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
 }
 
 .guided-finder--hero .directory-tool-header {
@@ -198,7 +198,7 @@
 .guided-finder--hero .directory-tool-desc--hero {
   font-size: 0.78rem;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.88);
   margin: 0.25rem 0 0;
   max-width: none;
   text-align: left;
@@ -238,7 +238,7 @@
 
 .guided-finder--hero .guided-finder-step-label {
   font-size: 0.58rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .guided-finder--hero .directory-tool-field {
