@@ -657,7 +657,6 @@
 
 .home-blog-card {
   border-radius: 12px;
-  border: 1px solid var(--brand-blue);
   overflow: hidden;
   background: var(--white);
   display: flex;
