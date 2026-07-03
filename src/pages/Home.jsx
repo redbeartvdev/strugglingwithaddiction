@@ -174,11 +174,14 @@ export default function Home() {
         <div className="hero-overlay" />
         <div className="container hero-content">
           <span className="section-label" style={{ color: '#98b8c4' }}>You Are Not Alone</span>
-          <h1>Recovery Starts With<br />One Brave Step</h1>
+          <h1>You don't have to figure this out alone.</h1>
           <p className="hero-sub">
-            Whether you are struggling yourself or watching someone you love suffer,
-            real help is available right now — free, confidential, and compassionate.
+            Find a licensed treatment center near you, browse by state or by the kind of care you need,
+            and get straight answers about what recovery actually looks like.
           </p>
+          <div className="hero-ctas">
+            <Link to="/rehab-centers" className="btn">Find a treatment center</Link>
+          </div>
         </div>
         <div className="hero-dots">
           {HERO_IMAGES.map((_, i) => (
