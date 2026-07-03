@@ -406,7 +406,8 @@
 /* ── Newsletter ───────────────────────────── */
 .newsletter-section {
   padding: 5.5rem 0;
-  background: #fafaf8;
+  background: linear-gradient(180deg, #f3f8fa 0%, #e8f1f4 100%);
+  border-top: 1px solid rgba(152, 184, 196, 0.35);
 }
 
 .newsletter-inner {
