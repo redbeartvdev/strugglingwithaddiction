@@ -21,7 +21,7 @@ function formatDate(iso) {
 const ICON_STYLE = { color: '#8c1126', fontSize: '2rem', flexShrink: 0 }
 
 const stats = [
-  { end: 21, suffix: 'M+', label: 'Americans struggle with addiction' },
+  { end: 48, suffix: 'M+', label: 'Americans struggle with addiction' },
   { end: 10, suffix: '%',  label: 'actually receive treatment' },
   { end: 95, suffix: '%',  label: 'recovery rate with proper support' },
   { static: '988',         label: 'crisis line — call or text anytime' },
