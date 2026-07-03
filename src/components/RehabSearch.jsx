@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FaSearch, FaSlidersH, FaTimes, FaMapMarkerAlt } from 'react-icons/fa'
 import { US_STATES } from '../lib/usStates'
-import { REHAB_SERVICE_TYPES } from '../lib/rehabServices'
+import { REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
 import './RehabSearch.css'
 
 const AI_PROMPTS = [
@@ -53,6 +53,8 @@ export default function RehabSearch({
   onStateChange,
   service,
   onServiceChange,
+  insurance,
+  onInsuranceChange,
   resultCount,
   totalCount,
   onClear,
@@ -69,14 +71,14 @@ export default function RehabSearch({
     setThinking(true)
     const t = setTimeout(() => setThinking(false), 700)
     return () => clearTimeout(t)
-  }, [query, state, service, hasActiveFilters])
+  }, [query, state, service, insurance, hasActiveFilters])
 
   useEffect(() => {
     const interval = setInterval(() => setHintIdx(i => (i + 1) % AI_HINTS.length), 6000)
     return () => clearInterval(interval)
   }, [])
 
-  const activeFilterCount = (state ? 1 : 0) + (service ? 1 : 0)
+  const activeFilterCount = (state ? 1 : 0) + (service ? 1 : 0) + (insurance ? 1 : 0)
 
   return (
     <div className="rehab-search-wrap">
@@ -162,6 +164,20 @@ export default function RehabSearch({
                   <option value="">All services</option>
                   {REHAB_SERVICE_TYPES.map(svc => (
                     <option key={svc.id} value={svc.id}>{svc.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rehab-search-filter-group">
+                <label htmlFor="rehab-insurance-select">Insurance accepted</label>
+                <select
+                  id="rehab-insurance-select"
+                  value={insurance}
+                  onChange={e => onInsuranceChange(e.target.value)}
+                >
+                  <option value="">Any insurance</option>
+                  {REHAB_INSURANCE_TYPES.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
               </div>

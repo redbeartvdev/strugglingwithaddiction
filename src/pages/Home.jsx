@@ -9,6 +9,8 @@ import {
   FaPhoneAlt,
 } from 'react-icons/fa'
 import { useRecentPosts } from '../hooks/useBlogData'
+import GuidedFinder from '../components/GuidedFinder'
+import InsuranceCheck from '../components/InsuranceCheck'
 import './Home.css'
 
 const USStateMap = lazy(() => import('../components/USStateMap'))
@@ -204,6 +206,14 @@ export default function Home() {
               <span className="stat-label">{s.label}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Guided Finder + Insurance Check ───── */}
+      <section className="home-directory-tools" id="find-a-center">
+        <div className="container home-directory-tools-grid">
+          <GuidedFinder />
+          <InsuranceCheck />
         </div>
       </section>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar, FaSearch } from 'react-icons/fa'
 import { fetchApi, apiEnabled } from '../lib/api'
-import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService } from '../lib/rehabServices'
+import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService, centerMatchesInsurance } from '../lib/rehabServices'
 import RehabSearch from '../components/RehabSearch'
 import './RehabCenters.css'
 
@@ -18,6 +18,7 @@ const STATIC_CENTERS = [
     description: 'The Betty Ford Center is a world-renowned inpatient addiction treatment facility co-founded in 1982 by former First Lady Betty Ford.',
     rating: 5,
     claimed: true,
+    insurance_accepted: ['private', 'medicaid', 'medicare'],
   },
   {
     id: 2,
@@ -30,6 +31,7 @@ const STATIC_CENTERS = [
     description: 'Caron is a nationally recognized nonprofit provider of comprehensive addiction and behavioral health treatment.',
     rating: 5,
     claimed: true,
+    insurance_accepted: ['private', 'tricare', 'self-pay'],
   },
   {
     id: 3,
@@ -41,6 +43,7 @@ const STATIC_CENTERS = [
     specialties: ['Residential', 'Trauma & PTSD', 'Eating Disorders', 'Equine Therapy'],
     description: 'Ranked #1 in Newsweek\'s Best Addiction Treatment Centers in Arizona for 2025.',
     rating: 5,
+    insurance_accepted: ['private', 'medicare', 'va'],
   },
   {
     id: 4,
@@ -52,6 +55,7 @@ const STATIC_CENTERS = [
     specialties: ['Substance Use', 'Mental Health', 'Equine Therapy', 'Extended Care'],
     description: 'Located on peaceful grounds along the Piney River, The Ranch combines traditional and alternative therapies.',
     rating: 4,
+    insurance_accepted: ['private', 'medicaid', 'self-pay'],
   },
   {
     id: 5,
@@ -63,6 +67,7 @@ const STATIC_CENTERS = [
     specialties: ['Harvard-Affiliated', 'Medical Detox', 'Inpatient & IOP', 'Co-occurring Disorders'],
     description: 'The largest psychiatric teaching hospital of Harvard Medical School.',
     rating: 5,
+    insurance_accepted: ['private', 'medicare', 'medicaid', 'va'],
   },
 ]
 
@@ -153,7 +158,7 @@ function ClaimModal({ center, onClose }) {
   )
 }
 
-function filterCenters(centers, { query, state, service }) {
+function filterCenters(centers, { query, state, service, insurance }) {
   const q = normalizeText(query)
   return centers.filter(center => {
     if (state) {
@@ -161,6 +166,7 @@ function filterCenters(centers, { query, state, service }) {
       if (!centerState || normalizeText(centerState) !== normalizeText(state)) return false
     }
     if (service && !centerMatchesService(center.specialties, service)) return false
+    if (insurance && !centerMatchesInsurance(center, insurance)) return false
     if (q) {
       const blob = normalizeText([
         center.name,
@@ -182,6 +188,7 @@ export default function RehabCenters() {
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const [stateFilter, setStateFilter] = useState(() => searchParams.get('state') || '')
   const [serviceFilter, setServiceFilter] = useState(() => searchParams.get('service') || '')
+  const [insuranceFilter, setInsuranceFilter] = useState(() => searchParams.get('insurance') || '')
   const firstResultRef = useRef(null)
 
   useEffect(() => {
@@ -199,13 +206,14 @@ export default function RehabCenters() {
     if (query) params.set('q', query)
     if (stateFilter) params.set('state', stateFilter)
     if (serviceFilter) params.set('service', serviceFilter)
+    if (insuranceFilter) params.set('insurance', insuranceFilter)
     setSearchParams(params, { replace: true })
-  }, [query, stateFilter, serviceFilter, setSearchParams])
+  }, [query, stateFilter, serviceFilter, insuranceFilter, setSearchParams])
 
-  const hasActiveFilters = Boolean(query || stateFilter || serviceFilter)
+  const hasActiveFilters = Boolean(query || stateFilter || serviceFilter || insuranceFilter)
   const filteredCenters = useMemo(
-    () => filterCenters(centers, { query, state: stateFilter, service: serviceFilter }),
-    [centers, query, stateFilter, serviceFilter],
+    () => filterCenters(centers, { query, state: stateFilter, service: serviceFilter, insurance: insuranceFilter }),
+    [centers, query, stateFilter, serviceFilter, insuranceFilter],
   )
 
   useEffect(() => {
@@ -217,6 +225,7 @@ export default function RehabCenters() {
     setQuery('')
     setStateFilter('')
     setServiceFilter('')
+    setInsuranceFilter('')
   }
 
   return (
@@ -241,6 +250,8 @@ export default function RehabCenters() {
           onStateChange={setStateFilter}
           service={serviceFilter}
           onServiceChange={setServiceFilter}
+          insurance={insuranceFilter}
+          onInsuranceChange={setInsuranceFilter}
           resultCount={filteredCenters.length}
           totalCount={centers.length}
           onClear={clearFilters}

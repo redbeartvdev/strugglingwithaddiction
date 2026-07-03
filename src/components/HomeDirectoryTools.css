@@ -1,0 +1,202 @@
+/* ── Homepage directory tools (Guided Finder + Insurance Check) ── */
+.home-directory-tools {
+  padding: 4rem 0;
+  background: var(--off-white);
+}
+
+.home-directory-tools-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.directory-tool-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 2.25rem;
+  border: 1px solid #e5e7eb;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.insurance-check {
+  border-color: var(--brand-blue);
+  box-shadow: 0 8px 28px rgba(152, 184, 196, 0.18);
+}
+
+.directory-tool-header {
+  margin-bottom: 1.75rem;
+}
+
+.directory-tool-header h2 {
+  margin: 0.5rem 0 0.75rem;
+  color: var(--dark);
+  font-size: 1.45rem;
+  line-height: 1.3;
+}
+
+.directory-tool-desc {
+  color: var(--gray);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ── Guided Finder ─────────────────────────── */
+.guided-finder-steps {
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1.75rem;
+  padding: 0;
+}
+
+.guided-finder-step-marker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  opacity: 0.45;
+  transition: opacity var(--transition);
+}
+
+.guided-finder-step-marker.is-active,
+.guided-finder-step-marker.is-done {
+  opacity: 1;
+}
+
+.guided-finder-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--light-gray);
+  color: var(--dark);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.guided-finder-step-marker.is-active .guided-finder-step-num {
+  background: var(--brand-blue);
+  color: var(--white);
+}
+
+.guided-finder-step-marker.is-done .guided-finder-step-num {
+  background: var(--dark-soft);
+  color: var(--white);
+}
+
+.guided-finder-step-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
+.guided-finder-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.directory-tool-field {
+  margin-bottom: 1.5rem;
+}
+
+.directory-tool-field label {
+  display: block;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.directory-tool-field select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--dark);
+  background: var(--white);
+  transition: border-color var(--transition);
+}
+
+.directory-tool-field select:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(152, 184, 196, 0.25);
+}
+
+.guided-finder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.guided-finder-back {
+  flex: 1;
+  min-width: 7rem;
+  text-align: center;
+}
+
+.guided-finder-submit {
+  flex: 2;
+  min-width: 10rem;
+  text-align: center;
+}
+
+/* ── Insurance Check ───────────────────────── */
+.insurance-check-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.insurance-check-submit {
+  width: 100%;
+  margin-top: auto;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .home-directory-tools-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .insurance-check {
+    order: -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-directory-tools {
+    padding: 3rem 0;
+  }
+
+  .directory-tool-card {
+    padding: 1.5rem;
+  }
+
+  .guided-finder-step-label {
+    font-size: 0.65rem;
+  }
+
+  .guided-finder-actions {
+    flex-direction: column;
+  }
+
+  .guided-finder-back,
+  .guided-finder-submit {
+    flex: none;
+    width: 100%;
+  }
+}

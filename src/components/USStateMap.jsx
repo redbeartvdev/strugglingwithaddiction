@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MAP_VIEWBOX, US_MAP_STATES } from '../data/usMapPaths'
+import { buildRehabDirectoryUrl } from '../lib/rehabServices'
 import './USStateMap.css'
 
 const INSET_STATE_IDS = new Set(['NH', 'VT', 'NJ', 'DE', 'DC', 'MA', 'CT', 'RI', 'MD'])
 
 function stateDirectoryUrl(stateName) {
-  return `/rehab-centers?state=${encodeURIComponent(stateName)}`
+  return buildRehabDirectoryUrl({ state: stateName })
 }
 
 export default function USStateMap() {
