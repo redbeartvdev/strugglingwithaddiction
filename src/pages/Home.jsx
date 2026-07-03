@@ -174,13 +174,19 @@ export default function Home() {
         ))}
         <div className="hero-overlay" />
         <div className="container hero-content">
-          <span className="section-label" style={{ color: '#98b8c4' }}>You Are Not Alone</span>
-          <h1>You don't have to figure this out alone.</h1>
-          <p className="hero-sub">
-            Find a licensed treatment center near you, browse by state or by the kind of care you need,
-            and get straight answers about what recovery actually looks like.
-          </p>
-          <GuidedFinder variant="hero" />
+          <div className="hero-layout">
+            <div className="hero-copy">
+              <span className="section-label" style={{ color: '#98b8c4' }}>You Are Not Alone</span>
+              <h1>You don't have to figure this out alone.</h1>
+              <p className="hero-sub">
+                Find a licensed treatment center near you, browse by state or by the kind of care you need,
+                and get straight answers about what recovery actually looks like.
+              </p>
+            </div>
+            <div className="hero-finder">
+              <GuidedFinder variant="hero" />
+            </div>
+          </div>
         </div>
         <div className="hero-dots">
           {HERO_IMAGES.map((_, i) => (

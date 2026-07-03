@@ -61,9 +61,24 @@
 .hero-content {
   position: relative;
   z-index: 2;
-  max-width: 760px;
+  width: 100%;
   padding-top: 3rem;
   padding-bottom: 3rem;
+}
+
+.hero-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem 3rem;
+  align-items: center;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-finder {
+  min-width: 0;
 }
 
 .hero-content h1 {
@@ -75,8 +90,8 @@
   font-size: 1.2rem;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.88);
-  margin-bottom: 1.5rem;
-  max-width: 600px;
+  margin-bottom: 0;
+  max-width: 36rem;
 }
 
 .hero-note {
@@ -484,6 +499,17 @@
 }
 
 /* ── Responsive ───────────────────────────── */
+@media (max-width: 900px) {
+  .hero-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .hero-sub {
+    margin-bottom: 0;
+  }
+}
+
 @media (max-width: 1024px) {
   .services-grid,
   .testimonials-grid {

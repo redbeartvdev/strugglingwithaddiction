@@ -170,7 +170,8 @@
 /* ── Hero embed variant ─────────────────────── */
 .guided-finder--hero {
   padding: 1rem 1.25rem 1.15rem;
-  max-width: 34rem;
+  width: 100%;
+  max-width: none;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(14px);
@@ -186,6 +187,12 @@
 .guided-finder--hero .directory-tool-header .section-label {
   color: #fff;
   font-size: 0.68rem;
+}
+
+.guided-finder--hero .directory-tool-header h2 {
+  font-size: 1.05rem;
+  margin: 0.35rem 0 0.4rem;
+  color: #fff;
 }
 
 .guided-finder--hero .directory-tool-desc--hero {
