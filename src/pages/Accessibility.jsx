@@ -1,4 +1,5 @@
 import './Legal.css'
+import { Link } from 'react-router-dom'
 
 export default function Accessibility() {
   return (
@@ -114,8 +115,13 @@ export default function Accessibility() {
       <section className="legal-cta">
         <div className="container">
           <h2>Need Help Right Now?</h2>
-          <p>Our confidential helpline is free, available 24/7, and staffed by real people who care.</p>
-          <a href="tel:18005551234" className="btn">Call 1-800-555-1234</a>
+          <p>
+            In crisis? Call or text{' '}
+            <a href="tel:988" aria-label="988 Suicide and Crisis Lifeline">988</a>{' '}
+            (free, 24/7). Browse verified treatment centers in our{' '}
+            <Link to="/rehab-centers">directory</Link>.
+          </p>
+          <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
         </div>
       </section>
 

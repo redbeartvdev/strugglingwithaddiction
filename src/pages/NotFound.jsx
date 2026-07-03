@@ -15,7 +15,7 @@ const helpfulLinks = [
     to: '/',
     icon: <FaHome style={ICON_STYLE} aria-hidden="true" />,
     title: 'Home',
-    body: 'Return to our homepage for recovery resources, stories, and support.',
+    body: 'Return to our homepage for directory listings, articles, and educational resources.',
   },
   {
     to: '/rehab-centers',
@@ -74,12 +74,12 @@ export default function NotFound() {
           <h1>This Page Isn&apos;t Here —<br />But Help Still Is</h1>
           <p>
             The page you&apos;re looking for may have moved, been removed, or the address
-            might be mistyped. You haven&apos;t reached a dead end — real support is still
-            just one click or call away.
+            might be mistyped. You haven&apos;t reached a dead end — the directory and
+            crisis resources are still one click away.
           </p>
           <div className="not-found-hero-actions">
             <Link to="/" className="btn">Back to Home</Link>
-            <a href="tel:18005551234" className="btn btn-white-outline">Call the Helpline</a>
+            <Link to="/rehab-centers" className="btn btn-white-outline">Browse Treatment Centers</Link>
           </div>
         </div>
       </section>
@@ -111,10 +111,12 @@ export default function NotFound() {
         <div className="container not-found-cta-inner">
           <h2>Need Help Right Now?</h2>
           <p>
-            Our confidential helpline is free, available 24/7, and staffed by real people
-            who care. You don&apos;t have to navigate this alone.
+            In crisis? Call or text{' '}
+            <a href="tel:988" aria-label="988 Suicide and Crisis Lifeline">988</a>{' '}
+            (free, 24/7). Browse verified treatment centers in our{' '}
+            <Link to="/rehab-centers">directory</Link>.
           </p>
-          <a href="tel:18005551234" className="btn">Call 1-800-555-1234</a>
+          <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
         </div>
       </section>
 

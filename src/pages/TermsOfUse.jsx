@@ -1,4 +1,5 @@
 import './Legal.css'
+import { Link } from 'react-router-dom'
 
 export default function TermsOfUse() {
   return (
@@ -90,12 +91,21 @@ export default function TermsOfUse() {
               possibility of such damages.
             </p>
 
-            <h2>8. Helpline and Communications</h2>
+            <h2>8. Communications</h2>
             <p>
-              Our helpline is operated by trained staff and volunteers. Calls are confidential to
-              the extent permitted by law. We are not a licensed medical provider and do not provide
-              clinical treatment. In the event of an emergency, callers are encouraged to contact
-              911 or proceed to the nearest emergency room.
+              This Site is a treatment center directory. We do not operate a treatment helpline
+              or provide clinical services. Contact information shown on listing pages belongs to
+              the listed facilities. For crisis support, call or text{' '}
+              <a href="tel:988" aria-label="988 Suicide and Crisis Lifeline">988</a>.
+              To find treatment, visit{' '}
+              <a
+                href="https://findtreatment.gov"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="FindTreatment.gov (opens in new tab)"
+              >
+                FindTreatment.gov
+              </a>.
             </p>
 
             <h2>9. Governing Law</h2>
@@ -120,8 +130,13 @@ export default function TermsOfUse() {
       <section className="legal-cta">
         <div className="container">
           <h2>Need Help Right Now?</h2>
-          <p>Our confidential helpline is free, available 24/7, and staffed by real people who care.</p>
-          <a href="tel:18005551234" className="btn">Call 1-800-555-1234</a>
+          <p>
+            In crisis? Call or text{' '}
+            <a href="tel:988" aria-label="988 Suicide and Crisis Lifeline">988</a>{' '}
+            (free, 24/7). Browse verified treatment centers in our{' '}
+            <Link to="/rehab-centers">directory</Link>.
+          </p>
+          <Link to="/rehab-centers" className="btn">Search Treatment Centers</Link>
         </div>
       </section>
 

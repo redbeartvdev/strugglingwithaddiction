@@ -23,7 +23,7 @@ const stats = [
   { end: 21, suffix: 'M+', label: 'Americans struggle with addiction' },
   { end: 10, suffix: '%',  label: 'actually receive treatment' },
   { end: 95, suffix: '%',  label: 'recovery rate with proper support' },
-  { static: '24/7',        label: 'confidential support available' },
+  { static: '988',         label: 'crisis line — call or text anytime' },
 ]
 
 function StatNumber({ end, suffix, static: isStatic, triggered }) {
@@ -113,7 +113,7 @@ const testimonials = [
     detail: 'Family member of a person in recovery',
   },
   {
-    quote: 'I called the helpline at 2am not knowing what to say. The counselor stayed with me for two hours and helped me check into a treatment program the next morning.',
+    quote: 'I did not know where to turn at 2am. This directory helped me find a licensed treatment center nearby, and I was in a program the next morning.',
     name: 'David T.',
     detail: 'Recovered from alcohol use disorder',
   },
@@ -219,10 +219,10 @@ export default function Home() {
               brain disease that requires real medical support.
             </p>
             <p>
-              At Struggling With Addiction, we believe that every person deserves
-              access to accurate information, compassionate guidance, and a clear
-              path toward healing. We exist to bridge the gap between suffering
-              and recovery.
+              At Struggling With Addiction, we believe everyone deserves clear,
+              accurate information when looking for treatment. We are a directory —
+              not a treatment provider — helping you browse verified centers,
+              compare options, and contact facilities directly.
             </p>
             <div className="hope-ctas">
               <a href="#services" className="btn">Explore Resources</a>

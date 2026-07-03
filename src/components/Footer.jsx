@@ -41,10 +41,10 @@ export default function Footer() {
             </ul>
           </div>
           <div className="footer-col">
-            <h4>Contact</h4>
+            <h4>Site Support</h4>
             <ul>
-              <li><a href="tel:18005551234">1-800-555-1234</a></li>
               <li><a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a></li>
+              <li><Link to="/rehab-centers">Browse Directory</Link></li>
             </ul>
           </div>
         </div>

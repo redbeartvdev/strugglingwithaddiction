@@ -336,7 +336,7 @@ export default function RehabCenters() {
           </div>
           <div className="rehab-cta-btns">
             <button className="btn btn-white" onClick={() => setClaimCenter(centers[0])}>Submit Your Center</button>
-            <a href="tel:18005551234" className="btn btn-white-outline">Call Our Team</a>
+            <a href="mailto:help@strugglingwithaddiction.com" className="btn btn-white-outline">Contact Us</a>
           </div>
         </div>
       </section>
