@@ -52,34 +52,34 @@ function StatNumber({ end, suffix, static: isStatic, triggered }) {
 
 const services = [
   {
-    icon: <FaHandsHelping style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Peer Support',
-    body: 'Connect with others who have walked the same path. Our peer network offers understanding, accountability, and hope drawn from lived experience.',
+    icon: <FaMapMarkerAlt style={ICON_STYLE} aria-hidden="true" />,
+    title: 'Browse by State',
+    body: 'Search licensed treatment centers across all 50 states. Use the map or directory filters to see what is available near you.',
   },
   {
     icon: <FaClinicMedical style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Treatment Guidance',
-    body: 'We help you navigate the complex landscape of addiction treatment — from detox and inpatient programs to outpatient therapy and medication-assisted treatment.',
+    title: 'Filter by Care Type',
+    body: 'Narrow results by detox, inpatient, outpatient, medication-assisted treatment, dual diagnosis, and other specialties.',
+  },
+  {
+    icon: <FaHandsHelping style={ICON_STYLE} aria-hidden="true" />,
+    title: 'Verified Listings',
+    body: 'Every facility is reviewed by our team or maintained by the center itself, so you are not left guessing who is legitimate.',
   },
   {
     icon: <FaUsers style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Family Resources',
-    body: 'Addiction affects the whole family. Our resources help loved ones understand addiction, set healthy boundaries, and heal together.',
-  },
-  {
-    icon: <FaMapMarkerAlt style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Local Finder',
-    body: 'Find accredited treatment centers, support groups, and counselors near you with our comprehensive, verified directory.',
+    title: 'Compare Your Options',
+    body: 'Read locations, specialties, and program details side by side before you decide which center to contact.',
   },
   {
     icon: <FaBookOpen style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Education & Tools',
-    body: 'Access evidence-based articles, self-assessment tools, and guides to help you understand addiction and take the next right step.',
+    title: 'Articles & Guides',
+    body: 'Evidence-based articles that explain what different types of treatment involve, so you know what to look for and what to ask.',
   },
   {
     icon: <FaPhoneAlt style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Crisis Support',
-    body: 'When you need someone right now, we are here. Our crisis line connects you to a compassionate counselor 24 hours a day, 7 days a week.',
+    title: 'Claim Your Listing',
+    body: 'Run a treatment facility? Claim your profile to update your information, add photos, and reach people actively searching for care.',
   },
 ]
 
@@ -301,11 +301,11 @@ export default function Home() {
       <section className="services-section" id="services">
         <div className="container">
           <div className="section-header text-center">
-            <span className="section-label">What We Offer</span>
-            <h2>Resources Built for Every Step of Recovery</h2>
+            <span className="section-label">The Directory</span>
+            <h2>Find the right treatment center, faster</h2>
             <p className="section-desc">
-              Whether you are just starting to think about recovery or have been
-              on this road for years, we have tools and support for where you are right now.
+              We do not provide treatment ourselves. We help you search licensed facilities,
+              compare types of care, and understand your options before you reach out.
             </p>
           </div>
           <div className="services-grid">
@@ -319,7 +319,7 @@ export default function Home() {
 
           </div>
           <div className="text-center" style={{ marginTop: '3rem' }}>
-            <a href="#find-help" className="btn">Find Help Now</a>
+            <Link to="/rehab-centers" className="btn">Find a treatment center</Link>
           </div>
         </div>
       </section>
