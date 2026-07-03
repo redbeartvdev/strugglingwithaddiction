@@ -1,0 +1,83 @@
+.us-state-map {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.us-state-map-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.us-map-state {
+  fill: #2d2654;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  cursor: pointer;
+  transition: fill 0.2s ease, stroke-width 0.2s ease;
+  outline: none;
+}
+
+.us-map-state--inset-source {
+  fill: #2d2654;
+  opacity: 0.35;
+}
+
+.us-map-state:hover,
+.us-map-state.is-hovered,
+.us-map-state:focus-visible {
+  fill: #8c1126;
+  stroke-width: 1.6;
+}
+
+.us-map-inset-box {
+  fill: #2d2654;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  cursor: pointer;
+  transition: fill 0.2s ease, stroke-width 0.2s ease;
+  outline: none;
+}
+
+.us-map-inset-box:hover,
+.us-map-inset-box.is-hovered,
+.us-map-inset-box:focus-visible {
+  fill: #8c1126;
+  stroke-width: 1.6;
+}
+
+.us-map-label {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.us-state-map-tooltip {
+  margin-top: 1.25rem;
+  text-align: center;
+  min-height: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.us-state-map-tooltip strong {
+  color: #1a1a2e;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 640px) {
+  .us-map-label {
+    font-size: 9px;
+  }
+}

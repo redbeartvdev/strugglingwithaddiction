@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar, FaSearch } from 'react-icons/fa'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService } from '../lib/rehabServices'
@@ -175,12 +175,13 @@ function filterCenters(centers, { query, state, service }) {
 }
 
 export default function RehabCenters() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [claimCenter, setClaimCenter] = useState(null)
   const [centers, setCenters] = useState(STATIC_CENTERS)
   const [loading, setLoading] = useState(apiEnabled())
-  const [query, setQuery] = useState('')
-  const [stateFilter, setStateFilter] = useState('')
-  const [serviceFilter, setServiceFilter] = useState('')
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
+  const [stateFilter, setStateFilter] = useState(() => searchParams.get('state') || '')
+  const [serviceFilter, setServiceFilter] = useState(() => searchParams.get('service') || '')
 
   useEffect(() => {
     if (!apiEnabled()) return
@@ -191,6 +192,14 @@ export default function RehabCenters() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    if (stateFilter) params.set('state', stateFilter)
+    if (serviceFilter) params.set('service', serviceFilter)
+    setSearchParams(params, { replace: true })
+  }, [query, stateFilter, serviceFilter, setSearchParams])
 
   const hasActiveFilters = Boolean(query || stateFilter || serviceFilter)
   const filteredCenters = useMemo(

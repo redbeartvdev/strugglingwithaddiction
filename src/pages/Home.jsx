@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import {
   FaHandsHelping,
   FaClinicMedical,
@@ -10,6 +10,8 @@ import {
 } from 'react-icons/fa'
 import { useRecentPosts } from '../hooks/useBlogData'
 import './Home.css'
+
+const USStateMap = lazy(() => import('../components/USStateMap'))
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -230,6 +232,22 @@ export default function Home() {
               loading="lazy"
             />
           </div>
+        </div>
+      </section>
+
+      {/* ── State Map ───────────────────────────── */}
+      <section className="home-state-map-section" id="find-by-state">
+        <div className="container">
+          <div className="section-header text-center">
+            <span className="section-label">Treatment Directory</span>
+            <h2>Browse Treatment by State</h2>
+            <p className="section-desc">
+              Hover over a state to preview, then click to view accredited rehab centers in that region.
+            </p>
+          </div>
+          <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
+            <USStateMap />
+          </Suspense>
         </div>
       </section>
 
