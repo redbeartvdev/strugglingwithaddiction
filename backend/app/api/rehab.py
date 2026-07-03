@@ -32,6 +32,7 @@ from app.schemas.rehab import (
     RehabCenterCreate,
     RehabCenterPublic,
     RehabCenterUpdate,
+    RehabDirectoryStats,
     ScrapeJobOut,
     ScrapeRequest,
     ScrapeResultItem,
@@ -55,6 +56,20 @@ def list_centers(db: Annotated[Session, Depends(get_db)]):
         .all()
     )
     return [center_to_public(db, c) for c in centers]
+
+
+@router.get("/api/rehab-centers/stats", response_model=RehabDirectoryStats)
+def directory_stats(db: Annotated[Session, Depends(get_db)]):
+    claimed = (
+        db.query(RehabCenter)
+        .filter(
+            RehabCenter.listing_status == ListingStatus.published,
+            RehabCenter.deleted_at.is_(None),
+            RehabCenter.claimed.is_(True),
+        )
+        .count()
+    )
+    return RehabDirectoryStats(claimed=claimed)
 
 
 @router.get("/api/rehab-centers/{slug}", response_model=RehabCenterPublic)

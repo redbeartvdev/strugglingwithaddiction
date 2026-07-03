@@ -6,6 +6,7 @@ import {
   REHAB_INSURANCE_TYPES,
   buildRehabDirectoryUrl,
 } from '../lib/rehabServices'
+import { useClaimedCenterCount } from '../hooks/useClaimedCenterCount'
 import './HomeDirectoryTools.css'
 
 const STEPS = [
@@ -16,6 +17,7 @@ const STEPS = [
 
 export default function GuidedFinder({ variant = 'full' }) {
   const navigate = useNavigate()
+  const claimedCount = useClaimedCenterCount(variant === 'hero')
   const [step, setStep] = useState(0)
   const [state, setState] = useState('')
   const [service, setService] = useState('')
@@ -41,7 +43,8 @@ export default function GuidedFinder({ variant = 'full' }) {
   }
 
   return (
-    <div className={`directory-tool-card guided-finder guided-finder--${variant}`}>
+    <div className={variant === 'hero' ? 'guided-finder-hero-wrap' : undefined}>
+      <div className={`directory-tool-card guided-finder guided-finder--${variant}`}>
       <div className="directory-tool-header">
         <span className="section-label">Find a Center</span>
         <h2>
@@ -135,6 +138,12 @@ export default function GuidedFinder({ variant = 'full' }) {
           </button>
         </div>
       </form>
+      </div>
+      {variant === 'hero' && claimedCount != null && (
+        <p className="guided-finder-hero-stat">
+          {claimedCount.toLocaleString('en-US')} verified centers · all 50 states
+        </p>
+      )}
     </div>
   )
 }

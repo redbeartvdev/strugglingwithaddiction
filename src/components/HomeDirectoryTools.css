@@ -168,6 +168,18 @@
 }
 
 /* ── Hero embed variant ─────────────────────── */
+.guided-finder-hero-wrap {
+  width: 100%;
+}
+
+.guided-finder-hero-stat {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  letter-spacing: 0.02em;
+}
+
 .guided-finder--hero {
   padding: 1rem 1.25rem 1.15rem;
   width: 100%;

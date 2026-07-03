@@ -19,6 +19,10 @@ class RehabCenterPublic(BaseModel):
     claimed: bool
 
 
+class RehabDirectoryStats(BaseModel):
+    claimed: int
+
+
 class RehabCenterAdmin(BaseModel):
     id: int
     slug: str
