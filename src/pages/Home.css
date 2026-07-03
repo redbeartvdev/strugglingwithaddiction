@@ -134,7 +134,7 @@
 /* ── Hope section ─────────────────────────── */
 .hope-section {
   padding: 6rem 0;
-  background: #fafaf8;
+  background: var(--white);
 }
 
 .hope-inner {
@@ -406,7 +406,7 @@
 /* ── Newsletter ───────────────────────────── */
 .newsletter-section {
   padding: 5.5rem 0;
-  background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-red) 100%);
+  background: var(--brand-red);
 }
 
 .newsletter-inner {
@@ -617,12 +617,8 @@
 /* ── Home Blog Preview ────────────────────── */
 .home-blog-section {
   padding: 6rem 0;
-  background: var(--brand-blue);
+  background: var(--white);
   border-top: 3px solid var(--brand-red);
-}
-
-.home-blog-section .section-label {
-  color: var(--white);
 }
 
 .home-blog-header {
@@ -636,18 +632,7 @@
 
 .home-blog-header h2 {
   margin: 0.4rem 0 0;
-  color: var(--white);
-}
-
-.home-blog-section .btn-outline {
-  border-color: var(--white);
-  color: var(--white);
-}
-
-.home-blog-section .btn-outline:hover {
-  background-color: var(--brand-red);
-  border-color: var(--brand-red);
-  color: var(--white);
+  color: var(--dark);
 }
 
 .home-blog-grid {
@@ -658,7 +643,7 @@
 
 .home-blog-card {
   border-radius: 12px;
-  border: 1px solid var(--white);
+  border: 1px solid var(--brand-blue);
   overflow: hidden;
   background: var(--white);
   display: flex;
