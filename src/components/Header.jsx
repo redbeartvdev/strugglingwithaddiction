@@ -30,14 +30,14 @@ export default function Header() {
           <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Home
           </NavLink>
-          <NavLink to="/about" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
-            About
+          <NavLink to="/rehab-centers" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
+            Directory
           </NavLink>
           <NavLink to="/blog" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Blog
           </NavLink>
-          <NavLink to="/rehab-centers" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
-            Rehab Centers
+          <NavLink to="/portal" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
+            Portal
           </NavLink>
           <a href="tel:18005551234" className="btn btn-header" onClick={close}>
             Get Help Now

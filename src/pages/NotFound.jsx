@@ -4,7 +4,7 @@ import {
   FaHome,
   FaBookOpen,
   FaMapMarkerAlt,
-  FaInfoCircle,
+  FaDoorOpen,
 } from 'react-icons/fa'
 import './NotFound.css'
 
@@ -20,7 +20,7 @@ const helpfulLinks = [
   {
     to: '/rehab-centers',
     icon: <FaMapMarkerAlt style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Rehab Centers',
+    title: 'Directory',
     body: 'Search our directory of accredited treatment centers near you.',
   },
   {
@@ -30,10 +30,10 @@ const helpfulLinks = [
     body: 'Read evidence-based articles on addiction, recovery, and family support.',
   },
   {
-    to: '/about',
-    icon: <FaInfoCircle style={ICON_STYLE} aria-hidden="true" />,
-    title: 'About Us',
-    body: 'Learn about our mission and the team behind this resource.',
+    to: '/portal',
+    icon: <FaDoorOpen style={ICON_STYLE} aria-hidden="true" />,
+    title: 'Portal',
+    body: 'Access partner and client resources.',
   },
 ]
 

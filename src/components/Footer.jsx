@@ -31,9 +31,9 @@ export default function Footer() {
             <h4>Navigate</h4>
             <ul>
               <li><Link to="/">Home</Link></li>
-              <li><Link to="/about">About</Link></li>
+              <li><Link to="/rehab-centers">Directory</Link></li>
               <li><Link to="/blog">Blog</Link></li>
-              <li><Link to="/rehab-centers">Rehab Centers</Link></li>
+              <li><Link to="/portal">Portal</Link></li>
             </ul>
           </div>
           <div className="footer-col">

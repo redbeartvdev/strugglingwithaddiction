@@ -226,8 +226,7 @@ export default function Home() {
               and recovery.
             </p>
             <div className="hope-ctas">
-              <a href="/about" className="btn">Learn About Our Mission</a>
-              <a href="#services" className="btn btn-outline">Explore Resources</a>
+              <a href="#services" className="btn">Explore Resources</a>
             </div>
           </div>
           <div className="hope-image" aria-hidden="true">
