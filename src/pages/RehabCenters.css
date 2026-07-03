@@ -64,6 +64,7 @@
   display: grid;
   grid-template-columns: 320px 1fr;
   transition: box-shadow 0.3s, transform 0.3s;
+  scroll-margin-top: 88px;
 }
 
 .rehab-card:hover {

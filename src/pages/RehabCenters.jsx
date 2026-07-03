@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaGlobe, FaStar, FaSearch } from 'react-icons/fa'
 import { fetchApi, apiEnabled } from '../lib/api'
@@ -182,6 +182,7 @@ export default function RehabCenters() {
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const [stateFilter, setStateFilter] = useState(() => searchParams.get('state') || '')
   const [serviceFilter, setServiceFilter] = useState(() => searchParams.get('service') || '')
+  const firstResultRef = useRef(null)
 
   useEffect(() => {
     if (!apiEnabled()) return
@@ -206,6 +207,11 @@ export default function RehabCenters() {
     () => filterCenters(centers, { query, state: stateFilter, service: serviceFilter }),
     [centers, query, stateFilter, serviceFilter],
   )
+
+  useEffect(() => {
+    if (loading || !stateFilter || filteredCenters.length === 0) return
+    firstResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading, stateFilter, filteredCenters.length])
 
   function clearFilters() {
     setQuery('')
@@ -264,8 +270,8 @@ export default function RehabCenters() {
               <button type="button" className="btn" onClick={clearFilters}>Clear all filters</button>
             </div>
           )}
-          {!loading && filteredCenters.map(center => (
-            <article className="rehab-card" key={center.id}>
+          {!loading && filteredCenters.map((center, index) => (
+            <article className="rehab-card" key={center.id} ref={index === 0 ? firstResultRef : null}>
               <div className="rehab-card-img-wrap">
                 {center.image && <img src={center.image} alt={center.name} loading="lazy" />}
               </div>
