@@ -4,11 +4,6 @@
   background: var(--off-white);
 }
 
-.home-directory-tools-inner {
-  max-width: 36rem;
-  margin: 0 auto;
-}
-
 .directory-tool-card {
   background: var(--white);
   border-radius: 12px;
@@ -16,6 +11,7 @@
   border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .directory-tool-header {
@@ -34,7 +30,8 @@
   color: var(--gray);
   font-size: 0.92rem;
   line-height: 1.7;
-  margin: 0;
+  margin: 0 auto;
+  max-width: 42rem;
 }
 
 /* ── Guided Finder ─────────────────────────── */
@@ -144,12 +141,96 @@
   text-align: center;
 }
 
+/* ── Full-width homepage variant ────────────── */
+.guided-finder--full {
+  padding: 2.5rem 3rem;
+}
+
+@media (min-width: 768px) {
+  .guided-finder--full .guided-finder-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem 2rem;
+    align-items: end;
+    max-width: 56rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .guided-finder--full .directory-tool-field {
+    margin-bottom: 0;
+  }
+
+  .guided-finder--full .guided-finder-actions {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+}
+
+/* ── Blog sidebar variant ───────────────────── */
+.guided-finder--sidebar {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.guided-finder--sidebar .directory-tool-header {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.guided-finder--sidebar .directory-tool-header h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0;
+}
+
+.guided-finder--sidebar .guided-finder-step-label {
+  font-size: 0.6rem;
+}
+
+.guided-finder--sidebar .guided-finder-step-num {
+  width: 1.65rem;
+  height: 1.65rem;
+  font-size: 0.75rem;
+}
+
+.guided-finder--sidebar .guided-finder-steps {
+  margin-bottom: 1.25rem;
+}
+
+.guided-finder--sidebar .directory-tool-field {
+  margin-bottom: 1rem;
+}
+
+.guided-finder--sidebar .directory-tool-field label {
+  font-size: 0.88rem;
+}
+
+.guided-finder--sidebar .directory-tool-field select {
+  font-size: 0.92rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.guided-finder--sidebar .guided-finder-actions {
+  flex-direction: column;
+  justify-content: stretch;
+}
+
+.guided-finder--sidebar .guided-finder-back,
+.guided-finder--sidebar .guided-finder-submit {
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  white-space: normal;
+}
+
 @media (max-width: 480px) {
   .home-directory-tools {
     padding: 3rem 0;
   }
 
-  .directory-tool-card {
+  .guided-finder--full {
     padding: 1.5rem;
   }
 
@@ -157,12 +238,16 @@
     font-size: 0.65rem;
   }
 
-  .guided-finder-actions {
+  .guided-finder--full .guided-finder-form {
+    display: flex;
+  }
+
+  .guided-finder--full .guided-finder-actions {
     flex-direction: column;
   }
 
-  .guided-finder-back,
-  .guided-finder-submit {
+  .guided-finder--full .guided-finder-back,
+  .guided-finder--full .guided-finder-submit {
     width: 100%;
   }
 }

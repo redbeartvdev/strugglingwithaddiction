@@ -14,12 +14,13 @@ const STEPS = [
   { key: 'insurance', label: 'Insurance', title: 'Insurance accepted' },
 ]
 
-export default function GuidedFinder() {
+export default function GuidedFinder({ variant = 'full' }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [state, setState] = useState('')
   const [service, setService] = useState('')
   const [insurance, setInsurance] = useState('')
+  const idPrefix = variant === 'sidebar' ? 'sidebar-guided-finder' : 'guided-finder'
 
   const isLastStep = step === STEPS.length - 1
 
@@ -37,14 +38,16 @@ export default function GuidedFinder() {
   }
 
   return (
-    <div className="directory-tool-card guided-finder">
+    <div className={`directory-tool-card guided-finder guided-finder--${variant}`}>
       <div className="directory-tool-header">
         <span className="section-label">Find a Center</span>
         <h2>Answer 3 questions to see matching centers</h2>
-        <p className="directory-tool-desc">
-          Filter our directory by location, level of care, and insurance accepted.
-          This does not verify your specific plan — it shows listings that may match.
-        </p>
+        {variant === 'full' && (
+          <p className="directory-tool-desc">
+            Filter our directory by location, level of care, and insurance accepted.
+            This does not verify your specific plan — it shows listings that may match.
+          </p>
+        )}
       </div>
 
       <ol className="guided-finder-steps" aria-label="Finder progress">
@@ -63,9 +66,9 @@ export default function GuidedFinder() {
       <form className="guided-finder-form" onSubmit={handleNext}>
         {step === 0 && (
           <div className="directory-tool-field">
-            <label htmlFor="guided-finder-state">{STEPS[0].title}</label>
+            <label htmlFor={`${idPrefix}-state`}>{STEPS[0].title}</label>
             <select
-              id="guided-finder-state"
+              id={`${idPrefix}-state`}
               value={state}
               onChange={e => setState(e.target.value)}
             >
@@ -79,9 +82,9 @@ export default function GuidedFinder() {
 
         {step === 1 && (
           <div className="directory-tool-field">
-            <label htmlFor="guided-finder-service">{STEPS[1].title}</label>
+            <label htmlFor={`${idPrefix}-service`}>{STEPS[1].title}</label>
             <select
-              id="guided-finder-service"
+              id={`${idPrefix}-service`}
               value={service}
               onChange={e => setService(e.target.value)}
             >
@@ -95,9 +98,9 @@ export default function GuidedFinder() {
 
         {step === 2 && (
           <div className="directory-tool-field">
-            <label htmlFor="guided-finder-insurance">{STEPS[2].title}</label>
+            <label htmlFor={`${idPrefix}-insurance`}>{STEPS[2].title}</label>
             <select
-              id="guided-finder-insurance"
+              id={`${idPrefix}-insurance`}
               value={insurance}
               onChange={e => setInsurance(e.target.value)}
             >

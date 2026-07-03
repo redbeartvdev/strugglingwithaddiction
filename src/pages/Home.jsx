@@ -210,8 +210,8 @@ export default function Home() {
 
       {/* ── Guided Finder ───────────────────────── */}
       <section className="home-directory-tools" id="find-a-center">
-        <div className="container home-directory-tools-inner">
-          <GuidedFinder />
+        <div className="container">
+          <GuidedFinder variant="full" />
         </div>
       </section>
 

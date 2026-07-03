@@ -3,6 +3,7 @@ import { useParams, Link, Navigate } from 'react-router-dom'
 import postsStatic from '../data/posts.json'
 import { usePost, usePosts, useAuthors } from '../hooks/useBlogData'
 import { usePostSeo } from '../hooks/usePageSeo'
+import GuidedFinder from '../components/GuidedFinder'
 import './BlogPost.css'
 
 function formatDate(iso) {
@@ -133,10 +134,8 @@ export default function BlogPost() {
 
         {/* ── Sidebar ──────────────────────────────── */}
         <aside className="post-sidebar">
-          <div className="sidebar-widget sidebar-cta">
-            <h3>Find a Center</h3>
-            <p>Search our directory of verified treatment centers near you.</p>
-            <Link to="/rehab-centers" className="btn">Browse Directory</Link>
+          <div className="sidebar-widget sidebar-finder">
+            <GuidedFinder variant="sidebar" />
           </div>
 
           <div className="sidebar-widget">
