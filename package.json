@@ -10,7 +10,8 @@
     "prebuild": "node scripts/generate-recent-posts.mjs",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:local": "npm run build && vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
     "react": "^19.2.5",
