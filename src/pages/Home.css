@@ -529,18 +529,6 @@
     gap: 2.5rem;
   }
 
-  .home-state-map-panel {
-    max-width: none;
-  }
-
-  .home-state-map-header {
-    text-align: left;
-  }
-
-  .home-state-map-header .section-desc {
-    margin-left: 0;
-  }
-
   .home-provider-upsell-inner .btn {
     justify-self: start;
   }
@@ -601,19 +589,8 @@
   background: var(--white);
 }
 
-.home-state-map-panel {
-  margin-left: auto;
-  width: 100%;
-  max-width: 52rem;
-}
-
-.home-state-map-header {
-  text-align: right;
+.home-state-map-section .section-header {
   margin-bottom: 2rem;
-}
-
-.home-state-map-header .section-desc {
-  margin-left: auto;
 }
 
 .home-state-map-section h2 {
