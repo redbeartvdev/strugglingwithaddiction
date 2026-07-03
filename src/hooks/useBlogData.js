@@ -128,12 +128,12 @@ export function useAuthors() {
 }
 
 export function useRecentPosts() {
-  const [posts, setPosts] = useState(staticRecent)
+  const [posts, setPosts] = useState(staticRecent.slice(0, 6))
   useEffect(() => {
     if (!apiEnabled()) return
-    fetchApi('/api/posts?limit=3')
+    fetchApi('/api/posts?limit=6')
       .then(d => {
-        if (Array.isArray(d) && d.length) setPosts(mergeWithStaticPosts(d, staticRecent))
+        if (Array.isArray(d) && d.length) setPosts(mergeWithStaticPosts(d, staticRecent).slice(0, 6))
       })
       .catch(() => {})
   }, [])

@@ -58,5 +58,60 @@
         "slug": "health"
       }
     ]
+  },
+  {
+    "id": 5605,
+    "slug": "mindfulness-in-recovery-cultivating-inner-peace-after-addiction",
+    "date": "2024-04-24T19:01:35",
+    "title": "Mindfulness in Recovery: Cultivating Inner Peace After Addiction",
+    "excerpt": "Addiction is a disease of the brain. It changes how you perceive the world, how you respond to stress, and how you navigate life's challenges. Even in recovery, the neural pathways affected by addiction can continue to influence thoughts, emotions, and behaviors. This is why cultivating mindfulness in recovery from addiction is so crucial. Mindfulness …",
+    "featuredImage": "/images/blog/Mindfulness-in-Recovery-Cultivating-Inner-Peace-After-Addiction_2426878099.webp",
+    "categoryNames": [
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      },
+      {
+        "id": 6,
+        "name": "Lifestyle",
+        "slug": "lifestyle"
+      }
+    ]
+  },
+  {
+    "id": 5590,
+    "slug": "are-weight-loss-drugs-like-ozempic-addictive",
+    "date": "2024-04-11T19:20:01",
+    "title": "Are Weight Loss Drugs Like Ozempic Addictive?",
+    "excerpt": "Ozempic is one of the most talked about prescription medications in recent history. Its reputation extends far beyond its original purpose of managing type 2 diabetes. More people now use Ozempic as an anti-obesity medication. According to research, higher doses of Ozempic may induce weight loss, especially when combined with healthy lifestyle interventions. Despite this, …",
+    "featuredImage": "/images/blog/Are-Weight-Loss-Drugs-Like-Ozempic-Addictive_2441728907.webp",
+    "categoryNames": [
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      },
+      {
+        "id": 6,
+        "name": "Lifestyle",
+        "slug": "lifestyle"
+      }
+    ]
+  },
+  {
+    "id": 5570,
+    "slug": "medications-used-in-drug-addiction-treatment",
+    "date": "2024-04-02T06:43:24",
+    "title": "What Medications Are Used in Addiction Treatment?",
+    "excerpt": "Addiction affects the mind, body and spirit. It alters the brain's chemistry and function, causes various physical health issues, and profoundly affects one’s sense of purpose, values, and connection to others. That’s why an effective drug addiction treatment center integrates interventions that address each of these dimensions. Medications, along with behavioral therapy and counseling, provide …",
+    "featuredImage": "/images/blog/ai-generated-8596839_1280-e1712766341461.webp",
+    "categoryNames": [
+      {
+        "id": 4,
+        "name": "General",
+        "slug": "general"
+      }
+    ]
   }
 ]
