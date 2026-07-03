@@ -172,7 +172,7 @@
 /* ── Services ─────────────────────────────── */
 .services-section {
   padding: 6rem 0;
-  background: white;
+  background: var(--white);
 }
 
 .section-header {
@@ -617,8 +617,12 @@
 /* ── Home Blog Preview ────────────────────── */
 .home-blog-section {
   padding: 6rem 0;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: var(--brand-blue);
+  border-top: 3px solid var(--brand-red);
+}
+
+.home-blog-section .section-label {
+  color: var(--white);
 }
 
 .home-blog-header {
@@ -632,6 +636,18 @@
 
 .home-blog-header h2 {
   margin: 0.4rem 0 0;
+  color: var(--white);
+}
+
+.home-blog-section .btn-outline {
+  border-color: var(--white);
+  color: var(--white);
+}
+
+.home-blog-section .btn-outline:hover {
+  background-color: var(--brand-red);
+  border-color: var(--brand-red);
+  color: var(--white);
 }
 
 .home-blog-grid {
@@ -642,9 +658,9 @@
 
 .home-blog-card {
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--white);
   overflow: hidden;
-  background: #fafaf8;
+  background: var(--white);
   display: flex;
   flex-direction: column;
   transition: box-shadow 0.3s, transform 0.3s;
@@ -659,7 +675,7 @@
   display: block;
   height: 200px;
   overflow: hidden;
-  background: #e5e7eb;
+  background: var(--brand-blue);
 }
 
 .home-blog-img-wrap img {
@@ -676,7 +692,7 @@
 .home-blog-img-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #98b8c4, #6a9aaa);
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-red));
 }
 
 .home-blog-body {
@@ -689,7 +705,7 @@
 
 .home-blog-body time {
   font-size: 0.75rem;
-  color: #98b8c4;
+  color: var(--brand-red);
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -698,7 +714,7 @@
 .home-blog-body h3 {
   font-size: 1rem;
   line-height: 1.4;
-  color: #1a1a2e;
+  color: var(--dark);
   flex: 1;
 }
 
@@ -708,11 +724,12 @@
   transition: color 0.3s;
 }
 
-.home-blog-body h3 a:hover { color: #8c1126; }
+.home-blog-body h3 a:hover { color: var(--brand-red); }
 
 .home-blog-body p {
   font-size: 0.88rem;
-  color: #6b7280;
+  color: var(--dark);
+  opacity: 0.72;
   line-height: 1.65;
 }
 
