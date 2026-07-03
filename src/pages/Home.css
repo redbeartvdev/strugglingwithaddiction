@@ -528,9 +528,14 @@
 
   .hope-inner,
   .find-help-inner,
-  .newsletter-inner {
+  .newsletter-inner,
+  .home-provider-upsell-inner {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+
+  .home-provider-upsell-inner .btn {
+    justify-self: start;
   }
 
   .hope-image img {
@@ -622,6 +627,35 @@
   text-align: center;
   padding: 4rem 0;
   color: #666;
+}
+
+.home-provider-upsell {
+  margin-top: 3rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 2.25rem 2.5rem;
+}
+
+.home-provider-upsell-inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: center;
+}
+
+.home-provider-upsell h2 {
+  font-size: 1.35rem;
+  margin-bottom: 0.5rem;
+  color: #1a1a2e;
+}
+
+.home-provider-upsell p {
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  max-width: 640px;
+  margin: 0;
 }
 
 /* ── Home Blog Preview ────────────────────── */

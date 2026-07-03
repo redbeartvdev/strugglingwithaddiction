@@ -251,6 +251,18 @@ export default function Home() {
           <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
             <USStateMap />
           </Suspense>
+          <div className="home-provider-upsell">
+            <div className="home-provider-upsell-inner">
+              <div>
+                <h2>Run a treatment facility?</h2>
+                <p>
+                  Your facility may already be listed. Claim your profile to update your information,
+                  add photos, and get seen by the people searching for care right now.
+                </p>
+              </div>
+              <Link to="/rehab-centers" className="btn btn-outline">Claim your listing</Link>
+            </div>
+          </div>
         </div>
       </section>
 
