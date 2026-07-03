@@ -371,29 +371,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Crisis Banner ─────────────────────────── */}
-      <section className="crisis-banner" id="crisis">
-        <div className="container crisis-inner">
-          <div className="crisis-content">
-            <span className="crisis-badge">CRISIS SUPPORT</span>
-            <h2>Are You in Crisis Right Now?</h2>
-            <p>
-              If you or someone you know is in immediate danger or experiencing
-              a mental health emergency, please call or text for help immediately.
-              You do not have to face this alone.
-            </p>
-          </div>
-          <div className="crisis-ctas">
-            <a href="tel:988" className="btn btn-white">
-              Call 988 — Suicide &amp; Crisis Lifeline
-            </a>
-            <a href="tel:18005551234" className="btn btn-white-outline">
-              Call Our Helpline: 1-800-555-1234
-            </a>
-          </div>
-        </div>
-      </section>
-
       {/* ── Newsletter / Final CTA ─────────────────── */}
       <section className="newsletter-section">
         <div className="container newsletter-inner">

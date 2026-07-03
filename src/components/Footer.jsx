@@ -36,7 +36,6 @@ export default function Footer() {
           <div className="footer-col">
             <h4>Resources</h4>
             <ul>
-              <li><a href="#crisis">Crisis Hotline</a></li>
               <li><a href="#find-help">Find Help Near You</a></li>
               <li><a href="#stories">Recovery Stories</a></li>
             </ul>
