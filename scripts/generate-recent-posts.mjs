@@ -1,6 +1,6 @@
 /**
  * Reads src/data/posts.json, sorts by date descending,
- * and writes the 6 most recent posts to src/data/recentPosts.json.
+ * and writes the 3 most recent posts to src/data/recentPosts.json.
  * Run automatically as a prebuild step.
  */
 
@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 const POSTS_FILE = path.join(ROOT, 'src', 'data', 'posts.json')
 const OUT_FILE = path.join(ROOT, 'src', 'data', 'recentPosts.json')
-const COUNT = 6
+const COUNT = 3
 
 const posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8'))
 
