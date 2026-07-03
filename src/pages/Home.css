@@ -617,7 +617,7 @@
 /* ── Home Blog Preview ────────────────────── */
 .home-blog-section {
   padding: 6rem 0;
-  background: var(--white);
+  background: rgb(26, 26, 46);
 }
 
 .home-blog-header {
@@ -631,7 +631,18 @@
 
 .home-blog-header h2 {
   margin: 0.4rem 0 0;
-  color: var(--dark);
+  color: var(--white);
+}
+
+.home-blog-section .btn-outline {
+  border-color: var(--white);
+  color: var(--white);
+}
+
+.home-blog-section .btn-outline:hover {
+  background-color: var(--brand-red);
+  border-color: var(--brand-red);
+  color: var(--white);
 }
 
 .home-blog-grid {
