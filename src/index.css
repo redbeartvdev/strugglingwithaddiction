@@ -16,12 +16,13 @@
   --navy: #191d38;
   --accent-teal: #5dcaa5;
   --accent-gold: #dda24a;
+  --header-height: 72px;
   --transition: 0.3s ease;
 }
 
 html {
   scroll-behavior: smooth;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -31,7 +32,7 @@ body {
   line-height: 1.75;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 img {
