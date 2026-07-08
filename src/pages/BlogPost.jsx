@@ -132,24 +132,26 @@ export default function BlogPost() {
           </div>
         </article>
 
+        <div className="post-layout-rule" aria-hidden="true" />
+
         {/* ── Sidebar ──────────────────────────────── */}
         <aside className="post-sidebar" aria-label="Article sidebar">
-          <div className="sidebar-widget sidebar-finder">
-            <GuidedFinder variant="sidebar" />
-          </div>
+          <div className="post-sidebar-stack">
+            <div className="sidebar-widget sidebar-finder">
+              <GuidedFinder variant="sidebar" />
+            </div>
 
-          <hr className="post-sidebar-divider" aria-hidden="true" />
-
-          <div className="sidebar-widget">
-            <h4>More Articles</h4>
-            <ul className="sidebar-posts">
-              {related.map(r => (
-                <li key={r.id}>
-                  <Link to={`/blog/${r.slug}`} dangerouslySetInnerHTML={{ __html: r.title }} />
-                </li>
-              ))}
-            </ul>
-            <Link to="/blog" className="btn btn-outline sidebar-all-btn">View All Articles</Link>
+            <div className="sidebar-widget sidebar-articles">
+              <h4>More Articles</h4>
+              <ul className="sidebar-posts">
+                {related.map(r => (
+                  <li key={r.id}>
+                    <Link to={`/blog/${r.slug}`} dangerouslySetInnerHTML={{ __html: r.title }} />
+                  </li>
+                ))}
+              </ul>
+              <Link to="/blog" className="btn btn-outline sidebar-all-btn">View All Articles</Link>
+            </div>
           </div>
         </aside>
       </div>
