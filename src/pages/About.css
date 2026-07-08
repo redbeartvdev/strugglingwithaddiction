@@ -167,6 +167,78 @@
   font-size: 1.1rem;
 }
 
+.about-directory-cta {
+  padding: 5rem 0;
+  background: var(--navy);
+  color: var(--white);
+  text-align: center;
+}
+
+.about-directory-cta-inner {
+  max-width: 720px;
+}
+
+.about-directory-cta-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-teal);
+}
+
+.about-directory-cta h2 {
+  margin: 0 0 1rem;
+  color: var(--white);
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+}
+
+.about-directory-cta p {
+  margin: 0 auto 2rem;
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.about-directory-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.about-directory-cta-btn {
+  min-width: 12rem;
+}
+
+.about-directory-cta-btn--primary {
+  background-color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: var(--navy);
+}
+
+.about-directory-cta-btn--primary:hover {
+  background-color: #e8b35f;
+  border-color: #e8b35f;
+  color: var(--navy);
+  box-shadow: 0 6px 20px rgba(221, 162, 74, 0.28);
+}
+
+.about-directory-cta-btn--secondary {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.72);
+  color: var(--white);
+}
+
+.about-directory-cta-btn--secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--white);
+  color: var(--white);
+  box-shadow: none;
+}
+
 @media (max-width: 900px) {
   .about-team-grid {
     grid-template-columns: 1fr;
@@ -188,5 +260,19 @@
   .about-team-card {
     gap: 0.85rem;
     padding: 0.85rem 1rem;
+  }
+
+  .about-directory-cta {
+    padding: 3.5rem 0;
+  }
+
+  .about-directory-cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .about-directory-cta-btn {
+    width: 100%;
+    min-width: 0;
   }
 }

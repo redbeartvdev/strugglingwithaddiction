@@ -79,6 +79,25 @@ export default function About() {
         </div>
       </section>
 
+      <section className="about-directory-cta" aria-labelledby="about-directory-cta-heading">
+        <div className="container about-directory-cta-inner">
+          <span className="about-directory-cta-eyebrow">Find Help</span>
+          <h2 id="about-directory-cta-heading">Ready to find a treatment center?</h2>
+          <p>
+            Browse our directory of vetted facilities and filter by location, care level,
+            and what matters most to you.
+          </p>
+          <div className="about-directory-cta-actions">
+            <Link to="/rehab-centers" className="btn about-directory-cta-btn about-directory-cta-btn--primary">
+              Find Help Near You
+            </Link>
+            <Link to="/rehab-centers" className="btn about-directory-cta-btn about-directory-cta-btn--secondary">
+              Browse the Directory
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <NewsletterSection />
     </main>
   )
