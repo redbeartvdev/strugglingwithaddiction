@@ -206,14 +206,18 @@
   margin: 0 0 1.5rem;
 }
 
-.portal-cta a {
+.portal-cta p a {
   color: var(--brand-blue);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.portal-cta a:hover {
+.portal-cta p a:hover {
   color: white;
+}
+
+.portal-cta .btn {
+  color: var(--white);
 }
 
 @media (max-width: 900px) {
