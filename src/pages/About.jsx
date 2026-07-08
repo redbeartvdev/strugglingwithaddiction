@@ -35,8 +35,8 @@ export default function About() {
                     alt={member.name}
                     className="about-team-photo"
                     loading="lazy"
-                    width={300}
-                    height={300}
+                    width={88}
+                    height={88}
                   />
                 </div>
                 <div className="about-team-card-body">
