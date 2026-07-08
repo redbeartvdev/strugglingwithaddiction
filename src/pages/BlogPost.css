@@ -248,11 +248,19 @@
 
 /* ── Sidebar ──────────────────────────────── */
 .post-sidebar {
+  align-self: start;
+}
+
+.post-sidebar-sticky {
+  position: sticky;
+  top: calc(72px + 1.25rem);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  position: sticky;
-  top: 88px;
+  max-height: calc(100vh - 72px - 1.25rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .sidebar-widget {
@@ -409,8 +417,10 @@
     grid-template-columns: 1fr;
   }
 
-  .post-sidebar {
+  .post-sidebar-sticky {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .related-grid {
