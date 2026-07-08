@@ -430,74 +430,6 @@
   border-color: #98b8c4;
 }
 
-/* ── Newsletter ───────────────────────────── */
-.newsletter-section {
-  padding: 5.5rem 0;
-  background: var(--brand-red);
-}
-
-.newsletter-inner {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: center;
-}
-
-.newsletter-section .section-label {
-  color: var(--white);
-  opacity: 0.9;
-}
-
-.newsletter-text h2 {
-  margin: 0.5rem 0 1rem;
-  color: var(--white);
-}
-
-.newsletter-text p {
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 1rem;
-}
-
-.newsletter-form {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.newsletter-form input {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  padding: 0.85rem 1.25rem;
-  border: 2px solid var(--white);
-  border-radius: 4px;
-  font-family: 'PT Serif', Georgia, serif;
-  font-size: 1rem;
-  color: var(--dark);
-  background: var(--white);
-  outline: none;
-  transition: border-color 0.3s;
-}
-
-.newsletter-form input::placeholder {
-  color: rgba(26, 26, 46, 0.45);
-}
-
-.newsletter-form input:focus {
-  border-color: var(--dark);
-}
-
-.newsletter-form .btn {
-  background-color: var(--white);
-  color: var(--brand-red);
-}
-
-.newsletter-form .btn:hover {
-  background-color: var(--dark);
-  color: var(--white);
-  border-color: var(--dark);
-}
-
 /* ── Responsive ───────────────────────────── */
 @media (max-width: 900px) {
   .hero-layout {
@@ -541,8 +473,7 @@
   }
 
   .hope-inner,
-  .find-help-inner,
-  .newsletter-inner {
+  .find-help-inner {
     grid-template-columns: 1fr;
     gap: 2.5rem;
   }
@@ -570,14 +501,6 @@
   .hope-ctas .btn {
     width: 100%;
   }
-
-  .newsletter-form {
-    flex-direction: column;
-  }
-
-  .newsletter-form input {
-    min-width: 0;
-  }
 }
 
 @media (max-width: 480px) {
@@ -591,7 +514,6 @@
   .services-section,
   .how-section,
   .testimonials-section,
-  .newsletter-section,
   .home-blog-section {
     padding: 3.5rem 0;
   }

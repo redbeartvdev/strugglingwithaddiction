@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import NewsletterSection from '../components/NewsletterSection'
 import team from '../data/team.json'
 import './About.css'
 
@@ -77,6 +78,8 @@ export default function About() {
           </div>
         </div>
       </section>
+
+      <NewsletterSection />
     </main>
   )
 }

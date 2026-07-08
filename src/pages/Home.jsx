@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fa'
 import { useRecentPosts } from '../hooks/useBlogData'
 import GuidedFinder from '../components/GuidedFinder'
+import NewsletterSection from '../components/NewsletterSection'
 import './Home.css'
 
 const USStateMap = lazy(() => import('../components/USStateMap'))
@@ -393,23 +394,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Newsletter / Final CTA ─────────────────── */}
-      <section className="newsletter-section">
-        <div className="container newsletter-inner">
-          <div className="newsletter-text">
-            <span className="section-label">Stay Connected</span>
-            <h2>Get Recovery Resources<br />Delivered to Your Inbox</h2>
-            <p>
-              Weekly guidance, stories of hope, and practical tools — all free and
-              sent with care. No spam, ever. Unsubscribe any time.
-            </p>
-          </div>
-          <form className="newsletter-form" onSubmit={e => e.preventDefault()}>
-            <input type="email" placeholder="Your email address" aria-label="Email address" />
-            <button type="submit" className="btn">Subscribe Free</button>
-          </form>
-        </div>
-      </section>
+      <NewsletterSection />
 
     </main>
   )
