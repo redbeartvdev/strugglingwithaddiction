@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import team from '../data/team.json'
 import './About.css'
 
+const HERO_IMAGE = '/images/blog/SWA_You-Can-Now-Get-Buprenorphine-Treatment-Online_2451838189.webp'
+
 export default function About() {
   useEffect(() => {
     const site = 'Struggling With Addiction'
@@ -13,7 +15,15 @@ export default function About() {
   return (
     <main className="about-page">
       <section className="about-hero">
-        <div className="container">
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          className="about-hero-bg"
+          aria-hidden="true"
+          fetchPriority="high"
+        />
+        <div className="about-hero-overlay" aria-hidden="true" />
+        <div className="container about-hero-content">
           <span className="section-label">About Us</span>
           <h1>About</h1>
           <p>
