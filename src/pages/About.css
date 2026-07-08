@@ -117,10 +117,20 @@
 }
 
 .about-team-card-body h3 {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   color: var(--dark);
   margin: 0;
   line-height: 1.25;
+}
+
+.about-team-card:not(.about-team-card--cta) .about-team-card-body h3::after {
+  content: '';
+  display: block;
+  width: 2.75rem;
+  height: 3px;
+  margin-top: 0.45rem;
+  background-color: var(--brand-red);
+  border-radius: 1px;
 }
 
 .about-team-card-body h3 a {
