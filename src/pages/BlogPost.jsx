@@ -138,6 +138,8 @@ export default function BlogPost() {
             <GuidedFinder variant="sidebar" />
           </div>
 
+          <hr className="post-sidebar-divider" aria-hidden="true" />
+
           <div className="sidebar-widget">
             <h4>More Articles</h4>
             <ul className="sidebar-posts">
