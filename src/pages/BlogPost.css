@@ -257,20 +257,10 @@
   position: sticky;
   top: calc(var(--header-height) + 1rem);
   align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   z-index: 2;
-}
-
-.post-sidebar-stack {
-  background: #fafaf8;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.post-sidebar-stack .sidebar-widget {
-  background: transparent;
-  border: none;
-  border-radius: 0;
 }
 
 .sidebar-widget {
