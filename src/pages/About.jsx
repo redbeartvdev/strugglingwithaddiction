@@ -81,10 +81,7 @@ export default function About() {
 
       <section className="about-directory-cta" aria-labelledby="about-directory-cta-heading">
         <div className="container about-directory-cta-inner">
-          <span className="about-directory-cta-eyebrow" aria-hidden="true">
-            <span className="about-directory-cta-eyebrow-find">Find</span>{' '}
-            <span className="about-directory-cta-eyebrow-help">Help</span>
-          </span>
+          <span className="about-directory-cta-eyebrow">Find Help</span>
           <h2 id="about-directory-cta-heading">Ready to find a treatment center?</h2>
           <p>
             Browse our directory of vetted facilities and filter by location, care level,

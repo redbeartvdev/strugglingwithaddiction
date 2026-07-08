@@ -185,13 +185,6 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-
-.about-directory-cta-eyebrow-find {
-  color: var(--brand-red);
-}
-
-.about-directory-cta-eyebrow-help {
   color: var(--brand-blue);
 }
 
@@ -221,16 +214,16 @@
 }
 
 .about-directory-cta-btn--primary {
-  background-color: var(--accent-gold);
-  border-color: var(--accent-gold);
-  color: var(--navy);
+  background-color: var(--brand-red);
+  border-color: var(--brand-red);
+  color: var(--white);
 }
 
 .about-directory-cta-btn--primary:hover {
-  background-color: #e8b35f;
-  border-color: #e8b35f;
-  color: var(--navy);
-  box-shadow: 0 6px 20px rgba(221, 162, 74, 0.28);
+  background-color: #6b0d1e;
+  border-color: #6b0d1e;
+  color: var(--white);
+  box-shadow: 0 6px 20px rgba(140, 17, 38, 0.35);
 }
 
 .about-directory-cta-btn--secondary {
