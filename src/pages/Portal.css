@@ -1,0 +1,242 @@
+.portal-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 8rem 0 4.5rem;
+  text-align: center;
+}
+
+.portal-hero .section-label {
+  color: var(--brand-blue);
+}
+
+.portal-hero h1 {
+  color: white;
+  margin: 0.5rem 0 1rem;
+}
+
+.portal-hero p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.05rem;
+  max-width: 620px;
+  margin: 0 auto;
+  line-height: 1.75;
+}
+
+.portal-body {
+  padding: 4rem 0 5rem;
+  background: var(--off-white);
+}
+
+.portal-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.portal-signin {
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 8px 24px rgba(26, 26, 46, 0.05);
+}
+
+.portal-signin h2 {
+  font-size: 1.35rem;
+  color: var(--dark);
+  margin: 0 0 0.35rem;
+}
+
+.portal-signin-intro {
+  color: var(--gray);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+}
+
+.portal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.portal-field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dark-soft);
+}
+
+.portal-field input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: 'PT Serif', Georgia, serif;
+  font-size: 1rem;
+  color: var(--dark);
+  background: var(--white);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.portal-field input:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(152, 184, 196, 0.25);
+}
+
+.portal-signin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.portal-signin-actions .btn {
+  width: 100%;
+}
+
+.portal-signin-note {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  color: var(--gray);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.portal-options-intro {
+  margin-bottom: 1.75rem;
+}
+
+.portal-options-intro h2 {
+  margin: 0 0 0.5rem;
+  color: var(--dark);
+}
+
+.portal-options-intro p {
+  color: var(--gray);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 640px;
+}
+
+.portal-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.portal-card {
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.portal-card:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 10px 28px rgba(26, 26, 46, 0.07);
+  transform: translateY(-2px);
+}
+
+.portal-card-icon {
+  margin-bottom: 0.9rem;
+}
+
+.portal-card h3 {
+  color: var(--dark);
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+}
+
+.portal-card h3::after {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin-top: 0.45rem;
+  background-color: var(--brand-red);
+  border-radius: 1px;
+}
+
+.portal-card p {
+  color: var(--gray);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  margin: 0 0 1rem;
+}
+
+.portal-card-link {
+  display: inline-block;
+  color: var(--brand-red);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.portal-card-link:hover {
+  color: var(--dark);
+}
+
+.portal-cta {
+  background: var(--navy);
+  color: white;
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.portal-cta-inner {
+  max-width: 560px;
+}
+
+.portal-cta h2 {
+  color: white;
+  margin: 0 0 0.75rem;
+}
+
+.portal-cta p {
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.75;
+  margin: 0 0 1.5rem;
+}
+
+.portal-cta a {
+  color: var(--brand-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.portal-cta a:hover {
+  color: white;
+}
+
+@media (max-width: 900px) {
+  .portal-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .portal-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-hero {
+    padding: 6.5rem 0 3.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-body {
+    padding: 3rem 0 4rem;
+  }
+
+  .portal-signin {
+    padding: 1.5rem 1.25rem;
+  }
+}
