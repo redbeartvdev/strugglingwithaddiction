@@ -24,7 +24,7 @@ export default function About() {
         />
         <div className="about-hero-overlay" aria-hidden="true" />
         <div className="container about-hero-content">
-          <span className="section-label">About Us</span>
+          <span className="section-label">The People Behind the Directory</span>
           <h1>About</h1>
           <p>
             Meet the editors and reporters behind Struggling With Addiction — helping you find
