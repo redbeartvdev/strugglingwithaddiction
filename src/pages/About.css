@@ -1,0 +1,142 @@
+.about-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 8rem 0 5rem;
+  text-align: center;
+}
+
+.about-hero .section-label {
+  color: #98b8c4;
+}
+
+.about-hero h1 {
+  color: white;
+  margin: 0.5rem 0 1rem;
+}
+
+.about-hero p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.05rem;
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.75;
+}
+
+.about-body {
+  padding: 4rem 0 6rem;
+  background: var(--off-white);
+}
+
+.about-team-heading {
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  color: var(--dark);
+  margin: 0 0 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.about-team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.about-team-card {
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.about-team-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+}
+
+.about-team-photo-wrap {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--light-gray);
+}
+
+.about-team-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.about-team-card-body {
+  padding: 1.5rem 1.75rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.about-team-role {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-blue);
+}
+
+.about-team-card-body h3 {
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
+  color: var(--dark);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.about-team-card-body h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.about-team-card-body h3 a:hover {
+  color: var(--brand-red);
+}
+
+.about-team-card-body p {
+  color: var(--gray);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.about-team-card-body a {
+  color: var(--brand-red);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.about-team-card-body a:hover {
+  color: var(--dark);
+}
+
+.about-team-card--cta {
+  justify-content: center;
+}
+
+.about-team-card--cta .about-team-card-body {
+  padding: 2rem 1.75rem;
+}
+
+.about-team-card--cta h3 {
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+}
+
+@media (max-width: 900px) {
+  .about-team-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .about-hero {
+    padding: 6.5rem 0 3.5rem;
+  }
+}

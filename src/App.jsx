@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -19,6 +19,7 @@ const Portal = lazy(() => import('./pages/Portal'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'))
 const Accessibility = lazy(() => import('./pages/Accessibility'))
+const About = lazy(() => import('./pages/About'))
 const AuthorPage = lazy(() => import('./pages/AuthorPage'))
 const ClaimStatus = lazy(() => import('./pages/ClaimStatus'))
 const PartnerPage = lazy(() => import('./pages/PartnerPage'))
@@ -44,6 +45,8 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfUse />} />
           <Route path="/accessibility" element={<Accessibility />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/our-team" element={<Navigate to="/about" replace />} />
           <Route path="/author/:slug" element={<AuthorPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

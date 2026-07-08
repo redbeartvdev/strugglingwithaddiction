@@ -28,6 +28,7 @@ export default function Footer() {
             <h4>Navigate</h4>
             <ul>
               <li><Link to="/">Home</Link></li>
+              <li><Link to="/about">About</Link></li>
               <li><Link to="/rehab-centers">Directory</Link></li>
               <li><Link to="/blog">Blog</Link></li>
               <li><Link to="/portal">Portal</Link></li>
@@ -55,11 +56,11 @@ export default function Footer() {
         <div className="container footer-bottom-inner">
           <p>&copy; {year} Struggling With Addiction. All rights reserved.</p>
           <div className="footer-legal">
-            <a href="/privacy">Privacy Policy</a>
+            <Link to="/privacy">Privacy Policy</Link>
             <span aria-hidden="true">·</span>
-            <a href="/terms">Terms of Use</a>
+            <Link to="/terms">Terms of Use</Link>
             <span aria-hidden="true">·</span>
-            <a href="/accessibility">Accessibility</a>
+            <Link to="/accessibility">Accessibility</Link>
           </div>
         </div>
       </div>
