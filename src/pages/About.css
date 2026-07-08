@@ -185,7 +185,14 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent-teal);
+}
+
+.about-directory-cta-eyebrow-find {
+  color: var(--brand-red);
+}
+
+.about-directory-cta-eyebrow-help {
+  color: var(--brand-blue);
 }
 
 .about-directory-cta h2 {
