@@ -1,0 +1,42 @@
+[
+  {
+    "id": "pj-haarsma",
+    "slug": "pj-haarsma",
+    "name": "PJ Haarsma",
+    "role": "Executive Editor",
+    "image": "/images/team/pj-haarsma.webp",
+    "bio": "PJ Haarsma is an award winning creative and producer that creates and empowers people who want to and deserve to tell stories – from original content to comic books to digital marketing to video games to commercials – PJ works in many disciplines though their work often blends those worlds."
+  },
+  {
+    "id": "drew-lewis",
+    "slug": "drew-lewis",
+    "name": "Drew Lewis",
+    "role": "Executive Editor",
+    "image": "/images/team/drew-lewis.webp",
+    "bio": "Drew wants to help an industry that can truly make our world a better place. Many treatments centers are owned by individuals who have struggled with addiction themselves and to see them rise from the ashes is truly inspirational. But with industry changes that place the onus on someone's shoulders, and changes that happen quickly and constantly, he feels obligated to help."
+  },
+  {
+    "id": "kreed-kleinkopf",
+    "slug": "kreed-kleinkopf",
+    "name": "Kreed Kleinkopf",
+    "role": "Lead Investigative Reporter",
+    "image": "/images/team/kreed-kleinkopf.webp",
+    "bio": "Graduating with a political science degree from Boise State University, Kreed has been involved in politics running for local seats, as well as playing in many local & successful bands. Sci-fi fan, video game fan, TRON fan, & someone who genuinely cares about fixing what's wrong with modern drug rehabilitation."
+  },
+  {
+    "id": "alexandra-lafollette",
+    "slug": "alexandra-lafollette",
+    "name": "Alexandra LaFollette",
+    "role": "Lead Investigative Reporter",
+    "image": "/images/team/alexandra-lafollette.webp",
+    "bio": "Involved in organizing & hosting music festival events, venue design by night, she also works as a CNA for terminal & non-terminal in-home care. Experienced with many forms of addiction from different environments, she brings an insightful look into when people's addiction can cross the line."
+  },
+  {
+    "id": "olivia-kibaba",
+    "slug": "olivia-kibaba",
+    "name": "Olivia Kibaba",
+    "role": "Investigative Reporter",
+    "image": "/images/team/olivia-kibaba.webp",
+    "bio": "Olivia is a writer, social media marketing expert, and unshakable optimist dedicated to helping you become the person you most want to be. She has plenty of experience in mental health and addiction-related issues and uses her writing skills to educate, motivate, and empower her audience."
+  }
+]
