@@ -33,10 +33,9 @@ const NAV_BY_ROLE = {
   ],
   client: [
     { to: '/client', label: 'Overview', end: true, Icon: IconHome },
-    { to: '/client/profile', label: 'Profile', Icon: IconBuilding },
+    { to: '/client/profile', label: 'Profile Page Editor', Icon: IconBuilding },
     { to: '/client/leads', label: 'Leads', Icon: IconInbox },
     { to: '/client/upsells', label: 'Upgrades', Icon: IconFile },
-    { to: '/client/landing', label: 'Partner page', Icon: IconFile },
     // Posts hidden for now — reinstate when client blogging ships
     // { to: '/client/posts', label: 'Posts', Icon: IconFile },
     { to: '/client/billing', label: 'Billing', Icon: IconCard },

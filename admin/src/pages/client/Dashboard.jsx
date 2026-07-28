@@ -20,14 +20,15 @@ const WHATS_NEW = [
   },
   {
     title: 'Redesigned profile editor',
-    body: 'Manage Overview, Listing, Insurance, Media, and Analytics in one place at Profile — with clearer sections and faster publishing.',
+    body: 'Manage Overview, Listing, Insurance, Media, Partner page, and Analytics in one Profile Page Editor — with clearer sections and faster publishing.',
   },
 ]
 
 const LINKS = [
-  { to: '/client/profile', label: 'Edit listing profile', detail: 'Basics, care details, and media' },
+  { to: '/client/profile', label: 'Profile Page Editor', detail: 'Listing, insurance, gallery, and partner page' },
   { to: '/client/profile?tab=analytics', label: 'Analytics', detail: 'Visits, states, devices, and leads' },
   { to: '/client/profile?tab=insurance', label: 'Insurance', detail: 'Accepted USA plans with logos' },
+  { to: '/client/profile?tab=partner', label: 'Partner page', detail: 'Headline, about, and publish settings' },
   { to: '/client/leads', label: 'Leads inbox', detail: 'Inquiries from your landing page' },
   { to: '/client/upsells', label: 'Upgrades', detail: 'Verified badge, featured placement, articles' },
   { to: '/client/billing', label: 'Billing', detail: 'Subscription and invoices' },

@@ -82,9 +82,9 @@ export default function ProfilePage() {
         <div className="card card-flat" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p className="eyebrow">Public listing</p>
-            <p style={{ margin: '4px 0 0' }}>Edit your rehab profile, insurance, media, and analytics on the Profile page.</p>
+            <p style={{ margin: '4px 0 0' }}>Edit your rehab listing, insurance, gallery, and partner page in the Profile Page Editor.</p>
           </div>
-          <Link className="btn btn-primary" to="/client/profile">Open listing profile</Link>
+          <Link className="btn btn-primary" to="/client/profile">Open Profile Page Editor</Link>
         </div>
       )}
 

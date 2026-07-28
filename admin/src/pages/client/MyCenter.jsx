@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { api, apiUpload } from '../../api'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
@@ -31,6 +31,7 @@ const TABS = [
   ['listing', 'Listing'],
   ['insurance', 'Insurance'],
   ['media', 'Media'],
+  ['partner', 'Partner page'],
   ['analytics', 'Analytics'],
 ]
 
@@ -41,6 +42,78 @@ function StatCard({ label, value, hint }) {
       <p className="mc-stat-value">{value}</p>
       {hint && <p className="mc-stat-hint">{hint}</p>}
     </div>
+  )
+}
+
+function PartnerLandingForm({ landing, setLanding, locked, saving, onSave }) {
+  const publicUrl = landing.slug ? `/partners/${landing.slug}` : null
+  return (
+    <form className="card card-flat form-stack mc-form" onSubmit={onSave}>
+      <div className="mc-insurance-head">
+        <div>
+          <p className="eyebrow">Partner landing page</p>
+          <p className="page-sub" style={{ margin: 0 }}>
+            Headline, about, SEO, and publish settings for your public partner page
+            {publicUrl ? <> at <a href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a></> : null}.
+          </p>
+        </div>
+      </div>
+
+      <label className="field">
+        <span className="field-label">Headline</span>
+        <input
+          disabled={locked}
+          value={landing.headline}
+          onChange={e => setLanding(l => ({ ...l, headline: e.target.value }))}
+        />
+      </label>
+      <label className="field">
+        <span className="field-label">About</span>
+        <textarea
+          rows={6}
+          disabled={locked}
+          value={landing.about_html}
+          onChange={e => setLanding(l => ({ ...l, about_html: e.target.value }))}
+        />
+      </label>
+      <div className="form-grid-2">
+        <label className="field">
+          <span className="field-label">Meta title</span>
+          <input
+            disabled={locked}
+            value={landing.meta_title}
+            onChange={e => setLanding(l => ({ ...l, meta_title: e.target.value }))}
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Meta description</span>
+          <input
+            disabled={locked}
+            value={landing.meta_description}
+            onChange={e => setLanding(l => ({ ...l, meta_description: e.target.value }))}
+          />
+        </label>
+      </div>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          disabled={locked}
+          checked={landing.is_published}
+          onChange={e => setLanding(l => ({ ...l, is_published: e.target.checked }))}
+        />
+        Published on /partners/{landing.slug || '…'}
+      </label>
+      <div className="form-actions">
+        <Button type="submit" disabled={saving || locked}>
+          {saving ? 'Saving…' : 'Save partner page'}
+        </Button>
+        {publicUrl && landing.is_published && (
+          <a className="btn btn-ghost" href={publicUrl} target="_blank" rel="noreferrer">
+            View partner page
+          </a>
+        )}
+      </div>
+    </form>
   )
 }
 
@@ -185,16 +258,20 @@ function AnalyticsPanel({ locked }) {
 }
 
 export default function ClientMyCenter() {
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialTab = TABS.some(([id]) => id === searchParams.get('tab')) ? searchParams.get('tab') : 'overview'
+  const defaultTab = location.pathname.includes('/landing') ? 'partner' : 'overview'
+  const initialTab = TABS.some(([id]) => id === searchParams.get('tab')) ? searchParams.get('tab') : defaultTab
   const [tab, setTab] = useState(initialTab)
   const [center, setCenter] = useState(undefined)
   const [form, setForm] = useState(null)
+  const [landing, setLanding] = useState(null)
   const [catalog, setCatalog] = useState([])
   const [selectedInsurance, setSelectedInsurance] = useState([])
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingLanding, setSavingLanding] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
   const [uploadingHero, setUploadingHero] = useState(false)
   const [loadError, setLoadError] = useState('')
@@ -203,8 +280,10 @@ export default function ClientMyCenter() {
     const next = searchParams.get('tab')
     if (next && TABS.some(([id]) => id === next) && next !== tab) {
       setTab(next)
+    } else if (!next && location.pathname.includes('/landing') && tab !== 'partner') {
+      setTab('partner')
     }
-  }, [searchParams, tab])
+  }, [searchParams, tab, location.pathname])
 
   function selectTab(id) {
     setTab(id)
@@ -214,48 +293,63 @@ export default function ClientMyCenter() {
   useEffect(() => {
     let cancelled = false
     setLoadError('')
-    api('/api/client/my-center')
-      .then(async (c) => {
-        if (cancelled) return
-        setCenter(c ?? null)
-        const ins = await api('/api/insurances').catch(() => [])
-        if (cancelled) return
-        setCatalog(ins || [])
-        if (!c) return
-        setForm({
-          name: c.name || '',
-          description: c.description || '',
-          address_line: c.address_line || '',
-          city: c.city || '',
-          state: c.state || '',
-          zip: c.zip || '',
-          phone: c.phone || '',
-          website: c.website || '',
-          contact_email: c.contact_email || '',
-          google_maps_url: c.google_maps_url || '',
-          google_reviews_url: c.google_reviews_url || '',
-          video_url: c.video_url || '',
-          specialties: listToText(c.specialties),
-          levels_of_care: listToText(c.levels_of_care),
-          amenities: listToText(c.amenities),
-          accreditations: listToText(c.accreditations),
-          testimonials: (c.testimonials || []).map(t => (typeof t === 'string' ? t : t?.quote || '')).join('\n'),
+    ;(async () => {
+      let centerError = ''
+      const [c, landingPage] = await Promise.all([
+        api('/api/client/my-center').catch((e) => {
+          centerError = e.message || 'Could not load your listing.'
+          return null
+        }),
+        api('/api/client/landing').catch(() => null),
+      ])
+      if (cancelled) return
+      setCenter(c ?? null)
+      if (centerError && !c) setLoadError(centerError)
+      if (landingPage) {
+        setLanding({
+          headline: landingPage.headline || '',
+          about_html: landingPage.about_html || '',
+          is_published: Boolean(landingPage.is_published),
+          meta_title: landingPage.meta_title || '',
+          meta_description: landingPage.meta_description || '',
+          slug: landingPage.slug || '',
+          display_name: landingPage.display_name || '',
+          hero_image_url: landingPage.hero_image_url || null,
         })
-        const names = c.insurances || []
-        const catalogNames = new Set((ins || []).map(i => i.name.toLowerCase()))
-        const matched = (ins || [])
-          .filter(i => names.some(n => n.toLowerCase() === i.name.toLowerCase()
-            || n.toLowerCase().replace(/[-_]/g, ' ') === i.slug.replace(/-/g, ' ')))
-          .map(i => i.name)
-        const custom = names.filter(n => !catalogNames.has(n.toLowerCase())
-          && !matched.some(m => m.toLowerCase() === n.toLowerCase()))
-        setSelectedInsurance([...matched, ...custom])
+      }
+      const ins = await api('/api/insurances').catch(() => [])
+      if (cancelled) return
+      setCatalog(ins || [])
+      if (!c) return
+      setForm({
+        name: c.name || '',
+        description: c.description || '',
+        address_line: c.address_line || '',
+        city: c.city || '',
+        state: c.state || '',
+        zip: c.zip || '',
+        phone: c.phone || '',
+        website: c.website || '',
+        contact_email: c.contact_email || '',
+        google_maps_url: c.google_maps_url || '',
+        google_reviews_url: c.google_reviews_url || '',
+        video_url: c.video_url || '',
+        specialties: listToText(c.specialties),
+        levels_of_care: listToText(c.levels_of_care),
+        amenities: listToText(c.amenities),
+        accreditations: listToText(c.accreditations),
+        testimonials: (c.testimonials || []).map(t => (typeof t === 'string' ? t : t?.quote || '')).join('\n'),
       })
-      .catch((e) => {
-        if (cancelled) return
-        setCenter(null)
-        setLoadError(e.message || 'Could not load your listing.')
-      })
+      const names = c.insurances || []
+      const catalogNames = new Set((ins || []).map(i => i.name.toLowerCase()))
+      const matched = (ins || [])
+        .filter(i => names.some(n => n.toLowerCase() === i.name.toLowerCase()
+          || n.toLowerCase().replace(/[-_]/g, ' ') === i.slug.replace(/-/g, ' ')))
+        .map(i => i.name)
+      const custom = names.filter(n => !catalogNames.has(n.toLowerCase())
+        && !matched.some(m => m.toLowerCase() === n.toLowerCase()))
+      setSelectedInsurance([...matched, ...custom])
+    })()
     return () => { cancelled = true }
   }, [])
 
@@ -345,11 +439,47 @@ export default function ClientMyCenter() {
     }
   }
 
+  async function saveLanding(e) {
+    e?.preventDefault?.()
+    if (!landing || locked) return
+    setSavingLanding(true)
+    setErr('')
+    setMsg('')
+    try {
+      const updated = await api('/api/client/landing', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          headline: landing.headline,
+          about_html: landing.about_html,
+          is_published: landing.is_published,
+          meta_title: landing.meta_title || null,
+          meta_description: landing.meta_description || null,
+        }),
+      })
+      setLanding(l => ({
+        ...l,
+        headline: updated.headline || '',
+        about_html: updated.about_html || '',
+        is_published: Boolean(updated.is_published),
+        meta_title: updated.meta_title || '',
+        meta_description: updated.meta_description || '',
+        slug: updated.slug || l.slug,
+        display_name: updated.display_name || l.display_name,
+        hero_image_url: updated.hero_image_url || l.hero_image_url,
+      }))
+      setMsg(updated.is_published ? 'Partner page saved and published.' : 'Partner page saved as draft.')
+    } catch (ex) {
+      setErr(ex.message)
+    } finally {
+      setSavingLanding(false)
+    }
+  }
+
   if (center === undefined) {
     return (
       <div className="page-stack">
         <header className="page-header">
-          <h1 className="page-title">Profile.</h1>
+          <h1 className="page-title">Profile Page Editor.</h1>
         </header>
         <p className="muted">Loading your listing…</p>
       </div>
@@ -360,15 +490,27 @@ export default function ClientMyCenter() {
     return (
       <div className="page-stack">
         <header className="page-header">
-          <h1 className="page-title">Profile.</h1>
+          <h1 className="page-title">Profile Page Editor.</h1>
+          <p className="page-sub">Edit your public rehab listing and partner page.</p>
         </header>
         {loadError && <p className="form-error">{loadError}</p>}
+        {msg && <p className="success">{msg}</p>}
+        {err && <p className="form-error">{err}</p>}
         <p className="card card-flat muted">
           No center linked to this account yet. If your listing already shows as claimed or verified on the
           public directory, sign out and back in, or contact{' '}
           <a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a>.
           Otherwise claim a listing on the public site, verify certification, then subscribe.
         </p>
+        {landing && (
+          <PartnerLandingForm
+            landing={landing}
+            setLanding={setLanding}
+            locked={false}
+            saving={savingLanding}
+            onSave={saveLanding}
+          />
+        )}
         <p>
           <Link className="btn btn-ghost" to="/client">Back to overview</Link>
         </p>
@@ -390,8 +532,8 @@ export default function ClientMyCenter() {
     <div className="page-stack mc-page">
       <header className="page-header mc-header">
         <div>
-          <h1 className="page-title">Profile.</h1>
-          <p className="page-sub">Manage your public listing, insurance, media, and visitor analytics in one place.</p>
+          <h1 className="page-title">Profile Page Editor.</h1>
+          <p className="page-sub">Manage listing details, insurance, media gallery, partner page, and analytics in one place.</p>
         </div>
         <div className="mc-header-actions">
           {center.public_listing_url && (
@@ -463,6 +605,8 @@ export default function ClientMyCenter() {
             <div className="mc-quick-links">
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('listing')}>Edit listing</button>
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('insurance')}>Choose insurance</button>
+              <button type="button" className="btn btn-ghost" onClick={() => selectTab('media')}>Manage gallery</button>
+              <button type="button" className="btn btn-ghost" onClick={() => selectTab('partner')}>Edit partner page</button>
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('analytics')}>View analytics</button>
               <Link className="btn btn-ghost" to="/client/upsells">Upgrade visibility</Link>
             </div>
@@ -630,6 +774,20 @@ export default function ClientMyCenter() {
             </Button>
           </div>
         </div>
+      )}
+
+      {tab === 'partner' && (
+        landing ? (
+          <PartnerLandingForm
+            landing={landing}
+            setLanding={setLanding}
+            locked={locked}
+            saving={savingLanding}
+            onSave={saveLanding}
+          />
+        ) : (
+          <p className="muted">Loading partner page…</p>
+        )
       )}
 
       {tab === 'analytics' && <AnalyticsPanel locked={locked} />}
