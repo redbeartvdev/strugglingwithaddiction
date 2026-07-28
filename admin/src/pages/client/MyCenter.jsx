@@ -188,7 +188,7 @@ export default function ClientMyCenter() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = TABS.some(([id]) => id === searchParams.get('tab')) ? searchParams.get('tab') : 'overview'
   const [tab, setTab] = useState(initialTab)
-  const [center, setCenter] = useState(null)
+  const [center, setCenter] = useState(undefined)
   const [form, setForm] = useState(null)
   const [catalog, setCatalog] = useState([])
   const [selectedInsurance, setSelectedInsurance] = useState([])
@@ -197,6 +197,7 @@ export default function ClientMyCenter() {
   const [saving, setSaving] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
   const [uploadingHero, setUploadingHero] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     const next = searchParams.get('tab')
@@ -211,13 +212,16 @@ export default function ClientMyCenter() {
   }
 
   useEffect(() => {
-    Promise.all([
-      api('/api/client/my-center'),
-      api('/api/insurances').catch(() => []),
-    ]).then(([c, ins]) => {
-      setCenter(c)
-      setCatalog(ins || [])
-      if (c) {
+    let cancelled = false
+    setLoadError('')
+    api('/api/client/my-center')
+      .then(async (c) => {
+        if (cancelled) return
+        setCenter(c ?? null)
+        const ins = await api('/api/insurances').catch(() => [])
+        if (cancelled) return
+        setCatalog(ins || [])
+        if (!c) return
         setForm({
           name: c.name || '',
           description: c.description || '',
@@ -246,8 +250,13 @@ export default function ClientMyCenter() {
         const custom = names.filter(n => !catalogNames.has(n.toLowerCase())
           && !matched.some(m => m.toLowerCase() === n.toLowerCase()))
         setSelectedInsurance([...matched, ...custom])
-      }
-    }).catch(() => setCenter(null))
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setCenter(null)
+        setLoadError(e.message || 'Could not load your listing.')
+      })
+    return () => { cancelled = true }
   }, [])
 
   const locked = center?.dashboard_locked
@@ -336,13 +345,33 @@ export default function ClientMyCenter() {
     }
   }
 
+  if (center === undefined) {
+    return (
+      <div className="page-stack">
+        <header className="page-header">
+          <h1 className="page-title">Profile.</h1>
+        </header>
+        <p className="muted">Loading your listing…</p>
+      </div>
+    )
+  }
+
   if (center === null) {
     return (
       <div className="page-stack">
         <header className="page-header">
           <h1 className="page-title">Profile.</h1>
         </header>
-        <p className="card card-flat muted">No center linked. Claim a listing on the public site, verify certification, then subscribe.</p>
+        {loadError && <p className="form-error">{loadError}</p>}
+        <p className="card card-flat muted">
+          No center linked to this account yet. If your listing already shows as claimed or verified on the
+          public directory, sign out and back in, or contact{' '}
+          <a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a>.
+          Otherwise claim a listing on the public site, verify certification, then subscribe.
+        </p>
+        <p>
+          <Link className="btn btn-ghost" to="/client">Back to overview</Link>
+        </p>
       </div>
     )
   }

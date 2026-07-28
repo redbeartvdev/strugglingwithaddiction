@@ -215,7 +215,9 @@ def client_analytics(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
 ) -> dict[str, Any]:
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id, RehabCenter.deleted_at.is_(None)).first()
+    from app.api.leads_upsells import _client_center
+
+    center = _client_center(db, user)
     if not center:
         raise HTTPException(status_code=404, detail="No center linked")
 

@@ -16,9 +16,9 @@ from app.core.deps import ActiveSubscriber, AdminUser, ClientUser
 from app.database import get_db
 from app.models.billing import Subscription
 from app.models.lead import CenterLead
-from app.models.rehab import ListingStatus, RehabCenter
+from app.models.rehab import ClaimStatus, ListingStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellFulfillment, UpsellOrder, UpsellOrderStatus, UpsellProductType
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.rehab import RehabCenterAdmin
 from app.services.email import send_email
 from app.services.storage import get_public_url, resolve_image_url, upload_file
@@ -177,8 +177,77 @@ class UpsellCheckoutRequest(BaseModel):
     product_type: UpsellProductType
 
 
+def _client_center(db: Session, user: User, *, heal: bool = True) -> RehabCenter | None:
+    """Return the rehab listing owned by this client, healing common ownership desyncs."""
+    center = (
+        db.query(RehabCenter)
+        .filter(RehabCenter.owner_user_id == user.id, RehabCenter.deleted_at.is_(None))
+        .first()
+    )
+    if center or not heal or user.role != UserRole.client:
+        return center
+
+    email = (user.email or "").strip().lower()
+    if email:
+        by_email = (
+            db.query(RehabCenter)
+            .filter(
+                RehabCenter.deleted_at.is_(None),
+                RehabCenter.claimed.is_(True),
+                RehabCenter.contact_email.isnot(None),
+            )
+            .all()
+        )
+        match = next(
+            (c for c in by_email if (c.contact_email or "").strip().lower() == email),
+            None,
+        )
+        if match and (match.owner_user_id is None or match.owner_user_id == user.id):
+            if match.owner_user_id != user.id:
+                match.owner_user_id = user.id
+                match.contact_visible = True
+                db.commit()
+                db.refresh(match)
+            return match
+
+    claim = (
+        db.query(RehabCenterClaim)
+        .filter(
+            RehabCenterClaim.submitter_user_id == user.id,
+            RehabCenterClaim.status.in_((ClaimStatus.approved, ClaimStatus.certified)),
+        )
+        .order_by(RehabCenterClaim.created_at.desc())
+        .first()
+    )
+    if claim:
+        claimed_center = db.query(RehabCenter).filter(
+            RehabCenter.id == claim.rehab_center_id,
+            RehabCenter.deleted_at.is_(None),
+        ).first()
+        if claimed_center and (
+            claimed_center.owner_user_id is None or claimed_center.owner_user_id == user.id
+        ):
+            changed = False
+            if claimed_center.owner_user_id != user.id:
+                claimed_center.owner_user_id = user.id
+                changed = True
+            if claim.status == ClaimStatus.approved:
+                if not claimed_center.claimed:
+                    claimed_center.claimed = True
+                    changed = True
+                if not claimed_center.contact_visible:
+                    claimed_center.contact_visible = True
+                    changed = True
+            if changed:
+                db.commit()
+                db.refresh(claimed_center)
+            return claimed_center
+
+    return None
+
+
 def _require_active_client_center(db: Session, user: User) -> RehabCenter:
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id, RehabCenter.deleted_at.is_(None)).first()
+    center = _client_center(db, user)
     if not center:
         raise HTTPException(status_code=404, detail="No center linked")
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
@@ -268,7 +337,7 @@ def submit_lead(slug: str, body: LeadCreate, db: Annotated[Session, Depends(get_
 
 @router.get("/api/client/leads", response_model=list[LeadOut])
 def list_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(get_db)]):
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id).first()
+    center = _client_center(db, user)
     if not center:
         return []
     leads = (
@@ -295,7 +364,7 @@ def list_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(get
 
 @router.patch("/api/client/leads/{lead_id}/read", response_model=LeadOut)
 def mark_lead_read(lead_id: int, user: ActiveSubscriber, db: Annotated[Session, Depends(get_db)]):
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id).first()
+    center = _client_center(db, user)
     if not center:
         raise HTTPException(status_code=404, detail="No center")
     lead = db.query(CenterLead).filter(CenterLead.id == lead_id, CenterLead.rehab_center_id == center.id).first()
@@ -456,7 +525,7 @@ def delete_center_gallery_image(index: int, user: ActiveSubscriber, db: Annotate
 
 @router.get("/api/client/my-center")
 def get_my_center_enriched(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id).first()
+    center = _client_center(db, user)
     if not center:
         return None
     out = RehabCenterAdmin.model_validate(center).model_dump()
@@ -476,7 +545,7 @@ def get_my_center_enriched(user: ClientUser, db: Annotated[Session, Depends(get_
 
 @router.get("/api/client/upsells")
 def list_upsells(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
-    center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id).first()
+    center = _client_center(db, user)
     products = []
     for p in UPSELL_CATALOG:
         status = _upsell_status_for_center(db, center, p["product_type"])
