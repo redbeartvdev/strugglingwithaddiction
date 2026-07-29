@@ -124,6 +124,55 @@ def run_migrations(engine: Engine) -> None:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE user_profiles ADD COLUMN notification_preferences JSONB DEFAULT '{}'::jsonb"))
 
+    # Upsell product catalog + allow custom product keys on orders
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            DO $$ BEGIN
+                CREATE TYPE upsellfulfillment AS ENUM ('self_serve', 'human');
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$;
+            """
+        ))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS upsell_products (
+                id SERIAL PRIMARY KEY,
+                product_key VARCHAR(64) NOT NULL UNIQUE,
+                label VARCHAR(200) NOT NULL,
+                price_label VARCHAR(100) NOT NULL,
+                amount_cents INTEGER NOT NULL DEFAULT 0,
+                fulfillment upsellfulfillment NOT NULL DEFAULT 'human',
+                description TEXT NOT NULL DEFAULT '',
+                detail_text TEXT NOT NULL DEFAULT '',
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                stripe_price_id VARCHAR(255),
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_upsell_products_product_key ON upsell_products (product_key)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_upsell_products_enabled ON upsell_products (enabled)"))
+
+    if "upsell_orders" in insp.get_table_names():
+        cols = {c["name"]: c for c in insp.get_columns("upsell_orders")}
+        product_col = cols.get("product_type")
+        # Migrate enum product_type → VARCHAR so custom catalog keys can be ordered.
+        if product_col is not None:
+            col_type = str(product_col.get("type", "")).lower()
+            if "varchar" not in col_type and "character varying" not in col_type:
+                with engine.begin() as conn:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE upsell_orders ALTER COLUMN product_type "
+                            "TYPE VARCHAR(64) USING product_type::text"
+                        ))
+                    except Exception:
+                        pass
+
     if "rehab_center_claims" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("rehab_center_claims")}
         with engine.begin() as conn:

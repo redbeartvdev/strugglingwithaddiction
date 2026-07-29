@@ -17,7 +17,13 @@ sys.path.insert(0, str(BACKEND))
 from sqlalchemy import MetaData, Table, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_insurance_catalog, seed_rehab_centers
+from app.bootstrap import (
+    bootstrap_admin,
+    bootstrap_plans,
+    seed_insurance_catalog,
+    seed_rehab_centers,
+    seed_upsell_products,
+)
 from app.database import SessionLocal, engine
 from app.db_migrate import run_migrations
 from app.models import Base  # noqa: F401
@@ -123,6 +129,7 @@ def main() -> None:
         bootstrap_plans(db)
         seed_rehab_centers(db)
         seed_insurance_catalog(db)
+        seed_upsell_products(db)
         import_blog_if_empty(db)
         import_users_if_missing(db)
     finally:

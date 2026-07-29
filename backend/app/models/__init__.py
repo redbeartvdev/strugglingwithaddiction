@@ -19,7 +19,14 @@ from app.models.billing import (
     SubscriptionPlan,
 )
 from app.models.lead import CenterLead
-from app.models.upsell import UpsellOrder, UpsellProductType, UpsellFulfillment, UpsellOrderStatus
+from app.models.upsell import (
+    UpsellOrder,
+    UpsellProduct,
+    UpsellProductType,
+    UpsellFulfillment,
+    UpsellOrderStatus,
+    SYSTEM_PRODUCT_KEYS,
+)
 from app.models.email_log import EmailLog
 from app.models.email_template import EmailTemplateOverride
 from app.models.platform_settings import PlatformEmailSettings
@@ -52,9 +59,11 @@ __all__ = [
     "ClientPostStatus",
     "CenterLead",
     "UpsellOrder",
+    "UpsellProduct",
     "UpsellProductType",
     "UpsellFulfillment",
     "UpsellOrderStatus",
+    "SYSTEM_PRODUCT_KEYS",
     "EmailLog",
     "EmailTemplateOverride",
     "PlatformEmailSettings",

@@ -17,7 +17,14 @@ from app.database import get_db
 from app.models.billing import Subscription
 from app.models.lead import CenterLead
 from app.models.rehab import ListingStatus, RehabCenter
-from app.models.upsell import UpsellFulfillment, UpsellOrder, UpsellOrderStatus, UpsellProductType
+from app.models.upsell import (
+    SYSTEM_PRODUCT_KEYS,
+    UpsellFulfillment,
+    UpsellOrder,
+    UpsellOrderStatus,
+    UpsellProduct,
+    UpsellProductType,
+)
 from app.models.user import User
 from app.schemas.rehab import RehabCenterAdmin
 from app.services.email import send_email
@@ -56,22 +63,29 @@ def _featured_active(center: RehabCenter) -> bool:
     return bool(center.featured_until and center.featured_until > datetime.now(timezone.utc))
 
 
-def _upsell_status_for_center(db: Session, center: RehabCenter | None, product_type: UpsellProductType) -> dict:
+def _product_key(value) -> str:
+    if isinstance(value, UpsellProductType):
+        return value.value
+    return str(value or "")
+
+
+def _upsell_status_for_center(db: Session, center: RehabCenter | None, product_key: str) -> dict:
     if not center:
         return {"owned": False, "status": "available", "order_status": None}
+    key = _product_key(product_key)
     orders = (
         db.query(UpsellOrder)
         .filter(
             UpsellOrder.rehab_center_id == center.id,
-            UpsellOrder.product_type == product_type,
+            UpsellOrder.product_type == key,
         )
         .order_by(UpsellOrder.created_at.desc())
         .all()
     )
     latest = orders[0] if orders else None
-    if product_type == UpsellProductType.verified_badge and center.verified_badge:
+    if key == UpsellProductType.verified_badge.value and center.verified_badge:
         return {"owned": True, "status": "active", "order_status": latest.status.value if latest else "fulfilled"}
-    if product_type == UpsellProductType.featured_placement and _featured_active(center):
+    if key == UpsellProductType.featured_placement.value and _featured_active(center):
         return {
             "owned": True,
             "status": "active",
@@ -79,7 +93,10 @@ def _upsell_status_for_center(db: Session, center: RehabCenter | None, product_t
             "featured_until": center.featured_until.isoformat() if center.featured_until else None,
         }
     if latest and latest.status in (UpsellOrderStatus.paid, UpsellOrderStatus.fulfilled):
-        if product_type in (UpsellProductType.featured_article, UpsellProductType.article_aeo):
+        if key in (
+            UpsellProductType.featured_article.value,
+            UpsellProductType.article_aeo.value,
+        ) or (latest.fulfillment == UpsellFulfillment.human):
             return {
                 "owned": latest.status == UpsellOrderStatus.fulfilled,
                 "status": "fulfilled" if latest.status == UpsellOrderStatus.fulfilled else "in_progress",
@@ -89,40 +106,42 @@ def _upsell_status_for_center(db: Session, center: RehabCenter | None, product_t
         return {"owned": False, "status": "pending", "order_status": "pending"}
     return {"owned": False, "status": "available", "order_status": latest.status.value if latest else None}
 
-UPSELL_CATALOG = [
-    {
-        "product_type": UpsellProductType.verified_badge,
-        "label": "Verified / Accredited Badge",
-        "price_label": "$199–$299 / yr",
-        "amount_cents": 24900,
-        "fulfillment": UpsellFulfillment.self_serve,
-        "description": "Trust signal — makes verification mean something.",
-    },
-    {
-        "product_type": UpsellProductType.featured_placement,
-        "label": "Featured Placement",
-        "price_label": "$249 / mo",
-        "amount_cents": 24900,
-        "fulfillment": UpsellFulfillment.self_serve,
-        "description": "Category top placement + visual enhancement.",
-    },
-    {
-        "product_type": UpsellProductType.featured_article,
-        "label": "Featured Article",
-        "price_label": "$950 once",
-        "amount_cents": 95000,
-        "fulfillment": UpsellFulfillment.human,
-        "description": "Redbear-produced, SEO-optimized facility article.",
-    },
-    {
-        "product_type": UpsellProductType.article_aeo,
-        "label": "Article Syndication + AEO",
-        "price_label": "$2,500 once",
-        "amount_cents": 250000,
-        "fulfillment": UpsellFulfillment.human,
-        "description": "Article + distribution, internal linking, AI-search optimization.",
-    },
-]
+
+def _product_out(row: UpsellProduct) -> dict:
+    return {
+        "id": row.id,
+        "product_type": row.product_key,
+        "product_key": row.product_key,
+        "label": row.label,
+        "price_label": row.price_label,
+        "amount_cents": row.amount_cents,
+        "fulfillment": row.fulfillment.value if isinstance(row.fulfillment, UpsellFulfillment) else str(row.fulfillment),
+        "description": row.description or "",
+        "detail_text": row.detail_text or "",
+        "enabled": bool(row.enabled),
+        "sort_order": row.sort_order,
+        "stripe_price_id": row.stripe_price_id,
+        "is_system": row.product_key in SYSTEM_PRODUCT_KEYS,
+    }
+
+
+def _enabled_catalog(db: Session) -> list[UpsellProduct]:
+    return (
+        db.query(UpsellProduct)
+        .filter(UpsellProduct.enabled.is_(True))
+        .order_by(UpsellProduct.sort_order.asc(), UpsellProduct.id.asc())
+        .all()
+    )
+
+
+def _slugify_product_key(value: str) -> str:
+    import re
+
+    text = re.sub(r"[^a-z0-9]+", "_", (value or "").lower().strip())
+    return text.strip("_")[:64]
+
+
+UPSELL_CATALOG = []  # legacy name kept for imports; prefer UpsellProduct table
 
 
 class LeadCreate(BaseModel):
@@ -174,7 +193,33 @@ class ClientCenterUpdate(BaseModel):
 
 
 class UpsellCheckoutRequest(BaseModel):
-    product_type: UpsellProductType
+    product_type: str = Field(min_length=1, max_length=64)
+
+
+class UpsellProductCreate(BaseModel):
+    product_key: str | None = Field(default=None, max_length=64)
+    label: str = Field(min_length=1, max_length=200)
+    price_label: str = Field(min_length=1, max_length=100)
+    amount_cents: int = Field(default=0, ge=0)
+    fulfillment: UpsellFulfillment = UpsellFulfillment.human
+    description: str = ""
+    detail_text: str = ""
+    enabled: bool = True
+    sort_order: int = 0
+    stripe_price_id: str | None = Field(default=None, max_length=255)
+
+
+class UpsellProductUpdate(BaseModel):
+    product_key: str | None = Field(default=None, max_length=64)
+    label: str | None = Field(default=None, max_length=200)
+    price_label: str | None = Field(default=None, max_length=100)
+    amount_cents: int | None = Field(default=None, ge=0)
+    fulfillment: UpsellFulfillment | None = None
+    description: str | None = None
+    detail_text: str | None = None
+    enabled: bool | None = None
+    sort_order: int | None = None
+    stripe_price_id: str | None = Field(default=None, max_length=255)
 
 
 def _require_active_client_center(db: Session, user: User) -> RehabCenter:
@@ -478,21 +523,22 @@ def get_my_center_enriched(user: ClientUser, db: Annotated[Session, Depends(get_
 def list_upsells(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
     center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user.id).first()
     products = []
-    for p in UPSELL_CATALOG:
-        status = _upsell_status_for_center(db, center, p["product_type"])
+    for p in _enabled_catalog(db):
+        status = _upsell_status_for_center(db, center, p.product_key)
         products.append(
             {
-                "product_type": p["product_type"].value,
-                "label": p["label"],
-                "price_label": p["price_label"],
-                "fulfillment": p["fulfillment"].value,
-                "description": p["description"],
+                "product_type": p.product_key,
+                "label": p.label,
+                "price_label": p.price_label,
+                "fulfillment": p.fulfillment.value if isinstance(p.fulfillment, UpsellFulfillment) else str(p.fulfillment),
+                "description": p.description or "",
+                "detail_text": p.detail_text or "",
                 **status,
                 "preview": {
-                    "verified_badge": p["product_type"] == UpsellProductType.verified_badge,
-                    "featured_placement": p["product_type"] == UpsellProductType.featured_placement,
-                    "article": p["product_type"]
-                    in (UpsellProductType.featured_article, UpsellProductType.article_aeo),
+                    "verified_badge": p.product_key == UpsellProductType.verified_badge.value,
+                    "featured_placement": p.product_key == UpsellProductType.featured_placement.value,
+                    "article": p.product_key
+                    in (UpsellProductType.featured_article.value, UpsellProductType.article_aeo.value),
                 },
             }
         )
@@ -510,23 +556,28 @@ def list_upsells(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
 @router.post("/api/client/upsells/checkout")
 def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated[Session, Depends(get_db)]):
     center = _require_active_client_center(db, user)
-    catalog = next((p for p in UPSELL_CATALOG if p["product_type"] == body.product_type), None)
+    product_key = _product_key(body.product_type)
+    catalog = (
+        db.query(UpsellProduct)
+        .filter(UpsellProduct.product_key == product_key, UpsellProduct.enabled.is_(True))
+        .first()
+    )
     if not catalog:
         raise HTTPException(status_code=404, detail="Unknown product")
 
     order = UpsellOrder(
         user_id=user.id,
         rehab_center_id=center.id,
-        product_type=catalog["product_type"],
-        fulfillment=catalog["fulfillment"],
+        product_type=catalog.product_key,
+        fulfillment=catalog.fulfillment,
         status=UpsellOrderStatus.pending,
-        amount_cents=catalog["amount_cents"],
+        amount_cents=catalog.amount_cents,
     )
     db.add(order)
     db.commit()
     db.refresh(order)
 
-    if catalog["fulfillment"] == UpsellFulfillment.human:
+    if catalog.fulfillment == UpsellFulfillment.human:
         order.status = UpsellOrderStatus.paid
         db.commit()
         alert_to = settings.upsell_alert_email or settings.email_from
@@ -537,7 +588,7 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
             context={
                 "name": user.email,
                 "email": user.email,
-                "product_label": catalog["label"],
+                "product_label": catalog.label,
                 "center_name": center.name,
                 "order_id": str(order.id),
             },
@@ -546,7 +597,7 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         )
         return {"mode": "human", "order_id": order.id, "message": "Thanks — a specialist will contact you to close this package."}
 
-    # Self-serve via Stripe Checkout (one-time or recurring price IDs from env)
+    # Self-serve via Stripe Checkout (one-time or recurring price IDs from env / product)
     import stripe
 
     if not settings.stripe_secret_key:
@@ -558,12 +609,12 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         customer = stripe.Customer.create(email=user.email, metadata={"user_id": str(user.id)})
         customer_id = customer.id
 
-    price_id = None
+    price_id = catalog.stripe_price_id
     mode = "payment"
-    if body.product_type == UpsellProductType.verified_badge:
-        price_id = settings.stripe_price_verified_badge
-    elif body.product_type == UpsellProductType.featured_placement:
-        price_id = settings.stripe_price_featured_placement
+    if product_key == UpsellProductType.verified_badge.value:
+        price_id = price_id or settings.stripe_price_verified_badge
+    elif product_key == UpsellProductType.featured_placement.value:
+        price_id = price_id or settings.stripe_price_featured_placement
         mode = "subscription"
 
     if not price_id:
@@ -571,15 +622,15 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         line_item = {
             "price_data": {
                 "currency": "usd",
-                "unit_amount": catalog["amount_cents"],
-                "product_data": {"name": catalog["label"]},
+                "unit_amount": catalog.amount_cents,
+                "product_data": {"name": catalog.label},
                 **({"recurring": {"interval": "month"}} if mode == "subscription" else {}),
             },
             "quantity": 1,
         }
     else:
         line_item = {"price": price_id, "quantity": 1}
-        mode = "subscription" if body.product_type == UpsellProductType.featured_placement else "payment"
+        mode = "subscription" if product_key == UpsellProductType.featured_placement.value else "payment"
 
     session = stripe.checkout.Session.create(
         customer=customer_id,
@@ -590,7 +641,7 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         metadata={
             "user_id": str(user.id),
             "upsell_order_id": str(order.id),
-            "product_type": body.product_type.value,
+            "product_type": product_key,
             "rehab_center_id": str(center.id),
         },
     )
@@ -605,9 +656,9 @@ def admin_upsell_orders(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
     return [
         {
             "id": o.id,
-            "product_type": o.product_type.value,
-            "fulfillment": o.fulfillment.value,
-            "status": o.status.value,
+            "product_type": _product_key(o.product_type),
+            "fulfillment": o.fulfillment.value if isinstance(o.fulfillment, UpsellFulfillment) else str(o.fulfillment),
+            "status": o.status.value if isinstance(o.status, UpsellOrderStatus) else str(o.status),
             "amount_cents": o.amount_cents,
             "user_id": o.user_id,
             "rehab_center_id": o.rehab_center_id,
@@ -637,6 +688,16 @@ def admin_update_upsell_order(
             order.fulfilled_at = datetime.now(timezone.utc)
             user = db.query(User).filter(User.id == order.user_id).first()
             center = db.query(RehabCenter).filter(RehabCenter.id == order.rehab_center_id).first()
+            product = (
+                db.query(UpsellProduct)
+                .filter(UpsellProduct.product_key == _product_key(order.product_type))
+                .first()
+            )
+            product_label = (
+                product.label
+                if product
+                else _product_key(order.product_type).replace("_", " ").title()
+            )
             if user:
                 send_email(
                     db,
@@ -645,7 +706,7 @@ def admin_update_upsell_order(
                     context={
                         "name": user.email,
                         "center_name": center.name if center else "your listing",
-                        "product_label": order.product_type.value.replace("_", " ").title(),
+                        "product_label": product_label,
                         "listing_url": _public_listing_url(center) if center else settings.public_site_url,
                         "login_url": f"{settings.admin_site_url}/login",
                     },
@@ -654,6 +715,106 @@ def admin_update_upsell_order(
                 )
     db.commit()
     return {"id": order.id, "status": order.status.value}
+
+
+@router.get("/api/admin/upsell-products")
+def admin_list_upsell_products(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    rows = db.query(UpsellProduct).order_by(UpsellProduct.sort_order.asc(), UpsellProduct.id.asc()).all()
+    return [_product_out(r) for r in rows]
+
+
+@router.post("/api/admin/upsell-products")
+def admin_create_upsell_product(
+    body: UpsellProductCreate,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    key = _slugify_product_key(body.product_key or body.label)
+    if not key:
+        raise HTTPException(status_code=400, detail="product_key is required")
+    if db.query(UpsellProduct).filter(UpsellProduct.product_key == key).first():
+        raise HTTPException(status_code=409, detail="A product with this key already exists")
+    row = UpsellProduct(
+        product_key=key,
+        label=body.label.strip(),
+        price_label=body.price_label.strip(),
+        amount_cents=body.amount_cents,
+        fulfillment=body.fulfillment,
+        description=body.description or "",
+        detail_text=body.detail_text or "",
+        enabled=body.enabled,
+        sort_order=body.sort_order,
+        stripe_price_id=(body.stripe_price_id or None),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _product_out(row)
+
+
+@router.patch("/api/admin/upsell-products/{product_id}")
+def admin_update_upsell_product(
+    product_id: int,
+    body: UpsellProductUpdate,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.query(UpsellProduct).filter(UpsellProduct.id == product_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Product not found")
+    data = body.model_dump(exclude_unset=True)
+    if "product_key" in data:
+        if row.product_key in SYSTEM_PRODUCT_KEYS:
+            raise HTTPException(status_code=400, detail="System product keys cannot be renamed")
+        new_key = _slugify_product_key(data.pop("product_key") or "")
+        if not new_key:
+            raise HTTPException(status_code=400, detail="Invalid product_key")
+        clash = (
+            db.query(UpsellProduct)
+            .filter(UpsellProduct.product_key == new_key, UpsellProduct.id != row.id)
+            .first()
+        )
+        if clash:
+            raise HTTPException(status_code=409, detail="A product with this key already exists")
+        row.product_key = new_key
+    if "stripe_price_id" in data and data["stripe_price_id"] == "":
+        data["stripe_price_id"] = None
+    for k, v in data.items():
+        if k in ("label", "price_label") and isinstance(v, str):
+            v = v.strip()
+        setattr(row, k, v)
+    db.commit()
+    db.refresh(row)
+    return _product_out(row)
+
+
+@router.delete("/api/admin/upsell-products/{product_id}")
+def admin_delete_upsell_product(
+    product_id: int,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.query(UpsellProduct).filter(UpsellProduct.id == product_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if row.product_key in SYSTEM_PRODUCT_KEYS:
+        # Soft-delete system packages so listing/checkout side effects stay intact.
+        row.enabled = False
+        db.commit()
+        return {"id": row.id, "deleted": False, "enabled": False, "message": "System package disabled."}
+    order_count = db.query(UpsellOrder).filter(UpsellOrder.product_type == row.product_key).count()
+    if order_count:
+        row.enabled = False
+        db.commit()
+        return {
+            "id": row.id,
+            "deleted": False,
+            "enabled": False,
+            "message": f"Package has {order_count} order(s); disabled instead of deleted.",
+        }
+    db.delete(row)
+    db.commit()
+    return {"id": product_id, "deleted": True}
 
 
 @router.get("/api/admin/leads")

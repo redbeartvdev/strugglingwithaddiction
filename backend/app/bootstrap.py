@@ -14,7 +14,68 @@ from app.models.billing import BillingInterval, Subscription, SubscriptionPlan
 from app.models.insurance import InsuranceCatalog
 from app.models.profile import UserProfile
 from app.models.rehab import RehabCenter, ListingStatus, CenterSource
+from app.models.upsell import UpsellFulfillment, UpsellProduct
 from app.models.user import User, UserRole
+
+# Default upsell package catalog. Seed only inserts missing keys so admin edits persist.
+# Known previous hardcoded headlines — seed refreshes these once when migrating to DB.
+_OLD_UPSELL_DESCRIPTIONS = {
+    "verified_badge": "Trust signal — makes verification mean something.",
+    "featured_placement": "Category top placement + visual enhancement.",
+    "featured_article": "Redbear-produced, SEO-optimized facility article.",
+    "article_aeo": "Article + distribution, internal linking, AI-search optimization.",
+}
+
+UPSELL_PRODUCT_SEED = [
+    {
+        "product_key": "verified_badge",
+        "label": "Verified / Accredited Badge",
+        "price_label": "$199–$299 / yr",
+        "amount_cents": 24900,
+        "fulfillment": UpsellFulfillment.self_serve,
+        "description": "Build instant trust with families vetting treatment options",
+        "detail_text": (
+            "Verified badge next to your center name, reassures families researching "
+            "care during a high-stress decision"
+        ),
+        "sort_order": 10,
+    },
+    {
+        "product_key": "featured_placement",
+        "label": "Featured Placement",
+        "price_label": "$249 / mo",
+        "amount_cents": 24900,
+        "fulfillment": UpsellFulfillment.self_serve,
+        "description": "Be the first center families see in your category",
+        "detail_text": (
+            "Top-of-category placement + Featured badge will have more visibility, more inquiries"
+        ),
+        "sort_order": 20,
+    },
+    {
+        "product_key": "featured_article",
+        "label": "Featured Article",
+        "price_label": "$950 once",
+        "amount_cents": 95000,
+        "fulfillment": UpsellFulfillment.human,
+        "description": "A dedicated, SEO-optimized article that ranks your facility on Google",
+        "detail_text": "Written and published by our editorial team, fully done for you",
+        "sort_order": 30,
+    },
+    {
+        "product_key": "article_aeo",
+        "label": "Article Syndication + AEO",
+        "price_label": "$2,500 once",
+        "amount_cents": 250000,
+        "fulfillment": UpsellFulfillment.human,
+        "description": "Get found by ChatGPT, Perplexity, and Google AI Overviews",
+        "detail_text": (
+            "Article + syndication across partner sites, internal linking, and optimization "
+            "for AI search assistants (AEO)"
+        ),
+        "sort_order": 40,
+    },
+]
 
 USA_INSURANCE_SEED = [
     ("Aetna", "aetna", "/images/insurance/aetna.png", 10),
@@ -357,3 +418,31 @@ def seed_insurance_catalog(db: Session) -> None:
             )
         )
     db.commit()
+
+
+def seed_upsell_products(db: Session) -> None:
+    """Idempotent seed of upsell packages. Inserts missing keys; migrates old hardcoded copy."""
+    existing = {row.product_key: row for row in db.query(UpsellProduct).all()}
+    changed = False
+    for item in UPSELL_PRODUCT_SEED:
+        row = existing.get(item["product_key"])
+        if not row:
+            db.add(UpsellProduct(**item, enabled=True))
+            changed = True
+            continue
+        should_refresh = (
+            not (row.detail_text or "").strip()
+            or (row.description or "").strip() == _OLD_UPSELL_DESCRIPTIONS.get(item["product_key"])
+        )
+        if should_refresh:
+            row.label = item["label"]
+            row.price_label = item["price_label"]
+            row.amount_cents = item["amount_cents"]
+            row.description = item["description"]
+            row.detail_text = item["detail_text"]
+            row.fulfillment = item["fulfillment"]
+            row.sort_order = item["sort_order"]
+            changed = True
+    if changed:
+        db.commit()
+        logger.info("Seeded/updated upsell products")

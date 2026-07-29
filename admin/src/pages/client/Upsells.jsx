@@ -103,17 +103,11 @@ export default function ClientUpsells() {
               <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: '8px 0' }}>{p.price_label}</p>
               <p className="muted">{p.description}</p>
 
-              <div className="upsell-preview">
-                {p.preview?.verified_badge && (
-                  <p><strong>On listing:</strong> Verified badge next to your center name.</p>
-                )}
-                {p.preview?.featured_placement && (
-                  <p><strong>On directory:</strong> Featured sort + Featured badge on your card.</p>
-                )}
-                {p.preview?.article && (
-                  <p><strong>Delivery:</strong> Editorial package fulfilled by our team after purchase.</p>
-                )}
-              </div>
+              {p.detail_text ? (
+                <div className="upsell-preview">
+                  <p>{p.detail_text}</p>
+                </div>
+              ) : null}
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                 {owned && data.public_listing_url ? (

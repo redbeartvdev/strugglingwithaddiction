@@ -403,14 +403,19 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                 if order:
                     order.status = UpsellOrderStatus.paid
                     center = db.query(RehabCenter).filter(RehabCenter.id == order.rehab_center_id).first()
-                    if center and order.product_type == UpsellProductType.verified_badge:
+                    if center and str(order.product_type) == UpsellProductType.verified_badge.value:
                         center.verified_badge = True
-                    if center and order.product_type == UpsellProductType.featured_placement:
+                    if center and str(order.product_type) == UpsellProductType.featured_placement.value:
                         from datetime import timedelta, timezone as tz
                         from datetime import datetime as dt
                         center.featured_until = dt.now(tz.utc) + timedelta(days=30)
                     if user:
-                        product_label = order.product_type.value.replace("_", " ").title()
+                        product_key = (
+                            order.product_type.value
+                            if hasattr(order.product_type, "value")
+                            else str(order.product_type)
+                        )
+                        product_label = product_key.replace("_", " ").title()
                         send_email(
                             db,
                             to_email=user.email,
