@@ -17,6 +17,7 @@ const NAV_BY_ROLE = {
     { to: '/admin/posts', label: 'Posts', Icon: IconFile },
     { to: '/admin/rehab', label: 'Rehab', Icon: IconBuilding },
     { to: '/admin/claims', label: 'Claims', Icon: IconInbox, badgeKey: 'claims' },
+    { to: '/admin/submissions', label: 'Submission Center', Icon: IconBuilding, badgeKey: 'submissions' },
     { to: '/admin/leads', label: 'Leads', Icon: IconInbox },
     { to: '/admin/upsells', label: 'Upsells', Icon: IconFile },
     { to: '/admin/billing', label: 'Billing', Icon: IconCard },
@@ -50,7 +51,7 @@ function initials(name, email) {
   return n.slice(0, 2).toUpperCase()
 }
 
-export default function Shell({ children, pendingClaims = 0 }) {
+export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0 }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [subscriptionLocked, setSubscriptionLocked] = useState(false)
@@ -114,7 +115,11 @@ export default function Shell({ children, pendingClaims = 0 }) {
           <nav className="rail-nav">
             {nav.map(item => {
               const I = item.Icon
-              const badge = item.badgeKey === 'claims' && pendingClaims > 0 ? pendingClaims : null
+              const badge = item.badgeKey === 'claims' && pendingClaims > 0
+                ? pendingClaims
+                : item.badgeKey === 'submissions' && pendingSubmissions > 0
+                  ? pendingSubmissions
+                  : null
               return (
                 <NavLink
                   key={item.to}

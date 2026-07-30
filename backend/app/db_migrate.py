@@ -194,3 +194,44 @@ def run_migrations(engine: Engine) -> None:
                         conn.execute(text(f"ALTER TYPE claimstatus ADD VALUE '{value}'"))
                     except Exception:
                         pass
+
+    # Public “submit your center” queue
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            DO $$ BEGIN
+                CREATE TYPE centersubmissionstatus AS ENUM ('pending', 'approved', 'rejected');
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$;
+            """
+        ))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS center_submissions (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                center_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                phone VARCHAR(50) NOT NULL,
+                address_line VARCHAR(255) NOT NULL,
+                city VARCHAR(100) NOT NULL,
+                state VARCHAR(100) NOT NULL,
+                zip VARCHAR(20),
+                services VARCHAR[] DEFAULT '{}',
+                insurances VARCHAR[] DEFAULT '{}',
+                description TEXT NOT NULL DEFAULT '',
+                status centersubmissionstatus NOT NULL DEFAULT 'pending',
+                admin_notes TEXT,
+                reviewed_at TIMESTAMPTZ,
+                reviewed_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                rehab_center_id INTEGER REFERENCES rehab_centers(id) ON DELETE SET NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_submissions_center_name ON center_submissions (center_name)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_submissions_email ON center_submissions (email)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_submissions_status ON center_submissions (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_submissions_rehab_center_id ON center_submissions (rehab_center_id)"))

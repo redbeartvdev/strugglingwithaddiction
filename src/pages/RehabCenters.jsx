@@ -3,8 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch } from 'react-icons/fa'
 import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled } from '../lib/api'
-import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService } from '../lib/rehabServices'
+import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
 import { rehabLandingPath } from '../lib/rehabLanding'
+import { US_STATES } from '../lib/usStates'
 import RehabSearch from '../components/RehabSearch'
 import './RehabCenters.css'
 
@@ -132,6 +133,178 @@ export const STATIC_CENTERS = [
 // POST /api/rehab/claims/{ticket}/cert - upload certification file
 // GET /api/rehab/claims/{ticket} - check claim status
 // POST /api/billing/checkout-claim - checkout when certified (body: { ticket_number, interval })
+// POST /api/center-submissions - submit a missing facility for admin review
+
+const EMPTY_SUBMIT_FORM = {
+  full_name: '',
+  center_name: '',
+  email: '',
+  phone: '',
+  address_line: '',
+  city: '',
+  state: '',
+  zip: '',
+  description: '',
+}
+
+function SubmitCenterModal({ onClose }) {
+  const [form, setForm] = useState(EMPTY_SUBMIT_FORM)
+  const [services, setServices] = useState([])
+  const [insurances, setInsurances] = useState([])
+  const [catalog, setCatalog] = useState([])
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    if (!apiEnabled()) {
+      setCatalog(REHAB_INSURANCE_TYPES.map((item, i) => ({ id: item.id || i, name: item.label })))
+      return
+    }
+    fetchApi('/api/insurances')
+      .then(data => {
+        if (Array.isArray(data) && data.length) {
+          setCatalog(data)
+          return
+        }
+        setCatalog(REHAB_INSURANCE_TYPES.map((item, i) => ({ id: item.id || i, name: item.label })))
+      })
+      .catch(() => {
+        setCatalog(REHAB_INSURANCE_TYPES.map((item, i) => ({ id: item.id || i, name: item.label })))
+      })
+  }, [])
+
+  function toggleService(label) {
+    setServices(prev => (prev.includes(label) ? prev.filter(s => s !== label) : [...prev, label]))
+  }
+
+  function toggleInsurance(name) {
+    setInsurances(prev => (prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (!services.length) {
+      setError('Select at least one type of service.')
+      return
+    }
+    if (!insurances.length) {
+      setError('Select at least one insurance type.')
+      return
+    }
+    setBusy(true)
+    try {
+      if (apiEnabled()) {
+        await fetchApi('/api/center-submissions', {
+          method: 'POST',
+          body: JSON.stringify({
+            ...form,
+            services,
+            insurances,
+          }),
+        })
+      }
+      setDone(true)
+    } catch (err) {
+      setError(err.message || 'Submission failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+
+        {done ? (
+          <div className="modal-success">
+            <div className="modal-success-icon">✓</div>
+            <h3>Submission received</h3>
+            <p>Thanks — our team will review {form.center_name || 'your facility'} and follow up by email.</p>
+            <button className="btn" onClick={onClose}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div className="modal-header">
+              <span className="section-label">Submit your center</span>
+              <h3>Add your facility to the directory</h3>
+              <p>Tell us about your treatment center. Our team reviews every submission before publishing.</p>
+            </div>
+            {error && <p style={{ color: '#8c1126', marginBottom: '0.75rem' }}>{error}</p>}
+            <form className="modal-form" onSubmit={handleSubmit}>
+              <div className="modal-form-grid">
+                <label>Full name<input type="text" required value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} /></label>
+                <label>Rehab center name<input type="text" required value={form.center_name} onChange={e => setForm(f => ({ ...f, center_name: e.target.value }))} /></label>
+                <label>Email<input type="email" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></label>
+                <label>Contact number<input type="tel" required value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></label>
+                <label className="modal-span-2">Street address<input type="text" required value={form.address_line} onChange={e => setForm(f => ({ ...f, address_line: e.target.value }))} placeholder="123 Main St, Suite 100" /></label>
+                <label>City<input type="text" required value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></label>
+                <label>
+                  State
+                  <select required value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))}>
+                    <option value="">Select state</option>
+                    {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+                <label>ZIP<input type="text" value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} /></label>
+              </div>
+
+              <fieldset className="modal-check-group">
+                <legend>Types of services <span>(select all that apply)</span></legend>
+                <div className="modal-check-grid">
+                  {REHAB_SERVICE_TYPES.map(service => (
+                    <label key={service.id} className={`modal-check${services.includes(service.label) ? ' is-on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={services.includes(service.label)}
+                        onChange={() => toggleService(service.label)}
+                      />
+                      <span>{service.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="modal-check-group">
+                <legend>Insurance accepted <span>(select multiple)</span></legend>
+                <div className="modal-check-grid">
+                  {catalog.map(item => (
+                    <label key={item.id} className={`modal-check${insurances.includes(item.name) ? ' is-on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={insurances.includes(item.name)}
+                        onChange={() => toggleInsurance(item.name)}
+                      />
+                      <span>{item.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label>
+                Description
+                <textarea
+                  required
+                  minLength={20}
+                  rows={4}
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Tell families what makes your program unique…"
+                />
+              </label>
+
+              <button type="submit" className="btn" disabled={busy}>
+                {busy ? 'Submitting…' : 'Submit center'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function ClaimModal({ center, onClose }) {
   const [step, setStep] = useState(1) // 1=account, 2=confirm, 3=cert, 4=status
@@ -360,6 +533,7 @@ function filterCenters(centers, { query, state, service, insurance }) {
 export default function RehabCenters() {
   const [searchParams] = useSearchParams()
   const [claimCenter, setClaimCenter] = useState(null)
+  const [submitOpen, setSubmitOpen] = useState(false)
   const [centers, setCenters] = useState(STATIC_CENTERS)
   const [loading, setLoading] = useState(apiEnabled())
   const [query, setQuery] = useState('')
@@ -545,13 +719,14 @@ export default function RehabCenters() {
             <p>We list accredited, high-quality treatment centers committed to ethical care.</p>
           </div>
           <div className="rehab-cta-btns">
-            <button className="btn btn-white" onClick={() => setClaimCenter(centers[0])}>Submit Your Center</button>
+            <button type="button" className="btn btn-white" onClick={() => setSubmitOpen(true)}>Submit Your Center</button>
             <Link to="/provider" className="btn btn-white-outline">Provider Login</Link>
             <a href="tel:18005551234" className="btn btn-white-outline">Call Our Team</a>
           </div>
         </div>
       </section>
 
+      {submitOpen && <SubmitCenterModal onClose={() => setSubmitOpen(false)} />}
       {claimCenter && <ClaimModal center={claimCenter} onClose={() => setClaimCenter(null)} />}
     </main>
   )

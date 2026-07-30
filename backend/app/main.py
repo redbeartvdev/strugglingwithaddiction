@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import text
 
-from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users, import_centers, claim_journey, leads_upsells, lifecycle, email_admin, insurance, analytics
+from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users, import_centers, claim_journey, leads_upsells, lifecycle, email_admin, insurance, analytics, center_submissions
 from app.static_site import mount_image_assets, register_static_site
 from app.bootstrap import (
     bootstrap_admin,
@@ -118,6 +118,7 @@ app.include_router(lifecycle.router)
 app.include_router(email_admin.router)
 app.include_router(insurance.router)
 app.include_router(analytics.router)
+app.include_router(center_submissions.router)
 
 
 @app.get("/health")

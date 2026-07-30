@@ -66,6 +66,26 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
         "description": "Internal alert when someone starts a listing claim.",
         "category": "claim",
     },
+    "admin_new_center_submission": {
+        "label": "Admin — new center submission",
+        "description": "Internal alert when someone submits a missing facility.",
+        "category": "claim",
+    },
+    "center_submission_received": {
+        "label": "Center submission received",
+        "description": "Confirm to the submitter that we received their facility.",
+        "category": "claim",
+    },
+    "center_submission_approved": {
+        "label": "Center submission approved",
+        "description": "Notify the submitter that their facility was accepted.",
+        "category": "claim",
+    },
+    "center_submission_rejected": {
+        "label": "Center submission rejected",
+        "description": "Notify the submitter that their facility was not accepted.",
+        "category": "claim",
+    },
     "verification": {
         "label": "Claim verification",
         "description": "Ask a claimant to upload rehab certification.",
@@ -208,6 +228,35 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "A new listing claim was started.\n\n"
         "Center: {center_name}\nTicket: {ticket}\nClaimant: {name}\nEmail: {email}\nPhone: {lead_phone}\n\n"
         "Review claims: {admin_claims_url}\nClaim status: {claim_url}\n",
+    ),
+    "admin_new_center_submission": (
+        "New center submission — {center_name}",
+        "A facility asked to be added to the directory.\n\n"
+        "Submission #{submission_id}\n"
+        "Center: {center_name}\n"
+        "Contact: {name}\nEmail: {email}\nPhone: {lead_phone}\n"
+        "Address: {location}\n"
+        "Services: {services}\n"
+        "Insurance: {insurances}\n\n"
+        "Description:\n{description}\n\n"
+        "Open Submission Center: {admin_submissions_url}\n",
+    ),
+    "center_submission_received": (
+        "We received your facility submission",
+        "Hi {name},\n\nThanks for submitting {center_name}. Our team will review the details and follow up if we need anything else.\n\n"
+        "— {site_name}\n",
+    ),
+    "center_submission_approved": (
+        "Your facility submission was accepted — {center_name}",
+        "Hi {name},\n\nGood news — we accepted your submission for {center_name}.\n\n"
+        "{admin_notes}\n\n"
+        "Provider login: {login_url}\n",
+    ),
+    "center_submission_rejected": (
+        "Update on your facility submission — {center_name}",
+        "Hi {name},\n\nWe were unable to accept the submission for {center_name} at this time.\n\n"
+        "{admin_notes}\n\n"
+        "Questions? Contact {support_email}\n",
     ),
     "verification": (
         "Upload rehab certification to confirm your claim",
@@ -469,6 +518,12 @@ def default_template_context(to_email: str = "preview@example.com", db: Session 
         "reset_url": f"{settings.admin_site_url.rstrip('/')}/reset-password?token=preview",
         "inbox_url": f"{settings.admin_site_url.rstrip('/')}/client/leads",
         "admin_claims_url": f"{settings.admin_site_url.rstrip('/')}/admin/claims",
+        "admin_submissions_url": f"{settings.admin_site_url.rstrip('/')}/admin/submissions",
+        "submission_id": "42",
+        "location": "123 Main St, Austin, Texas 78701",
+        "services": "Medical Detox, IOP (Intensive Outpatient)",
+        "insurances": "Aetna, Blue Cross Blue Shield",
+        "description": "Licensed dual-diagnosis treatment center serving Central Texas.",
         "lead_name": "Jordan Visitor",
         "lead_email": "jordan@example.com",
         "lead_phone": "(555) 010-2000",

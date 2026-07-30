@@ -10,7 +10,7 @@ import { IconChevron, IconPlus } from '../../components/Icons'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState({ users: 0, posts: 0, centers: 0, claims: 0 })
+  const [stats, setStats] = useState({ users: 0, posts: 0, centers: 0, claims: 0, submissions: 0 })
   const [centers, setCenters] = useState([])
   const [activity, setActivity] = useState([])
 
@@ -20,21 +20,28 @@ export default function AdminDashboard() {
       api('/api/admin/posts').catch(() => []),
       api('/api/admin/rehab-centers').catch(() => []),
       api('/api/admin/claims').catch(() => []),
-    ]).then(([users, posts, rehab, claims]) => {
+      api('/api/admin/center-submissions/pending-count').catch(() => ({ count: 0 })),
+      api('/api/admin/center-submissions').catch(() => []),
+    ]).then(([users, posts, rehab, claims, pendingSubs, submissions]) => {
       setStats({
         users: users.length,
         posts: posts.length,
         centers: rehab.length,
         claims: claims.filter(c => c.status === 'pending').length,
+        submissions: pendingSubs?.count || 0,
       })
       setCenters(rehab.slice(0, 3))
-      setActivity(
-        claims.slice(0, 4).map(c => ({
-          time: new Date(c.created_at).toLocaleDateString(),
-          msg: `${c.ticket_number} — ${c.center_name} (${c.status})`,
-          tone: c.status === 'pending' ? 'warn' : c.status === 'approved' ? 'ok' : 'info',
-        })),
-      )
+      const claimActivity = claims.slice(0, 3).map(c => ({
+        time: new Date(c.created_at).toLocaleDateString(),
+        msg: `${c.ticket_number} — ${c.center_name} (${c.status})`,
+        tone: c.status === 'pending' ? 'warn' : c.status === 'approved' ? 'ok' : 'info',
+      }))
+      const submissionActivity = (submissions || []).slice(0, 3).map(s => ({
+        time: new Date(s.created_at).toLocaleDateString(),
+        msg: `Submission — ${s.center_name} (${s.status})`,
+        tone: s.status === 'pending' ? 'warn' : s.status === 'approved' ? 'ok' : 'info',
+      }))
+      setActivity([...submissionActivity, ...claimActivity].slice(0, 5))
     })
   }, [])
 
@@ -46,21 +53,25 @@ export default function AdminDashboard() {
         <Eyebrow>Welcome back</Eyebrow>
         <h1 className="hero-title">Good morning, {name}.</h1>
         <p className="hero-lead">
-          {stats.centers} rehab centers listed. {stats.claims > 0
-            ? `${stats.claims} claim${stats.claims > 1 ? 's' : ''} awaiting review.`
-            : 'No pending claims.'}
+          {stats.centers} rehab centers listed.
+          {' '}
+          {stats.submissions > 0
+            ? `${stats.submissions} center submission${stats.submissions > 1 ? 's' : ''} awaiting review.`
+            : stats.claims > 0
+              ? `${stats.claims} claim${stats.claims > 1 ? 's' : ''} awaiting review.`
+              : 'No pending submissions or claims.'}
         </p>
         <div className="hero-actions">
-          <Button variant="primary" size="lg" as={Link} to="/admin/claims">Review claims</Button>
-          <Button variant="ghost" size="lg" as={Link} to="/admin/rehab">Add a center</Button>
+          <Button variant="primary" size="lg" as={Link} to="/admin/submissions">Submission Center</Button>
+          <Button variant="ghost" size="lg" as={Link} to="/admin/claims">Review claims</Button>
         </div>
       </section>
 
       <section className="stat-row">
         {[
           { k: 'Users', v: String(stats.users), sub: 'accounts' },
-          { k: 'Posts', v: String(stats.posts), sub: 'articles' },
           { k: 'Centers', v: String(stats.centers), sub: 'listings' },
+          { k: 'Submissions', v: String(stats.submissions), sub: 'pending' },
           { k: 'Claims', v: String(stats.claims), sub: 'pending' },
         ].map(s => (
           <Card key={s.k} pad="sm">

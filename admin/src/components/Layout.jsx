@@ -6,12 +6,16 @@ import { useAuth } from '../auth'
 
 export function AdminLayout({ children }) {
   const [pendingClaims, setPendingClaims] = useState(0)
+  const [pendingSubmissions, setPendingSubmissions] = useState(0)
   useEffect(() => {
     api('/api/admin/claims')
       .then(list => setPendingClaims(list.filter(c => c.status === 'pending').length))
       .catch(() => {})
+    api('/api/admin/center-submissions/pending-count')
+      .then(data => setPendingSubmissions(data?.count || 0))
+      .catch(() => {})
   }, [])
-  return <Shell pendingClaims={pendingClaims}>{children}</Shell>
+  return <Shell pendingClaims={pendingClaims} pendingSubmissions={pendingSubmissions}>{children}</Shell>
 }
 
 export function EditorLayout({ children }) {

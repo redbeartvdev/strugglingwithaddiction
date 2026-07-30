@@ -21,6 +21,7 @@ import AdminUpsells from './pages/admin/Upsells'
 import AdminEmails from './pages/admin/Emails'
 import AdminInsurances from './pages/admin/Insurances'
 import AdminAnalytics from './pages/admin/Analytics'
+import AdminSubmissions from './pages/admin/Submissions'
 import EditorDashboard from './pages/editor/Dashboard'
 import EditorPosts from './pages/editor/Posts'
 import ClientDashboard from './pages/client/Dashboard'
@@ -63,6 +64,7 @@ export default function App() {
       <Route path="/admin/rehab/new" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><RehabEditor /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/rehab/:id/edit" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><RehabEditor /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/claims" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminClaims /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/submissions" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminSubmissions /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/billing" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminBilling /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/import" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminImport /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/lifecycle" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminLifecycle /></AdminLayout></ProtectedRoute>} />
