@@ -332,6 +332,12 @@
   flex-shrink: 0;
 }
 
+.rehab-cta-btns .btn-white:hover {
+  background-color: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: var(--white);
+}
+
 /* ── Modal ────────────────────────────────── */
 .modal-backdrop {
   position: fixed;

@@ -873,8 +873,8 @@ export default function RehabCenters() {
           </div>
           <div className="rehab-cta-btns">
             <button type="button" className="btn btn-white" onClick={() => setSubmitOpen(true)}>Submit Your Center</button>
-            <Link to="/provider" className="btn btn-white-outline">Provider Login</Link>
-            <a href="tel:18005551234" className="btn btn-white-outline">Call Our Team</a>
+            <Link to="/provider" className="btn btn-white">Provider Login</Link>
+            <a href="tel:18005551234" className="btn btn-white">Call Our Team</a>
           </div>
         </div>
       </section>
