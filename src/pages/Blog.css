@@ -154,8 +154,8 @@
 }
 
 .cat-pill.active {
-  background: #8c1126;
-  border-color: #8c1126;
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
   color: white;
 }
 
