@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   FaBuilding,
   FaPenFancy,
-  FaHandshake,
   FaLifeRing,
 } from 'react-icons/fa'
 import { fetchApi } from '../lib/api'
@@ -18,13 +17,6 @@ const portalCards = [
     title: 'Treatment Centers',
     body: 'Claim your listing, update facility details, and manage your directory profile.',
     linkLabel: 'Browse directory',
-    to: '/rehab-centers',
-  },
-  {
-    icon: <FaHandshake style={ICON_STYLE} aria-hidden="true" />,
-    title: 'Partners',
-    body: 'Access partner resources, landing pages, and account tools in one place.',
-    linkLabel: 'Learn more',
     to: '/rehab-centers',
   },
   {
