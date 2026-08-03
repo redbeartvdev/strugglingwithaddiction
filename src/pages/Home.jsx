@@ -220,14 +220,14 @@ export default function Home() {
             <span className="section-label">Why It Matters</span>
             <h2>Addiction Is a Disease,<br />Not a Moral Failing</h2>
             <p>
-              Millions of people across America are caught in the grip of addiction —
+              Millions of people across America are caught in the grip of addiction,
               not because they are weak or broken, but because addiction is a complex
               brain disease that requires real medical support.
             </p>
             <p>
               At Struggling With Addiction, we believe everyone deserves clear,
-              accurate information when looking for treatment. We are a directory —
-              not a treatment provider — helping you browse verified centers,
+              accurate information when looking for treatment. We are a directory,
+              not a treatment provider, helping you browse verified centers,
               compare options, and contact facilities directly.
             </p>
             <div className="hope-ctas">
