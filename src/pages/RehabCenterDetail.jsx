@@ -101,7 +101,7 @@ function InquiryForm({ center }) {
 function ChipList({ items }) {
   if (!items?.length) return null
   return (
-    <ul className="rpd-chips">
+    <ul className="rpd-care-list">
       {items.map(item => <li key={item}>{formatCareLabel(item)}</li>)}
     </ul>
   )
@@ -369,16 +369,6 @@ export default function RehabCenterDetail() {
                 <a href={`tel:${center.phone.replace(/\D/g, '')}`}>Call {center.phone}</a>
               </p>
             )}
-          </section>
-
-          <section id="accreditations" className="rpd-section">
-            <h2>Accreditations</h2>
-            <div className="rpd-accreditation-grid">
-              {(center.accreditations || []).map(item => (
-                <div key={item} className="rpd-accreditation-card">{item}</div>
-              ))}
-            </div>
-            {!center.accreditations?.length && <p className="rpd-muted">Accreditation details not published yet.</p>}
           </section>
 
           <ReviewsCarousel center={center} />

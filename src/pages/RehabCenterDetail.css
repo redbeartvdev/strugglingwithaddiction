@@ -526,21 +526,31 @@
   margin-bottom: 0.65rem;
 }
 
-.rpd-chips {
+.rpd-care-list {
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  gap: 0.45rem;
   margin: 0;
   padding: 0;
 }
 
-.rpd-chips li {
-  background: #fff;
-  border: 1px solid #d7e2e7;
-  border-radius: 999px;
-  padding: 0.35rem 0.8rem;
-  font-size: 0.82rem;
+.rpd-care-list li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  color: #3f4654;
+  line-height: 1.45;
+}
+
+.rpd-care-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--brand-red);
 }
 
 .rpd-insurance-logos {
@@ -761,22 +771,6 @@
     width: 30px;
     height: 30px;
   }
-}
-
-.rpd-accreditation-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
-}
-
-.rpd-accreditation-card {
-  background: linear-gradient(180deg, #f8fbfc, #eef4f6);
-  border: 1px solid #d7e2e7;
-  border-radius: 14px;
-  padding: 1.1rem;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 .rpd-map {
