@@ -60,9 +60,9 @@
 }
 
 .newsletter-form .btn:hover {
-  background-color: var(--dark);
+  background-color: var(--brand-blue);
   color: var(--white);
-  border-color: var(--dark);
+  border-color: var(--brand-blue);
 }
 
 @media (max-width: 900px) {

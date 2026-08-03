@@ -332,6 +332,10 @@
   flex-shrink: 0;
 }
 
+.rehab-cta-btns .btn-white {
+  color: var(--brand-red);
+}
+
 .rehab-cta-btns .btn-white:hover {
   background-color: var(--brand-blue);
   border-color: var(--brand-blue);
