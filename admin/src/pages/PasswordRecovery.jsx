@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { getPublicSiteUrl } from '../lib/publicSite'
 
@@ -10,6 +10,7 @@ export default function PasswordRecovery() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [loginUrl, setLoginUrl] = useState('')
   const portalUrl = `${getPublicSiteUrl() || ''}/portal`
 
   async function submit(e) {
@@ -20,6 +21,7 @@ export default function PasswordRecovery() {
         ? await api('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password: password }) })
         : await api('/api/auth/request-password-reset', { method: 'POST', body: JSON.stringify({ email }) })
       setMessage(result.message)
+      setLoginUrl(result.login_url || portalUrl)
     } catch (err) {
       setError(err.message)
     }
@@ -34,10 +36,10 @@ export default function PasswordRecovery() {
         {error && <p className="error">{error}</p>}
         {message && <p className="success">{message}</p>}
         <button className="btn btn-primary" type="submit">{token ? 'Update password' : 'Email reset link'}</button>
-        <Link to="/login">Back to login</Link>
+        <a href={portalUrl}>Back to provider login</a>
         {token && message && (
           <p className="success" style={{ marginTop: '1rem' }}>
-            <a href={portalUrl}>Sign in at the provider portal</a>
+            <a href={loginUrl}>Sign in to your account</a>
           </p>
         )}
       </form>

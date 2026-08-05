@@ -400,7 +400,7 @@ def admin_review_submission(
                 "name": row.full_name,
                 "center_name": row.center_name,
                 "admin_notes": row.admin_notes or "Your facility was added to our directory review queue.",
-                "login_url": f"{settings.admin_site_url.rstrip('/')}/login",
+                "login_url": f"{settings.public_site_url.rstrip('/')}/portal",
             },
         )
     elif body.status == CenterSubmissionStatus.rejected:

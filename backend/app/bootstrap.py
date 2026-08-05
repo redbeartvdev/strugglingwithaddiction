@@ -5,7 +5,7 @@ import re
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 
 logger = logging.getLogger("swa")
 
@@ -191,7 +191,7 @@ def _normalize_admin_email() -> str:
 
 
 def bootstrap_admin(db: Session) -> None:
-    """Ensure a real admin account exists; remove admins with invalid emails."""
+    """Ensure the configured bootstrap admin can always access the platform."""
     email = _normalize_admin_email()
 
     for bad in db.query(User).filter(User.role == UserRole.admin).all():
@@ -211,6 +211,13 @@ def bootstrap_admin(db: Session) -> None:
         if not user.is_active:
             user.is_active = True
             changed = True
+        # ADMIN_BOOTSTRAP_EMAIL/PASSWORD are recovery credentials. Keep the
+        # configured account in sync so rotating the Railway variable repairs
+        # access instead of leaving an old database hash behind.
+        if not verify_password(settings.admin_bootstrap_password, user.password_hash):
+            user.password_hash = hash_password(settings.admin_bootstrap_password)
+            changed = True
+            logger.info("Synchronized bootstrap admin password for %s", email)
         if changed:
             db.commit()
         return

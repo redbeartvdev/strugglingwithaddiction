@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 import './Login.css'
 
 export default function SwaLogin() {
-  const { login, logout, user, loading } = useAuth()
+  const { adminLogin, logout, user, loading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,7 +27,7 @@ export default function SwaLogin() {
     setError('')
     setSubmitting(true)
     try {
-      const role = await login(email, password)
+      const role = await adminLogin(email, password)
       if (role !== 'admin') {
         logout()
         setError('This portal is for platform administrators only.')
@@ -111,8 +111,8 @@ export default function SwaLogin() {
             </div>
           </form>
 
-          <p className="provider-login-hint">
-            Use the email set in <code>ADMIN_BOOTSTRAP_EMAIL</code>, or the imported admin account from your deploy docs.
+          <p className="provider-login-links">
+            <Link to="/reset-password">Forgot password?</Link>
           </p>
         </div>
       </div>

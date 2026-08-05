@@ -31,11 +31,15 @@ import ClientLeads from './pages/client/Leads'
 import ClientUpsells from './pages/client/Upsells'
 import PasswordRecovery from './pages/PasswordRecovery'
 import ConfirmEmail from './pages/ConfirmEmail'
+import { getPublicSiteUrl } from './lib/publicSite'
 
 function HomeRedirect() {
   const { user, loading } = useAuth()
   if (loading) return <div className="auth-page">Loading…</div>
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    window.location.replace(`${getPublicSiteUrl()}/portal`)
+    return null
+  }
   if (user.role === 'admin') return <Navigate to="/admin" replace />
   if (user.role === 'editor') return <Navigate to="/editor" replace />
   return <Navigate to="/client" replace />
@@ -45,7 +49,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/swa-login" element={<SwaLogin />} />
+      <Route path="/swa-login" element={<Navigate to="/swa-login/" replace />} />
       <Route path="/swa-login/" element={<SwaLogin />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset-password" element={<PasswordRecovery />} />

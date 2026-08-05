@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
+import { getPublicSiteUrl } from '../lib/publicSite'
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -64,7 +65,7 @@ export default function Register() {
           </div>
         </form>
         <p className="muted" style={{ marginTop: 'var(--space-3)', textAlign: 'center' }}>
-          <a href="/login">Sign in</a>
+          <a href={`${getPublicSiteUrl()}/portal`}>Sign in</a>
         </p>
       </div>
       <footer className="studio-footer studio-footer-auth">Developed by RedbearTV Dev Team</footer>

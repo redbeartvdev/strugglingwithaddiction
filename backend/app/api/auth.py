@@ -32,18 +32,45 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, db: Annotated[Session, Depends(get_db)]):
+def _authenticate(body: LoginRequest, db: Session) -> User:
     user = db.query(User).filter(User.email == body.email.lower()).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    if not user.is_active and user.role != UserRole.admin:
+    if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not active. Complete subscription or contact admin.")
+    return user
+
+
+def _token_response(user: User) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(user.email, user.role.value),
         refresh_token=create_refresh_token(user.email),
         role=user.role.value,
     )
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(body: LoginRequest, db: Annotated[Session, Depends(get_db)]):
+    """Provider/editor login. Superadmins must use the dedicated endpoint."""
+    user = _authenticate(body, db)
+    if user.role == UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmins must sign in at /admin/swa-login/",
+        )
+    return _token_response(user)
+
+
+@router.post("/admin-login", response_model=TokenResponse)
+def admin_login(body: LoginRequest, db: Annotated[Session, Depends(get_db)]):
+    """Dedicated superadmin login used only by /admin/swa-login/."""
+    user = _authenticate(body, db)
+    if user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This sign-in is restricted to superadmins",
+        )
+    return _token_response(user)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -123,7 +150,12 @@ def reset_password(body: PasswordResetConfirm, db: Annotated[Session, Depends(ge
         },
         user_id=user.id,
     )
-    return {"message": "Password updated. You can now sign in."}
+    login_url = (
+        f"{settings.admin_site_url.rstrip('/')}/swa-login/"
+        if user.role == UserRole.admin
+        else f"{settings.public_site_url.rstrip('/')}/portal"
+    )
+    return {"message": "Password updated. You can now sign in.", "login_url": login_url}
 
 
 @router.post("/request-email-confirmation")

@@ -13,7 +13,7 @@ export function getAdminSiteUrl() {
 
 /** Provider platform sign-in URL (SWA Studio). */
 export function providerLoginUrl() {
-  return `${getAdminSiteUrl()}/login`
+  return `${window.location.origin}/portal`
 }
 
 /** Superadmin sign-in URL (SWA Studio). */
