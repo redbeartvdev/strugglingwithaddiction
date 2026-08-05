@@ -13,11 +13,14 @@
     radial-gradient(ellipse 80% 60% at 20% 0%, rgba(95, 189, 246, 0.18), transparent 55%),
     linear-gradient(165deg, #0f1a28 0%, #1a2f45 48%, #243b55 100%);
   color: #f5f8fc;
-  padding: 4.5rem 0 3.5rem;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding: calc(var(--header-height) + 2.5rem) 0 3.5rem;
 }
 
 .icov-hero--carrier {
-  padding-top: 3.25rem;
+  padding-top: calc(var(--header-height) + 2rem);
 }
 
 .icov-hero-inner {
@@ -60,8 +63,8 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.icov-breadcrumb {
-  margin: 0 0 1rem;
+.icov-hero .icov-breadcrumb {
+  margin: 0 0 1.35rem;
   font-size: 0.88rem;
   color: rgba(245, 248, 252, 0.7);
 }
@@ -291,7 +294,11 @@
 
 @media (max-width: 640px) {
   .icov-hero {
-    padding: 3.25rem 0 2.5rem;
+    padding: calc(var(--header-height) + 1.5rem) 0 2.5rem;
+  }
+
+  .icov-hero--carrier {
+    padding-top: calc(var(--header-height) + 1.25rem);
   }
 
   .icov-facility-card {
