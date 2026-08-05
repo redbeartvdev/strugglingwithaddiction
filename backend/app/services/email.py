@@ -56,6 +56,11 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
         "description": "Security notice after a successful password change.",
         "category": "auth",
     },
+    "admin_invite": {
+        "label": "Superadmin invitation",
+        "description": "Invite a new platform administrator to set a password.",
+        "category": "auth",
+    },
     "outreach_invite": {
         "label": "Outreach invite",
         "description": "Invite an unclaimed center to claim their directory listing.",
@@ -226,6 +231,13 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "If this was you, no further action is needed.\n"
         "If you did not change your password, reset it immediately: {reset_url}\n"
         "Support: {support_email}\n",
+    ),
+    "admin_invite": (
+        "You have been invited as a Struggling With Addiction superadmin",
+        "Hi {name},\n\n{invited_by} invited you to administer the Struggling With Addiction platform.\n\n"
+        "Set your password using this secure link:\n{reset_url}\n\n"
+        "After setting your password, sign in here:\n{login_url}\n\n"
+        "This invitation link expires in 24 hours. If you were not expecting this invitation, ignore this email.\n",
     ),
     "outreach_invite": (
         "Your center is listed on Struggling With Addiction — claim it today",

@@ -25,8 +25,8 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  async function login(email, password) {
-    const data = await api('/api/auth/login', {
+  async function authenticate(path, email, password) {
+    const data = await api(path, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
@@ -38,13 +38,21 @@ export function AuthProvider({ children }) {
     return data.role
   }
 
+  function login(email, password) {
+    return authenticate('/api/auth/login', email, password)
+  }
+
+  function adminLogin(email, password) {
+    return authenticate('/api/auth/admin-login', email, password)
+  }
+
   function logout() {
     localStorage.clear()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, adminLogin, logout }}>
       {children}
     </AuthContext.Provider>
   )

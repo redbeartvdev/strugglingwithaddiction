@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { getPublicSiteUrl } from '../lib/publicSite'
 
 export default function ConfirmEmail() {
   const [params] = useSearchParams()
@@ -17,5 +18,5 @@ export default function ConfirmEmail() {
       .catch(error => setMessage(error.message))
   }, [params])
 
-  return <main className="auth-page"><div className="auth-card"><h1>Email confirmation</h1><p>{message}</p><Link to="/login">Go to login</Link></div></main>
+  return <main className="auth-page"><div className="auth-card"><h1>Email confirmation</h1><p>{message}</p><a href={`${getPublicSiteUrl()}/portal`}>Go to provider login</a></div></main>
 }

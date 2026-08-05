@@ -1,3 +1,5 @@
+import { getPublicSiteUrl } from './lib/publicSite'
+
 export function getApiBase() {
   const url = import.meta.env.VITE_API_URL
   if (url === undefined || url === null) return ''
@@ -8,8 +10,9 @@ const API_URL = getApiBase()
 
 function loginRedirectHref(role = localStorage.getItem('role')) {
   const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-  const path = role === 'admin' ? '/swa-login' : '/login'
-  return `${base}${path}` || path
+  if (role === 'admin') return `${base}/swa-login`
+  const publicBase = getPublicSiteUrl()
+  return `${publicBase}/portal`
 }
 
 function clearSession() {
@@ -47,7 +50,8 @@ export async function api(path, options = {}) {
     )
   }
 
-  if (res.status === 401 && !path.includes('/auth/login')) {
+  const isLoginRequest = path.includes('/auth/login') || path.includes('/auth/admin-login')
+  if (res.status === 401 && !isLoginRequest) {
     const role = localStorage.getItem('role')
     clearSession()
     window.location.href = loginRedirectHref(role)

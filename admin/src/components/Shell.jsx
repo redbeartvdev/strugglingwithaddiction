@@ -5,6 +5,7 @@ import { api } from '../api'
 import GlobalSearch from './GlobalSearch'
 import Eyebrow from './ui/Eyebrow'
 import { applyTheme, getStoredTheme, toggleTheme } from '../theme'
+import { getPublicSiteUrl } from '../lib/publicSite'
 import {
   IconHome, IconUsers, IconFile, IconBuilding, IconInbox, IconCard, IconImport, IconSettings, IconChart,
 } from './Icons'
@@ -146,9 +147,13 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
               type="button"
               className="btn btn-ghost btn-sm btn-block"
               onClick={() => {
-                const loginPath = user?.role === 'admin' ? '/swa-login' : '/login'
+                const isAdmin = user?.role === 'admin'
                 logout()
-                navigate(loginPath)
+                if (isAdmin) {
+                  navigate('/swa-login')
+                } else {
+                  window.location.assign(`${getPublicSiteUrl()}/portal`)
+                }
               }}
             >
               Sign out
