@@ -336,7 +336,7 @@ export default function AdminInsurances() {
               <div>
                 <p className="eyebrow">Coverage page</p>
                 <h2 className="ins-editor-title">{editing.name}</h2>
-                <p className="muted">Public URL: /insurance-coverage/{editing.slug}</p>
+                <p className="muted">Public URL: /insurance/{editing.slug}</p>
               </div>
               <Button type="button" variant="ghost" onClick={() => setEditing(null)}>Close</Button>
             </div>

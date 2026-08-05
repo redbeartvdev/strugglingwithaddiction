@@ -3,19 +3,14 @@ import { Link } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { usePageSeo } from '../hooks/usePageSeo'
 import { INSURANCE_GUIDES } from '../data/insuranceGuides'
+import {
+  MEDICAID_STATE_PAGES,
+  PRIORITY_INSURANCE_CARRIERS,
+} from '../data/insuranceCarrierContent'
 import './InsuranceCoverage.css'
 
-const FALLBACK_HUB = [
-  { name: 'Aetna', slug: 'aetna', logo_url: '/images/insurance/aetna.png', summary: 'Employer and Marketplace plans — start with facilities that list Aetna.' },
-  { name: 'Blue Cross Blue Shield', slug: 'blue-cross-blue-shield', logo_url: '/images/insurance/blue-cross-blue-shield.png', summary: 'Coverage varies by local Blue plan — verify your specific card.' },
-  { name: 'Cigna', slug: 'cigna', logo_url: '/images/insurance/cigna.png', summary: 'Commercial and behavioral-health managed benefits for addiction care.' },
-  { name: 'UnitedHealthcare', slug: 'unitedhealthcare', logo_url: '/images/insurance/unitedhealthcare.png', summary: 'Often managed with Optum for authorizations and networks.' },
-  { name: 'Tricare', slug: 'tricare', logo_url: '/images/insurance/tricare.png', summary: 'Military and family benefits — confirm TRICARE-authorized providers.' },
-  { name: 'Medicaid', slug: 'medicaid', logo_url: '/images/insurance/medicaid.png', summary: 'State-specific coverage — confirm your MCO and county network.' },
-]
-
 export default function InsuranceCoverageHub() {
-  const [carriers, setCarriers] = useState(FALLBACK_HUB)
+  const [carriers, setCarriers] = useState(PRIORITY_INSURANCE_CARRIERS)
 
   usePageSeo({
     title: 'Insurance Coverage for Rehab',
@@ -28,7 +23,11 @@ export default function InsuranceCoverageHub() {
     fetchApi('/api/insurances?hub=true')
       .then((rows) => {
         if (!Array.isArray(rows) || !rows.length) return
-        setCarriers(rows)
+        const bySlug = new Map(rows.map((row) => [row.slug, row]))
+        setCarriers(PRIORITY_INSURANCE_CARRIERS.map((item) => ({
+          ...item,
+          ...(bySlug.get(item.slug) || {}),
+        })))
       })
       .catch(() => {})
   }, [])
@@ -59,12 +58,17 @@ export default function InsuranceCoverageHub() {
           <ul className="icov-carrier-grid">
             {carriers.map((c) => (
               <li key={c.slug}>
-                <Link to={`/insurance-coverage/${c.slug}`} className="icov-carrier-card">
+                <Link to={`/insurance/${c.slug}`} className="icov-carrier-card">
                   {c.logo_url && (
                     <img src={c.logo_url} alt="" width={140} height={42} loading="lazy" />
                   )}
-                  <strong>{c.hero_title || `Does ${c.name} cover rehab?`}</strong>
-                  <span>{c.summary || `Learn about ${c.name} coverage and find matching facilities.`}</span>
+                  <strong>{`Does ${c.name} cover drug and alcohol rehab?`}</strong>
+                  <span>
+                    {(c.summary || `Learn about ${c.name} coverage and find matching facilities.`)
+                      .split('. ')
+                      .slice(0, 2)
+                      .join('. ')}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -72,7 +76,23 @@ export default function InsuranceCoverageHub() {
         </div>
       </section>
 
-      <section className="icov-section icov-section--muted" id="guides">
+      <section className="icov-section icov-section--muted">
+        <div className="container">
+          <div className="icov-section-head">
+            <h2>Medicaid coverage by state</h2>
+            <p>Medicaid rules and managed care networks differ by state. Choose your state for local program information.</p>
+          </div>
+          <ul className="icov-state-link-grid">
+            {MEDICAID_STATE_PAGES.map((item) => (
+              <li key={item.slug}>
+                <Link to={`/insurance/${item.slug}`}>{item.name}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="icov-section" id="guides">
         <div className="container">
           <div className="icov-section-head">
             <h2>Guides</h2>

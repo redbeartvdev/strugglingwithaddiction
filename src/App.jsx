@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -38,6 +38,11 @@ function PageLoader() {
   return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Open Sans, Helvetica, Arial, sans-serif', color: '#5FBDF6', fontSize: '1.1rem' }}>Loading…</div>
 }
 
+function LegacyInsuranceCarrierRedirect() {
+  const { slug } = useParams()
+  return <Navigate to={`/insurance/${slug}`} replace />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -68,7 +73,8 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/insurance-coverage" element={<InsuranceCoverageHub />} />
           <Route path="/insurance-coverage/guides/:slug" element={<InsuranceGuidePage />} />
-          <Route path="/insurance-coverage/:slug" element={<InsuranceCarrierPage />} />
+          <Route path="/insurance/:slug" element={<InsuranceCarrierPage />} />
+          <Route path="/insurance-coverage/:slug" element={<LegacyInsuranceCarrierRedirect />} />
           <Route path="/our-team" element={<Navigate to="/about" replace />} />
           <Route path="/author/:slug" element={<AuthorPage />} />
           <Route path="*" element={<NotFound />} />
