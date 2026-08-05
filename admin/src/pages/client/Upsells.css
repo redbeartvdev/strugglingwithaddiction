@@ -1,0 +1,193 @@
+.upsell-page {
+  gap: 18px;
+}
+
+.upsell-live-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.upsell-group {
+  display: grid;
+  gap: 14px;
+}
+
+.upsell-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.upsell-group-title {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.upsell-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.upsell-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.upsell-card.is-owned {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #0d6e6e) 35%, transparent);
+}
+
+.upsell-card.is-monthly {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent, #0d6e6e) 6%, transparent), transparent 42%),
+    var(--surface, #fff);
+}
+
+.upsell-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.upsell-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.upsell-billing,
+.upsell-fulfill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.upsell-billing {
+  background: color-mix(in srgb, var(--accent, #0d6e6e) 12%, transparent);
+  color: var(--accent, #0d6e6e);
+}
+
+.upsell-billing.is-monthly {
+  background: #0d6e6e;
+  color: #fff;
+}
+
+.upsell-fulfill {
+  background: var(--surface-2, #f3f4f6);
+  color: var(--fg-2, #6b7280);
+}
+
+.upsell-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.upsell-card-price {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.upsell-card-price-note {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fg-2, #6b7280);
+  letter-spacing: 0;
+}
+
+.upsell-card-desc {
+  margin: 0;
+  color: var(--fg-2, #6b7280);
+  line-height: 1.45;
+}
+
+.upsell-section {
+  margin-top: 4px;
+}
+
+.upsell-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.upsell-list li {
+  position: relative;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.upsell-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--accent, #0d6e6e);
+  font-weight: 700;
+}
+
+.upsell-list--features li::before {
+  content: '•';
+  color: var(--fg-2, #6b7280);
+}
+
+.upsell-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.upsell-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.upsell-pill--ok { background: #e8f5ef; color: #176b45; }
+.upsell-pill--warn { background: #fff6e8; color: #9a6700; }
+.upsell-pill--muted { background: #f3f4f6; color: #6b7280; }
+
+.upsell-compare .table-wrap {
+  margin-top: 10px;
+}
+
+.upsell-compare td,
+.upsell-compare th {
+  vertical-align: middle;
+}
+
+@media (max-width: 720px) {
+  .upsell-card-price {
+    font-size: 1.25rem;
+  }
+}

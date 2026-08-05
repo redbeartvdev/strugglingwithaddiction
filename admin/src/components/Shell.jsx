@@ -20,7 +20,7 @@ const NAV_BY_ROLE = {
     { to: '/admin/submissions', label: 'Submission Center', Icon: IconBuilding, badgeKey: 'submissions' },
     { to: '/admin/leads', label: 'Leads', Icon: IconInbox },
     { to: '/admin/upsells', label: 'Upsells', Icon: IconFile },
-    { to: '/admin/billing', label: 'Billing', Icon: IconCard },
+    { to: '/admin/billing', label: 'Finance', Icon: IconCard },
     { to: '/admin/import', label: 'Import', Icon: IconImport },
     { to: '/admin/lifecycle', label: 'Lifecycle', Icon: IconSettings },
     { to: '/admin/emails', label: 'Emails', Icon: IconFile },
@@ -37,7 +37,6 @@ const NAV_BY_ROLE = {
     { to: '/client/profile', label: 'Profile', Icon: IconBuilding },
     { to: '/client/leads', label: 'Leads', Icon: IconInbox },
     { to: '/client/upsells', label: 'Upgrades', Icon: IconFile },
-    { to: '/client/landing', label: 'Partner page', Icon: IconFile },
     // Posts hidden for now — reinstate when client blogging ships
     // { to: '/client/posts', label: 'Posts', Icon: IconFile },
     { to: '/client/billing', label: 'Billing', Icon: IconCard },
@@ -52,7 +51,7 @@ function initials(name, email) {
   return n.slice(0, 2).toUpperCase()
 }
 
-export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0 }) {
+export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0, verificationIncomplete = false }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [subscriptionLocked, setSubscriptionLocked] = useState(false)
@@ -68,14 +67,18 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
       return
     }
     api('/api/billing/subscription')
-      .then(sub => setSubscriptionLocked(!['active', 'trialing', 'past_due'].includes(sub?.status)))
-      // Preserve navigation if subscription status cannot be loaded.
+      .then(sub => {
+        setSubscriptionLocked(!['active', 'trialing', 'past_due'].includes(sub?.status))
+      })
       .catch(() => setSubscriptionLocked(false))
   }, [user?.role])
 
-  const nav = subscriptionLocked && user?.role === 'client'
-    ? NAV_BY_ROLE.client.filter(item => item.to === '/client/billing')
-    : NAV_BY_ROLE[user?.role] || []
+  let nav = NAV_BY_ROLE[user?.role] || []
+  if (subscriptionLocked && user?.role === 'client') {
+    nav = NAV_BY_ROLE.client.filter(item => item.to === '/client/billing')
+  } else if (verificationIncomplete && user?.role === 'client') {
+    nav = NAV_BY_ROLE.client.filter(item => ['/client', '/client/billing', '/client/account'].includes(item.to))
+  }
 
   return (
     <div className="app-shell">

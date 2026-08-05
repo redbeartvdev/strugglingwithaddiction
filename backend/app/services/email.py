@@ -113,7 +113,12 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
     },
     "claim_abandon_reminder": {
         "label": "Claim abandon reminder",
-        "description": "Nudge someone who started a claim but did not finish.",
+        "description": "Day 1 or day 2 nudge with a link to continue an unfinished claim.",
+        "category": "claim",
+    },
+    "submit_abandon_reminder": {
+        "label": "Submit-center abandon reminder",
+        "description": "Day 1 or day 2 nudge with a link to continue an unfinished center submission.",
         "category": "claim",
     },
     "phone_callback_code": {
@@ -264,10 +269,11 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "Questions? Contact {support_email}\n",
     ),
     "verification": (
-        "Upload rehab certification to confirm your claim for {center_name}",
+        "Subscribe, then upload certification for {center_name}",
         "Hi {name},\n\nWe received your claim for {center_name} (ticket {ticket}).\n\n"
-        "Please upload your state license or accreditation certificate here:\n{claim_url}\n\n"
-        "Edit rights unlock after verification and subscription.\n",
+        "1. Choose a monthly or yearly plan at: {claim_url}\n"
+        "2. After payment, upload your state license or accreditation certificate.\n\n"
+        "Your listing unlocks after admin verification.\n",
     ),
     "claim_submitted": (
         "Your claim for {center_name} is pending admin verification",
@@ -297,8 +303,15 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
     ),
     "claim_abandon_reminder": (
         "Finish claiming {center_name}",
-        "Hi {name},\n\nYou started a claim for {center_name} but did not finish.\n\n"
-        "Continue here: {claim_url}\n",
+        "Hi {name},\n\nYou started a claim for {center_name} but did not finish "
+        "(reminder day {day} of 2).\n\n"
+        "Return and continue here:\n{continue_url}\n",
+    ),
+    "submit_abandon_reminder": (
+        "Finish adding {center_name}",
+        "Hi {name},\n\nYou started adding {center_name} to our directory but did not finish "
+        "(reminder day {day} of 2).\n\n"
+        "Return and continue here:\n{continue_url}\n",
     ),
     "phone_callback_code": (
         "Your facility phone verification code",
@@ -324,8 +337,9 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "Manage billing: {billing_url}\n",
     ),
     "renewal_reminder": (
-        "Your card will be charged soon",
-        "Hi {name},\n\nYour subscription for {center_name} renews on {renewal_date}.\n\n"
+        "Your subscription renews in {days_left} day(s)",
+        "Hi {name},\n\nYour subscription for {center_name} renews on {renewal_date} "
+        "(about {days_left} day(s) from now).\n\n"
         "Manage billing: {billing_url}\n",
     ),
     "dunning": (
@@ -547,6 +561,7 @@ def default_template_context(to_email: str = "preview@example.com", db: Session 
         "amount": "$9.99",
         "access_end": "August 24, 2026",
         "renewal_date": "August 1, 2026",
+        "days_left": "7",
         "product_label": "Featured Article",
         "product_update_body": "We improved listing analytics and lead routing for claimed centers.",
         "admin_notes": "Please contact support if you believe this was in error.",
@@ -826,6 +841,7 @@ def send_email(
     user_id: int | None = None,
     rehab_center_id: int | None = None,
     respect_preferences: bool = True,
+    meta: dict[str, Any] | None = None,
 ) -> bool:
     context = context or {}
     delivery = resolve_email_delivery(db)
@@ -877,6 +893,7 @@ def send_email(
         logger.exception("Failed sending email %s to %s", template_key, to_email)
 
     if db is not None:
+        log_meta = meta if meta is not None else defaults
         db.add(
             EmailLog(
                 to_email=to_email,
@@ -886,7 +903,7 @@ def send_email(
                 error=err_text,
                 user_id=user_id,
                 rehab_center_id=rehab_center_id,
-                meta_json=json.dumps(defaults, default=str)[:4000],
+                meta_json=json.dumps(log_meta, default=str)[:4000],
             )
         )
         try:

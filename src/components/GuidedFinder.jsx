@@ -1,18 +1,30 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { US_STATES } from '../lib/usStates'
 import {
   GUIDED_CARE_LEVELS,
-  REHAB_INSURANCE_TYPES,
   buildRehabDirectoryUrl,
 } from '../lib/rehabServices'
 import { useClaimedCenterCount } from '../hooks/useClaimedCenterCount'
+import { fetchApi } from '../lib/api'
 import './HomeDirectoryTools.css'
 
 const STEPS = [
   { key: 'state', label: 'Location', title: 'Which state?' },
   { key: 'service', label: 'Level of care', title: 'What type of care?' },
   { key: 'insurance', label: 'Insurance', title: 'Insurance accepted' },
+]
+
+const FALLBACK_CARRIERS = [
+  'Aetna',
+  'Blue Cross Blue Shield',
+  'Cigna',
+  'UnitedHealthcare',
+  'Humana',
+  'Tricare',
+  'Medicaid',
+  'Medicare',
+  'Self Pay',
 ]
 
 export default function GuidedFinder({ variant = 'full' }) {
@@ -22,12 +34,24 @@ export default function GuidedFinder({ variant = 'full' }) {
   const [state, setState] = useState('')
   const [service, setService] = useState('')
   const [insurance, setInsurance] = useState('')
+  const [carriers, setCarriers] = useState(FALLBACK_CARRIERS)
   const idPrefix =
     variant === 'sidebar' ? 'sidebar-guided-finder'
     : variant === 'hero' ? 'hero-guided-finder'
     : 'guided-finder'
 
   const isLastStep = step === STEPS.length - 1
+
+  useEffect(() => {
+    let cancelled = false
+    fetchApi('/api/insurances')
+      .then((rows) => {
+        if (cancelled || !Array.isArray(rows) || !rows.length) return
+        setCarriers(rows.map((r) => r.name).filter(Boolean))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   function handleNext(e) {
     e.preventDefault()
@@ -120,8 +144,8 @@ export default function GuidedFinder({ variant = 'full' }) {
               onChange={e => setInsurance(e.target.value)}
             >
               <option value="">Any insurance</option>
-              {REHAB_INSURANCE_TYPES.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              {carriers.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

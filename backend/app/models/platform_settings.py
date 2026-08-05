@@ -27,3 +27,19 @@ class PlatformEmailSettings(Base, TimestampMixin):
     social_youtube: Mapped[str | None] = mapped_column(String(512), nullable=True)
     social_instagram: Mapped[str | None] = mapped_column(String(512), nullable=True)
     social_linkedin: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+
+class PlatformStripeSettings(Base, TimestampMixin):
+    """Singleton (id=1) Stripe credentials + price IDs. Empty fields fall back to env."""
+
+    __tablename__ = "platform_stripe_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    secret_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    webhook_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    publishable_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    price_monthly: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    price_yearly: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    price_verified_badge: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    price_featured_placement: Mapped[str | None] = mapped_column(String(255), nullable=True)

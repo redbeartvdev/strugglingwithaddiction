@@ -38,7 +38,7 @@ export function guessVisitorState() {
   }
 }
 
-const SKIP_PREFIXES = ['/provider', '/swa-login', '/unsubscribe', '/claim-status']
+const SKIP_PREFIXES = ['/provider', '/swa-login', '/unsubscribe', '/claim-status', '/submit-center']
 
 function shouldSkipPath(pathname) {
   const cleaned = (pathname || '/').split('?')[0].replace(/\/$/, '') || '/'

@@ -1,9 +1,9 @@
-"""USA insurance catalog — public list + admin enable/disable."""
+"""USA insurance catalog — public list, coverage pages, admin editorial."""
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,28 @@ class InsuranceOut(BaseModel):
     logo_url: str
     enabled: bool
     sort_order: int
+    meta_title: str | None = None
+    meta_description: str | None = None
+    hero_title: str | None = None
+    summary: str | None = None
+    content_html: str | None = None
+    show_on_hub: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class InsuranceListItem(BaseModel):
+    """Lightweight row for dropdowns / hub grids."""
+
+    id: int
+    name: str
+    slug: str
+    logo_url: str
+    enabled: bool
+    sort_order: int
+    show_on_hub: bool = False
+    summary: str | None = None
+    hero_title: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -30,6 +52,12 @@ class InsuranceAdminUpdate(BaseModel):
     enabled: bool | None = None
     sort_order: int | None = None
     name: str | None = Field(default=None, max_length=120)
+    meta_title: str | None = Field(default=None, max_length=255)
+    meta_description: str | None = Field(default=None, max_length=512)
+    hero_title: str | None = Field(default=None, max_length=255)
+    summary: str | None = Field(default=None, max_length=512)
+    content_html: str | None = None
+    show_on_hub: bool | None = None
 
 
 def _logo_url(path: str) -> str:
@@ -40,6 +68,20 @@ def _logo_url(path: str) -> str:
     return f"/{path.lstrip('/')}"
 
 
+def to_list_item(row: InsuranceCatalog) -> InsuranceListItem:
+    return InsuranceListItem(
+        id=row.id,
+        name=row.name,
+        slug=row.slug,
+        logo_url=_logo_url(row.logo_path),
+        enabled=row.enabled,
+        sort_order=row.sort_order,
+        show_on_hub=bool(row.show_on_hub),
+        summary=row.summary,
+        hero_title=row.hero_title,
+    )
+
+
 def to_out(row: InsuranceCatalog) -> InsuranceOut:
     return InsuranceOut(
         id=row.id,
@@ -48,18 +90,37 @@ def to_out(row: InsuranceCatalog) -> InsuranceOut:
         logo_url=_logo_url(row.logo_path),
         enabled=row.enabled,
         sort_order=row.sort_order,
+        meta_title=row.meta_title,
+        meta_description=row.meta_description,
+        hero_title=row.hero_title,
+        summary=row.summary,
+        content_html=row.content_html,
+        show_on_hub=bool(row.show_on_hub),
     )
 
 
-@router.get("/api/insurances", response_model=list[InsuranceOut])
-def list_enabled_insurances(db: Annotated[Session, Depends(get_db)]):
-    rows = (
+@router.get("/api/insurances", response_model=list[InsuranceListItem])
+def list_enabled_insurances(
+    db: Annotated[Session, Depends(get_db)],
+    hub: bool | None = Query(default=None),
+):
+    q = db.query(InsuranceCatalog).filter(InsuranceCatalog.enabled.is_(True))
+    if hub is True:
+        q = q.filter(InsuranceCatalog.show_on_hub.is_(True))
+    rows = q.order_by(InsuranceCatalog.sort_order.asc(), InsuranceCatalog.name.asc()).all()
+    return [to_list_item(r) for r in rows]
+
+
+@router.get("/api/insurances/{slug}", response_model=InsuranceOut)
+def get_insurance_by_slug(slug: str, db: Annotated[Session, Depends(get_db)]):
+    row = (
         db.query(InsuranceCatalog)
-        .filter(InsuranceCatalog.enabled.is_(True))
-        .order_by(InsuranceCatalog.sort_order.asc(), InsuranceCatalog.name.asc())
-        .all()
+        .filter(InsuranceCatalog.slug == slug, InsuranceCatalog.enabled.is_(True))
+        .first()
     )
-    return [to_out(r) for r in rows]
+    if not row:
+        raise HTTPException(status_code=404, detail="Insurance not found")
+    return to_out(row)
 
 
 @router.get("/api/admin/insurances", response_model=list[InsuranceOut])

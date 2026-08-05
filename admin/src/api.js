@@ -43,7 +43,7 @@ export async function api(path, options = {}) {
     res = await fetch(url, { ...options, headers })
   } catch {
     throw new Error(
-      'Cannot reach the API. Run: docker compose up -d postgres && cd backend && uvicorn app.main:app --reload --port 8000',
+      'Cannot reach the API. Run: docker compose up -d postgres && cd backend && uvicorn app.main:app --reload --port 8317',
     )
   }
 
@@ -82,7 +82,7 @@ export async function apiUpload(path, file) {
       body: form,
     })
   } catch {
-    throw new Error('Cannot reach the API — is the backend running on port 8000?')
+    throw new Error('Cannot reach the API — is the backend running on port 8317?')
   }
 
   if (!res.ok) {

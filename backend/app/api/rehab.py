@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.rehab_helpers import center_to_public
+from app.api.rehab_helpers import (
+    center_matches_insurance,
+    center_matches_service,
+    center_to_public,
+)
 from app.core.deps import AdminUser, ClientUser, CurrentUser, get_current_user_optional
 from app.core.security import hash_password
 from app.database import get_db
@@ -52,6 +56,8 @@ def list_centers(
     db: Annotated[Session, Depends(get_db)],
     state: str | None = Query(default=None, max_length=100),
     city: str | None = Query(default=None, max_length=100),
+    insurance: str | None = Query(default=None, max_length=120),
+    service: str | None = Query(default=None, max_length=64),
 ):
     query = db.query(RehabCenter).filter(RehabCenter.listing_status == ListingStatus.published, RehabCenter.deleted_at.is_(None))
     if state:
@@ -59,6 +65,10 @@ def list_centers(
     if city:
         query = query.filter(RehabCenter.city.ilike(city.strip()))
     centers = query.order_by(RehabCenter.featured_until.desc().nullslast(), RehabCenter.name).all()
+    if insurance:
+        centers = [c for c in centers if center_matches_insurance(c, insurance)]
+    if service:
+        centers = [c for c in centers if center_matches_service(c, service)]
     return [center_to_public(db, c) for c in centers]
 
 
@@ -196,6 +206,8 @@ def submit_claim(body: ClaimCreate, db: Annotated[Session, Depends(get_db)], use
 
 @router.get("/api/rehab/claims/{ticket}", response_model=ClaimStatusPublic)
 def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
+    from app.api.claim_journey import _claim_status_message
+
     claim = (
         db.query(RehabCenterClaim)
         .options(joinedload(RehabCenterClaim.center))
@@ -204,24 +216,19 @@ def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    messages = {
-        ClaimStatus.pending: "Upload your rehab certification to continue.",
-        ClaimStatus.under_review: "Your claim is submitted and waiting for admin verification. Check your email for a confirmation — we will notify you again when verification is complete.",
-        ClaimStatus.certified: "Verified — subscribe ($9.99/mo or $99/yr) to claim your listing.",
-        ClaimStatus.approved: "Claimed and active. Log in to manage your listing.",
-        ClaimStatus.rejected: "Your claim was not approved. Contact support for details.",
-        ClaimStatus.abandoned: "This claim expired. Start again from the listing page.",
-    }
+    paid = bool(claim.payment_received_at)
     return ClaimStatusPublic(
         ticket_number=claim.ticket_number,
         status=claim.status,
         center_name=claim.center.name,
         submitted_at=claim.created_at,
         reviewed_at=claim.reviewed_at,
-        message=messages.get(claim.status, ""),
+        message=_claim_status_message(claim),
         certification_uploaded=bool(claim.business_license_url),
         email_domain_matched=bool(claim.email_domain_matched),
         phone_verified=bool(claim.phone_verified_at),
+        payment_received=paid,
+        checkout_ready=not paid and claim.status in (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified),
     )
 
 
@@ -331,6 +338,7 @@ def list_claims(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
             proof_of_affiliation_url=c.proof_of_affiliation_url,
             email_domain_matched=bool(c.email_domain_matched),
             cert_verified_at=c.cert_verified_at,
+            payment_received_at=c.payment_received_at,
             admin_notes=c.admin_notes,
             created_at=c.created_at,
             reviewed_at=c.reviewed_at,
@@ -456,12 +464,27 @@ def review_claim(claim_id: int, body: ClaimReview, admin: AdminUser, db: Annotat
             raise HTTPException(status_code=400, detail="Facility phone callback must be verified before certification approval")
         claim.cert_verified_at = now
         center.cert_verified_at = now
-        ensure_client_user()
-        # Ownership reserved but listing not claimed until Stripe payment
-        center.claimed = False
-        center.contact_visible = False
+        user = ensure_client_user()
+        # Pay-first: if already paid, unlock listing immediately (approved)
+        from app.models.billing import Subscription
+        from app.api.claim_journey import grant_listing_after_verify
+
+        sub = None
+        if claim.submitter_user_id:
+            sub = db.query(Subscription).filter(Subscription.user_id == claim.submitter_user_id).first()
+        paid = bool(claim.payment_received_at) or (sub and sub.status in ("active", "trialing", "past_due"))
+        if paid:
+            if not claim.payment_received_at:
+                claim.payment_received_at = now
+            grant_listing_after_verify(db, claim=claim, user=user, send_welcome=False)
+            # grant_listing sets approved — keep body.status in sync for emails below
+            body.status = ClaimStatus.approved
+        else:
+            # Legacy / edge: verified but not paid yet
+            center.claimed = False
+            center.contact_visible = False
     elif body.status == ClaimStatus.approved:
-        # Legacy path — prefer payment webhook; still allow admin force-approve
+        # Legacy path — prefer payment webhook + certify; still allow admin force-approve
         user = ensure_client_user()
         if user:
             user.is_active = True
@@ -470,8 +493,16 @@ def review_claim(claim_id: int, body: ClaimReview, admin: AdminUser, db: Annotat
         if claim.cert_verified_at is None:
             claim.cert_verified_at = now
             center.cert_verified_at = now
+        if not claim.payment_received_at:
+            claim.payment_received_at = now
     elif body.status == ClaimStatus.rejected:
-        pass
+        if claim.payment_received_at:
+            from app.api.claim_journey import cancel_and_refund_claim_subscription
+            cancel_and_refund_claim_subscription(db, claim)
+        if center.owner_user_id == claim.submitter_user_id:
+            center.owner_user_id = None
+        center.claimed = False
+        center.contact_visible = False
     db.commit()
     db.refresh(claim)
 
@@ -539,6 +570,7 @@ def review_claim(claim_id: int, body: ClaimReview, admin: AdminUser, db: Annotat
         proof_of_affiliation_url=claim.proof_of_affiliation_url,
         email_domain_matched=bool(claim.email_domain_matched),
         cert_verified_at=claim.cert_verified_at,
+        payment_received_at=claim.payment_received_at,
         admin_notes=claim.admin_notes,
         created_at=claim.created_at,
         reviewed_at=claim.reviewed_at,

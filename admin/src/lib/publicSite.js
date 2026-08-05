@@ -2,7 +2,7 @@
 export function getPublicSiteUrl() {
   const url = import.meta.env.VITE_PUBLIC_SITE_URL
   if (url) return String(url).replace(/\/$/, '')
-  if (import.meta.env.DEV) return 'http://127.0.0.1:5173'
+  if (import.meta.env.DEV) return 'http://127.0.0.1:5317'
   return ''
 }
 

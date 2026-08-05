@@ -21,7 +21,7 @@ from app.models.upsell import UpsellFulfillment, UpsellOrder, UpsellOrderStatus,
 from app.models.user import User
 from app.schemas.rehab import RehabCenterAdmin
 from app.services.email import send_email
-from app.services.storage import get_public_url, resolve_image_url, upload_file
+from app.services.storage import get_public_url, resolve_image_url, upload_image_as_avif
 
 router = APIRouter(tags=["leads-upsells"])
 settings = get_settings()
@@ -93,34 +93,91 @@ UPSELL_CATALOG = [
     {
         "product_type": UpsellProductType.verified_badge,
         "label": "Verified / Accredited Badge",
-        "price_label": "$199–$299 / yr",
-        "amount_cents": 24900,
+        "price_label": "$199/mo",
+        "amount_cents": 19900,
+        "billing": "monthly",
         "fulfillment": UpsellFulfillment.self_serve,
-        "description": "Trust signal — makes verification mean something.",
+        "description": "Build trust instantly with a verified badge on your directory card and landing page.",
+        "tagline": "Trust signal that makes verification mean something.",
+        "benefits": [
+            "Verified badge beside your center name on the directory and landing page",
+            "Higher credibility for families comparing options",
+            "Signals your listing was reviewed and accredited on our platform",
+            "Activates immediately after checkout",
+        ],
+        "features": [
+            "Blue verified checkmark on directory cards",
+            "Verified mark in the landing-page title",
+            "Visible across search and claimed landing URLs",
+            "Cancel anytime from billing",
+        ],
     },
     {
         "product_type": UpsellProductType.featured_placement,
         "label": "Featured Placement",
-        "price_label": "$249 / mo",
+        "price_label": "$249/mo",
         "amount_cents": 24900,
+        "billing": "monthly",
         "fulfillment": UpsellFulfillment.self_serve,
-        "description": "Category top placement + visual enhancement.",
+        "description": "Rise above standard listings with priority placement and a Featured badge.",
+        "tagline": "Category top placement + visual enhancement.",
+        "benefits": [
+            "Priority ranking in directory results for your state and filters",
+            "Featured badge that stands out in the browse list",
+            "More profile visits from high-intent searchers",
+            "Ideal for competitive markets",
+        ],
+        "features": [
+            "Featured sort boost in /rehab-centers",
+            "Featured badge on directory cards",
+            "Featured label on your public landing page",
+            "Monthly subscription — pause or cancel anytime",
+        ],
     },
     {
         "product_type": UpsellProductType.featured_article,
         "label": "Featured Article",
         "price_label": "$950 once",
         "amount_cents": 95000,
+        "billing": "once",
         "fulfillment": UpsellFulfillment.human,
-        "description": "Redbear-produced, SEO-optimized facility article.",
+        "description": "A Redbear-produced, SEO-optimized article that tells your facility’s story.",
+        "tagline": "Editorial package built to rank and convert.",
+        "benefits": [
+            "Professional storytelling that builds authority beyond a directory listing",
+            "SEO-focused structure for treatment and location keywords",
+            "Shareable content for your website, email, and social channels",
+            "Human-led production with editorial review",
+        ],
+        "features": [
+            "Custom facility feature article",
+            "SEO outline + on-page optimization",
+            "Published on Struggling With Addiction",
+            "One-time project fee — no recurring charge",
+        ],
     },
     {
         "product_type": UpsellProductType.article_aeo,
         "label": "Article Syndication + AEO",
         "price_label": "$2,500 once",
         "amount_cents": 250000,
+        "billing": "once",
         "fulfillment": UpsellFulfillment.human,
-        "description": "Article + distribution, internal linking, AI-search optimization.",
+        "description": "Article plus distribution, internal linking, and AI-search (AEO) optimization.",
+        "tagline": "Maximum reach across search, syndication, and AI answers.",
+        "benefits": [
+            "Everything in Featured Article, plus broader distribution",
+            "Internal linking across relevant recovery content",
+            "Optimized for AI answer engines and featured snippets",
+            "Stronger long-term organic discovery for your brand",
+        ],
+        "features": [
+            "Full Featured Article production",
+            "Syndication / distribution plan",
+            "Internal linking package",
+            "AEO (Answer Engine Optimization) pass",
+            "One-time project fee — fulfilled by our content team",
+        ],
     },
 ]
 
@@ -160,6 +217,7 @@ class ClientCenterUpdate(BaseModel):
     zip: str | None = None
     phone: str | None = None
     website: str | None = None
+    verification_url: str | None = None
     contact_email: str | None = None
     google_maps_url: str | None = None
     google_reviews_url: str | None = None
@@ -201,9 +259,9 @@ def _completeness(center: RehabCenter) -> dict:
         bool(center.amenities),
         bool(center.accreditations),
         bool(center.gallery_keys),
-        bool(center.video_url),
+        bool(center.image_key),
         bool(center.google_maps_url),
-        bool(center.testimonials),
+        bool(center.google_reviews_url or center.testimonials),
     ]
     filled = sum(1 for c in checks if c)
     return {"filled": filled, "total": len(checks), "percent": int(round(100 * filled / len(checks)))}
@@ -273,7 +331,10 @@ def list_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(get
         return []
     leads = (
         db.query(CenterLead)
-        .filter(CenterLead.rehab_center_id == center.id)
+        .filter(
+            CenterLead.rehab_center_id == center.id,
+            (CenterLead.tag.is_(None)) | (CenterLead.tag != "abandonment"),
+        )
         .order_by(CenterLead.created_at.desc())
         .all()
     )
@@ -346,7 +407,10 @@ def export_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(g
     center = _require_active_client_center(db, user)
     leads = (
         db.query(CenterLead)
-        .filter(CenterLead.rehab_center_id == center.id)
+        .filter(
+            CenterLead.rehab_center_id == center.id,
+            (CenterLead.tag.is_(None)) | (CenterLead.tag != "abandonment"),
+        )
         .order_by(CenterLead.created_at.desc())
         .all()
     )
@@ -407,7 +471,7 @@ async def upload_center_hero_image(
     if not content or len(content) > 8 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Hero image must be between 1 byte and 8MB")
     center = _require_active_client_center(db, user)
-    key = upload_file(content, file.filename or "hero.jpg", file.content_type or "image/jpeg")
+    key = upload_image_as_avif(content, file.filename or "hero.jpg")
     center.image_key = key
     db.commit()
     return {"image_key": key, "image_url": resolve_image_url(key)}
@@ -428,7 +492,7 @@ async def upload_center_gallery_image(
     keys = list(center.gallery_keys or [])
     if len(keys) >= 12:
         raise HTTPException(status_code=400, detail="A listing can have up to 12 gallery images")
-    key = upload_file(content, file.filename or "gallery.jpg", file.content_type or "image/jpeg")
+    key = upload_image_as_avif(content, file.filename or "gallery.jpg")
     keys.append(key)
     center.gallery_keys = keys
     if not center.image_key:
@@ -485,8 +549,12 @@ def list_upsells(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
                 "product_type": p["product_type"].value,
                 "label": p["label"],
                 "price_label": p["price_label"],
+                "billing": p.get("billing", "once"),
                 "fulfillment": p["fulfillment"].value,
                 "description": p["description"],
+                "tagline": p.get("tagline") or p["description"],
+                "benefits": list(p.get("benefits") or []),
+                "features": list(p.get("features") or []),
                 **status,
                 "preview": {
                     "verified_badge": p["product_type"] == UpsellProductType.verified_badge,
@@ -546,57 +614,78 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         )
         return {"mode": "human", "order_id": order.id, "message": "Thanks — a specialist will contact you to close this package."}
 
-    # Self-serve via Stripe Checkout (one-time or recurring price IDs from env)
-    import stripe
+    # Self-serve via Stripe Checkout (monthly subscriptions for badge + featured)
+    from app.services.stripe_config import init_stripe_sdk, resolve_stripe_config
 
-    if not settings.stripe_secret_key:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
-    stripe.api_key = settings.stripe_secret_key
+    st = init_stripe_sdk(db)
+    cfg = resolve_stripe_config(db)
+    if not st:
+        raise HTTPException(status_code=503, detail="Stripe is not configured. Ask an admin to connect Stripe in Finance settings.")
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     customer_id = sub.stripe_customer_id if sub else None
     if not customer_id:
-        customer = stripe.Customer.create(email=user.email, metadata={"user_id": str(user.id)})
+        customer = st.Customer.create(email=user.email, metadata={"user_id": str(user.id)})
         customer_id = customer.id
+        if sub:
+            sub.stripe_customer_id = customer_id
+            db.commit()
 
-    price_id = None
-    mode = "payment"
-    if body.product_type == UpsellProductType.verified_badge:
-        price_id = settings.stripe_price_verified_badge
-    elif body.product_type == UpsellProductType.featured_placement:
-        price_id = settings.stripe_price_featured_placement
-        mode = "subscription"
-
-    if not price_id:
-        # Fallback: price_data so checkout still works without pre-created Stripe prices
-        line_item = {
-            "price_data": {
-                "currency": "usd",
-                "unit_amount": catalog["amount_cents"],
-                "product_data": {"name": catalog["label"]},
-                **({"recurring": {"interval": "month"}} if mode == "subscription" else {}),
-            },
-            "quantity": 1,
-        }
-    else:
-        line_item = {"price": price_id, "quantity": 1}
-        mode = "subscription" if body.product_type == UpsellProductType.featured_placement else "payment"
-
-    session = stripe.checkout.Session.create(
-        customer=customer_id,
-        mode=mode,
-        line_items=[line_item],
-        success_url=f"{settings.admin_site_url}/client/upsells?success=1",
-        cancel_url=f"{settings.admin_site_url}/client/upsells?canceled=1",
-        metadata={
-            "user_id": str(user.id),
-            "upsell_order_id": str(order.id),
-            "product_type": body.product_type.value,
-            "rehab_center_id": str(center.id),
-        },
+    monthly = body.product_type in (
+        UpsellProductType.verified_badge,
+        UpsellProductType.featured_placement,
     )
+    configured_price = None
+    if body.product_type == UpsellProductType.verified_badge:
+        configured_price = cfg.price_verified_badge
+    elif body.product_type == UpsellProductType.featured_placement:
+        configured_price = cfg.price_featured_placement
+
+    mode = "subscription" if monthly else "payment"
+    line_item = None
+    if configured_price and monthly:
+        # Only reuse a Stripe price ID when it is already a monthly recurring price.
+        try:
+            price = st.Price.retrieve(configured_price)
+            recurring = price.get("recurring") or {}
+            if price.get("type") == "recurring" and recurring.get("interval") == "month":
+                line_item = {"price": configured_price, "quantity": 1}
+        except Exception:
+            line_item = None
+
+    if line_item is None:
+        price_data = {
+            "currency": "usd",
+            "unit_amount": catalog["amount_cents"],
+            "product_data": {"name": catalog["label"]},
+        }
+        if monthly:
+            price_data["recurring"] = {"interval": "month"}
+        line_item = {"price_data": price_data, "quantity": 1}
+
+    meta = {
+        "user_id": str(user.id),
+        "upsell_order_id": str(order.id),
+        "product_type": body.product_type.value,
+        "rehab_center_id": str(center.id),
+        "billing": "monthly" if monthly else "once",
+    }
+    session_kwargs = {
+        "customer": customer_id,
+        "mode": mode,
+        "line_items": [line_item],
+        "success_url": f"{settings.admin_site_url}/client/upsells?success=1",
+        "cancel_url": f"{settings.admin_site_url}/client/upsells?canceled=1",
+        "metadata": meta,
+    }
+    if monthly:
+        # Persist product type on the subscription so renewals keep the upgrade active.
+        session_kwargs["subscription_data"] = {"metadata": meta}
+
+    session = st.checkout.Session.create(**session_kwargs)
     order.stripe_checkout_session_id = session.id
     db.commit()
-    return {"mode": "checkout", "checkout_url": session.url, "order_id": order.id}
+    return {"mode": "checkout", "checkout_url": session.url, "order_id": order.id, "billing": meta["billing"]}
+
 
 
 @router.get("/api/admin/upsell-orders")
@@ -667,10 +756,12 @@ def admin_list_leads(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
             "phone": lead.phone,
             "message": lead.message,
             "source_url": lead.source_url,
+            "source_kind": getattr(lead, "source_kind", None) or "inquiry",
+            "tag": getattr(lead, "tag", None),
             "created_at": lead.created_at,
             "read_at": lead.read_at,
             "rehab_center_id": lead.rehab_center_id,
-            "center_name": lead.center.name if lead.center else None,
+            "center_name": lead.center_name or (lead.center.name if lead.center else None),
         }
         for lead in leads
     ]

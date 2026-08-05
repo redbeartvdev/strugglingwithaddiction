@@ -25,12 +25,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
+  width: 100%;
   min-height: 108px;
   padding: 1rem 0.75rem;
   text-decoration: none;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(26, 26, 46, 0.08);
   border-radius: 12px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
   transition:
     border-color 0.25s ease,
     background 0.25s ease,

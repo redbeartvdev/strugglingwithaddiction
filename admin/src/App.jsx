@@ -26,7 +26,6 @@ import EditorDashboard from './pages/editor/Dashboard'
 import EditorPosts from './pages/editor/Posts'
 import ClientDashboard from './pages/client/Dashboard'
 import ClientBilling from './pages/client/Billing'
-import ClientLanding from './pages/client/Landing'
 import ClientMyCenter from './pages/client/MyCenter'
 import ClientLeads from './pages/client/Leads'
 import ClientUpsells from './pages/client/Upsells'
@@ -81,7 +80,7 @@ export default function App() {
 
       <Route path="/client" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
       <Route path="/client/billing" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientBilling /></ClientLayout></ProtectedRoute>} />
-      <Route path="/client/landing" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientLanding /></ClientLayout></ProtectedRoute>} />
+      <Route path="/client/landing" element={<Navigate to="/client/profile" replace />} />
       <Route path="/client/posts" element={<Navigate to="/client" replace />} />
       <Route path="/client/center" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientMyCenter /></ClientLayout></ProtectedRoute>} />
       <Route path="/client/profile" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientMyCenter /></ClientLayout></ProtectedRoute>} />

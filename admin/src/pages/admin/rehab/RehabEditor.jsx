@@ -28,6 +28,7 @@ const empty = {
   zip: '',
   phone: '',
   website: '',
+  verification_url: '',
   contact_email: '',
   outreach_email: '',
   google_maps_url: '',
@@ -70,6 +71,7 @@ export default function RehabEditor() {
         zip: c.zip || '',
         phone: c.phone || '',
         website: c.website || '',
+        verification_url: c.verification_url || '',
         contact_email: c.contact_email || '',
         outreach_email: c.outreach_email || '',
         google_maps_url: c.google_maps_url || '',
@@ -106,6 +108,7 @@ export default function RehabEditor() {
         zip: form.zip || null,
         phone: form.phone || null,
         website: form.website || null,
+        verification_url: form.verification_url || null,
         contact_email: form.contact_email || null,
         outreach_email: form.outreach_email || null,
         google_maps_url: form.google_maps_url || null,
@@ -187,6 +190,7 @@ export default function RehabEditor() {
             <div><label>ZIP</label><input value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} /></div>
             <div><label>Phone number</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div><label>Website link</label><input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} placeholder="https://…" /></div>
+            <div className="form-span-2"><label>Insurance / benefits verification page URL</label><input value={form.verification_url} onChange={e => setForm(f => ({ ...f, verification_url: e.target.value }))} placeholder="https://… (optional deep link for directory CTA)" /></div>
             <div><label>Contact email</label><input value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} /></div>
             <div><label>Outreach email</label><input value={form.outreach_email} onChange={e => setForm(f => ({ ...f, outreach_email: e.target.value }))} /></div>
             <div className="form-span-2"><label>Google Map link</label><input value={form.google_maps_url} onChange={e => setForm(f => ({ ...f, google_maps_url: e.target.value }))} /></div>

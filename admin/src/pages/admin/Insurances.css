@@ -102,3 +102,66 @@
   white-space: nowrap;
   border: 0;
 }
+
+.ins-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.ins-layout--split {
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .ins-layout--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ins-row-active td {
+  background: color-mix(in srgb, var(--accent, #5FBDF6) 8%, transparent);
+}
+
+.ins-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.ins-editor {
+  position: sticky;
+  top: 12px;
+  padding: 20px !important;
+}
+
+.ins-editor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.ins-editor-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.ins-html-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-row input {
+  width: auto;
+  margin: 0;
+}

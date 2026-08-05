@@ -35,7 +35,7 @@ export async function fetchApi(path, options = {}) {
     })
   } catch {
     throw new Error(
-      'Cannot reach the API. Start the backend: cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000',
+      'Cannot reach the API. Start the backend: cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8317',
     )
   }
 

@@ -119,7 +119,7 @@ export default function AdminClaims() {
       <header className="page-header">
         <h1 className="page-title">Claims.</h1>
         <p className="page-sub">
-          Verify rehab certifications here. Ownership is granted after Stripe payment — not on verify.
+          Claimants pay subscription first, then upload certification. Approving a paid claim unlocks the listing; rejecting a paid claim cancels and refunds via Stripe.
           Status changes require notes.
         </p>
       </header>
@@ -198,6 +198,10 @@ export default function AdminClaims() {
                 <strong style={{ fontSize: 'var(--text-sm)' }}>{c.ticket_number}</strong>
                 <span style={{ marginLeft: 8 }}><Badge tone={badgeTone(c.status)}>{displayStatus(c.status)}</Badge></span>
                 {c.email_domain_matched && <span style={{ marginLeft: 8 }}><Badge tone="ok">email domain match</Badge></span>}
+                {c.payment_received_at && <span style={{ marginLeft: 8 }}><Badge tone="ok">paid</Badge></span>}
+                {!c.payment_received_at && (c.status === 'pending' || c.status === 'under_review') && (
+                  <span style={{ marginLeft: 8 }}><Badge>awaiting payment</Badge></span>
+                )}
                 <p className="claim-meta">{c.center_name}</p>
                 <p className="claim-meta">{c.full_name} · {c.work_email}</p>
                 {c.phone && <p className="claim-meta">{c.phone}</p>}
@@ -216,8 +220,11 @@ export default function AdminClaims() {
                 )}
                 {c.admin_notes && <p className="muted" style={{ marginTop: 8 }}>Notes: {c.admin_notes}</p>}
                 {c.reviewed_at && <p className="muted" style={{ marginTop: 4 }}>Reviewed {formatDate(c.reviewed_at)}</p>}
-                {c.status === 'certified' && (
-                  <p className="muted" style={{ marginTop: 4 }}>Waiting for Stripe payment to grant the claim.</p>
+                {c.status === 'certified' && !c.payment_received_at && (
+                  <p className="muted" style={{ marginTop: 4 }}>Verified — waiting for Stripe payment (legacy path).</p>
+                )}
+                {c.payment_received_at && (c.status === 'pending' || c.status === 'under_review') && (
+                  <p className="muted" style={{ marginTop: 4 }}>Paid — verify certification to unlock listing.</p>
                 )}
               </div>
             </div>
