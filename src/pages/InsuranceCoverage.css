@@ -69,6 +69,16 @@
   color: rgba(245, 248, 252, 0.7);
 }
 
+.icov-hero .icov-article-meta {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: rgba(245, 248, 252, 0.72);
+}
+
+.icov-article-meta a {
+  color: var(--icov-sky);
+}
+
 .icov-breadcrumb a {
   color: var(--icov-sky);
   text-decoration: none;
@@ -191,6 +201,137 @@
 
 .icov-prose em {
   color: var(--icov-muted);
+}
+
+.icov-prose h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.icov-prose a {
+  color: var(--icov-accent);
+}
+
+.icov-lead {
+  font-size: 1.08rem;
+}
+
+.icov-coverage-disclaimer,
+.icov-help-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 1.75rem 0 2.25rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(140, 17, 38, 0.24);
+  border-left: 4px solid var(--icov-accent);
+  border-radius: 8px;
+  background: #fff7f8;
+}
+
+.icov-coverage-disclaimer span {
+  color: var(--icov-muted);
+}
+
+.icov-definition-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.icov-definition-list > div {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--icov-line);
+  border-radius: 8px;
+  background: var(--icov-surface);
+}
+
+.icov-definition-list dt {
+  margin-bottom: 0.2rem;
+  font-weight: 700;
+}
+
+.icov-definition-list dd {
+  margin: 0;
+  color: var(--icov-muted);
+}
+
+.icov-example,
+.icov-call-questions {
+  margin: 1.25rem 0;
+  padding: 1rem 1.15rem;
+  border-radius: 8px;
+  background: var(--icov-surface);
+}
+
+.icov-example p,
+.icov-call-questions ul {
+  margin-bottom: 0;
+}
+
+.icov-steps {
+  padding-left: 1.4rem;
+}
+
+.icov-steps li {
+  margin-bottom: 0.65rem;
+  padding-left: 0.2rem;
+}
+
+.icov-faq-list {
+  border-top: 1px solid var(--icov-line);
+}
+
+.icov-faq-list details {
+  border-bottom: 1px solid var(--icov-line);
+}
+
+.icov-faq-list summary {
+  padding: 1rem 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.icov-faq-list details p {
+  padding: 0 0 1rem;
+  color: var(--icov-muted);
+}
+
+.icov-help-box {
+  margin-top: 2.5rem;
+  border-color: rgba(95, 189, 246, 0.45);
+  border-left-color: var(--icov-sky);
+  background: #f2f9fe;
+}
+
+.icov-help-box h2,
+.icov-help-box p {
+  margin: 0;
+}
+
+.icov-state-link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icov-state-link-grid a {
+  display: block;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--icov-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--icov-ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.icov-state-link-grid a:hover {
+  border-color: rgba(95, 189, 246, 0.65);
+  color: var(--icov-accent);
 }
 
 .icov-guide-section + .icov-guide-section {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { buildRehabDirectoryUrl } from '../lib/rehabServices'
 import { detectVisitorLocation } from '../lib/geo'
+import { getInsuranceCarrierContent } from '../data/insuranceCarrierContent'
 import './InsuranceAcceptedSection.css'
 
 /** Featured commercial brands for the homepage logo strip (fallbacks when API is offline). */
@@ -66,9 +67,17 @@ export default function InsuranceAcceptedSection() {
           {items.map(item => (
             <li key={item.slug || item.name}>
               <Link
-                to={`/insurance-coverage/${item.slug}`}
+                to={
+                  getInsuranceCarrierContent(item.slug)
+                    ? `/insurance/${item.slug}`
+                    : buildRehabDirectoryUrl({ insurance: item.name, state: geo.state, city: geo.city })
+                }
                 className="insurance-accepted-link"
-                aria-label={`Does ${item.name} cover rehab?`}
+                aria-label={
+                  getInsuranceCarrierContent(item.slug)
+                    ? `Does ${item.name} cover rehab?`
+                    : `Find facilities that list ${item.name}`
+                }
               >
                 <img src={item.logo_url} alt="" loading="lazy" width={160} height={48} />
                 <span>{item.name}</span>
