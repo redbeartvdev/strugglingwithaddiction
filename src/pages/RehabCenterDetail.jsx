@@ -7,6 +7,7 @@ import { analyticsSessionKey, detectDevice, guessVisitorState } from '../lib/ana
 import { STATIC_CENTERS } from './RehabCenters'
 import { rehabLandingPath } from '../lib/rehabLanding'
 import { formatCareLabel } from '../lib/rehabServices'
+import { resolveOutboundListingLink, withDirectoryAttribution } from '../lib/outboundListingLink'
 import ReviewsCarousel from '../components/ReviewsCarousel'
 import './RehabCenterDetail.css'
 
@@ -271,6 +272,10 @@ export default function RehabCenterDetail() {
   const gallery = [center.image, ...(center.gallery_urls || [])].filter(Boolean)
     .filter((url, index, all) => all.indexOf(url) === index)
   const embedUrl = mapsEmbedUrl(center.google_maps_url, address)
+  const outbound = resolveOutboundListingLink(center)
+  const coverageHref = outbound?.kind === 'url' ? outbound.href : null
+  const websiteHref = center.website ? withDirectoryAttribution(center.website) : null
+  const coverageLabel = center.verification_url ? 'Check coverage' : 'Visit website'
 
   return (
     <main className="rpd-page">
@@ -311,7 +316,16 @@ export default function RehabCenterDetail() {
             </div>
             <div className="rpd-hero-actions">
               {center.phone && <a className="btn rpd-call-btn" href={`tel:${center.phone.replace(/\D/g, '')}`}><FaPhone aria-hidden="true" /> {center.phone}</a>}
-              {center.website && <a className="btn rpd-secondary-btn" href={center.website} target="_blank" rel="noreferrer"><FaGlobe aria-hidden="true" /> Website</a>}
+              {coverageHref && (
+                <a className="btn rpd-secondary-btn" href={coverageHref} target="_blank" rel="noopener noreferrer">
+                  <FaGlobe aria-hidden="true" /> {coverageLabel}
+                </a>
+              )}
+              {!coverageHref && outbound?.kind === 'tel' && (
+                <a className="btn rpd-secondary-btn" href={outbound.href}>
+                  <FaPhone aria-hidden="true" /> {outbound.label}
+                </a>
+              )}
               <a className="btn rpd-secondary-btn" href="#inquiry">Ask a question</a>
             </div>
           </div>
@@ -331,7 +345,11 @@ export default function RehabCenterDetail() {
             <p>{center.description || 'This claimed center has published its profile on Struggling With Addiction.'}</p>
             <div className="rpd-quick-links">
               {center.phone && <a href={`tel:${center.phone.replace(/\D/g, '')}`}><FaPhone aria-hidden="true" /> {center.phone}</a>}
-              {center.website && <a href={center.website} target="_blank" rel="noreferrer"><FaGlobe aria-hidden="true" /> Visit website</a>}
+              {coverageHref && (
+                <a href={coverageHref} target="_blank" rel="noopener noreferrer">
+                  <FaGlobe aria-hidden="true" /> {coverageLabel}
+                </a>
+              )}
               {center.contact_email && <a href={`mailto:${center.contact_email}`}>{center.contact_email}</a>}
             </div>
           </section>
@@ -369,16 +387,6 @@ export default function RehabCenterDetail() {
                 <a href={`tel:${center.phone.replace(/\D/g, '')}`}>Call {center.phone}</a>
               </p>
             )}
-          </section>
-
-          <section id="accreditations" className="rpd-section">
-            <h2>Accreditations</h2>
-            <div className="rpd-accreditation-grid">
-              {(center.accreditations || []).map(item => (
-                <div key={item} className="rpd-accreditation-card">{item}</div>
-              ))}
-            </div>
-            {!center.accreditations?.length && <p className="rpd-muted">Accreditation details not published yet.</p>}
           </section>
 
           <ReviewsCarousel center={center} />
@@ -422,8 +430,13 @@ export default function RehabCenterDetail() {
               ) : (
                 <p className="rpd-muted">Phone available after you inquire.</p>
               )}
-              {center.website && (
-                <a className="rpd-side-link" href={center.website} target="_blank" rel="noreferrer">
+              {coverageHref && (
+                <a className="rpd-side-link" href={coverageHref} target="_blank" rel="noopener noreferrer">
+                  <FaGlobe aria-hidden="true" /> {coverageLabel}
+                </a>
+              )}
+              {!coverageHref && websiteHref && (
+                <a className="rpd-side-link" href={websiteHref} target="_blank" rel="noopener noreferrer">
                   <FaGlobe aria-hidden="true" /> Visit website
                 </a>
               )}

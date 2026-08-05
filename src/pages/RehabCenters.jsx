@@ -3,11 +3,14 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch } from 'react-icons/fa'
 import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
-import { centerMatchesService, extractStateFromLocation, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
+import { centerMatchesService, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
+import { detectVisitorLocation, normalizeUsStateName } from '../lib/geo'
 import { rehabLandingPath } from '../lib/rehabLanding'
+import { resolveOutboundListingLink } from '../lib/outboundListingLink'
 import { US_STATES } from '../lib/usStates'
 import RehabSearch from '../components/RehabSearch'
 import InsuranceAcceptedSection from '../components/InsuranceAcceptedSection'
+import ListingPlanPicker from '../components/ListingPlanPicker'
 import './RehabCenters.css'
 
 export const STATIC_CENTERS = [
@@ -280,7 +283,7 @@ function MultiSelectDropdown({
   )
 }
 
-function SubmitCenterModal({ onClose }) {
+function SubmitCenterModal({ onClose, initialToken = null }) {
   const [form, setForm] = useState(EMPTY_SUBMIT_FORM)
   const [services, setServices] = useState([])
   const [insurances, setInsurances] = useState([])
@@ -288,6 +291,9 @@ function SubmitCenterModal({ onClose }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [resumeToken, setResumeToken] = useState(initialToken || '')
+  const draftTimer = useRef(null)
+  const skipDraftSave = useRef(Boolean(initialToken))
 
   const serviceOptions = useMemo(
     () => REHAB_SERVICE_TYPES.map(s => ({ value: s.label, label: s.label })),
@@ -316,6 +322,57 @@ function SubmitCenterModal({ onClose }) {
       })
   }, [])
 
+  useEffect(() => {
+    if (!initialToken || !apiEnabled()) return
+    fetchApi(`/api/center-submissions/resume/${encodeURIComponent(initialToken)}`)
+      .then(data => {
+        setForm({
+          full_name: data.full_name || '',
+          center_name: data.center_name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          address_line: data.address_line || '',
+          city: data.city || '',
+          state: data.state || '',
+          zip: data.zip || '',
+          description: data.description || '',
+        })
+        setServices(Array.isArray(data.services) ? data.services : [])
+        setInsurances(Array.isArray(data.insurances) ? data.insurances : [])
+        setResumeToken(data.resume_token || initialToken)
+        skipDraftSave.current = false
+      })
+      .catch(e => setError(e.message || 'Could not load your saved submission'))
+  }, [initialToken])
+
+  useEffect(() => {
+    if (!apiEnabled() || done || skipDraftSave.current) return
+    const email = (form.email || '').trim()
+    const centerName = (form.center_name || '').trim()
+    if (!email || !centerName || !email.includes('@')) return
+
+    if (draftTimer.current) clearTimeout(draftTimer.current)
+    draftTimer.current = setTimeout(() => {
+      fetchApi('/api/center-submissions/draft', {
+        method: 'POST',
+        body: JSON.stringify({
+          resume_token: resumeToken || null,
+          ...form,
+          services,
+          insurances,
+        }),
+      })
+        .then(data => {
+          if (data?.resume_token) setResumeToken(data.resume_token)
+        })
+        .catch(() => {})
+    }, 1200)
+
+    return () => {
+      if (draftTimer.current) clearTimeout(draftTimer.current)
+    }
+  }, [form, services, insurances, resumeToken, done])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -336,6 +393,7 @@ function SubmitCenterModal({ onClose }) {
             ...form,
             services,
             insurances,
+            resume_token: resumeToken || null,
           }),
         })
       }
@@ -363,8 +421,12 @@ function SubmitCenterModal({ onClose }) {
           <>
             <div className="modal-header">
               <span className="section-label">Submit your center</span>
-              <h3>Add your facility to the directory</h3>
-              <p>Tell us about your treatment center. Our team reviews every submission before publishing.</p>
+              <h3>{initialToken ? 'Continue your submission' : 'Add your facility to the directory'}</h3>
+              <p>
+                {initialToken
+                  ? 'We saved your progress — finish the form below and submit when you are ready.'
+                  : 'Tell us about your treatment center. Our team reviews every submission before publishing.'}
+              </p>
             </div>
             {error && <p style={{ color: '#8c1126', marginBottom: '0.75rem' }}>{error}</p>}
             <form className="modal-form" onSubmit={handleSubmit}>
@@ -429,13 +491,12 @@ function SubmitCenterModal({ onClose }) {
 }
 
 function ClaimModal({ center, onClose }) {
-  const [step, setStep] = useState(1) // 1=account, 2=confirm, 3=cert, 4=status
+  const [step, setStep] = useState(1) // 1=account, 2=confirm, 3=subscribe, 4=cert, 5=status
   const [ticket, setTicket] = useState('')
-  const [claimStatus, setClaimStatus] = useState('')
   const [centerName, setCenterName] = useState(center?.name || '')
-  const [checkoutReady, setCheckoutReady] = useState(false)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [busyCheckout, setBusyCheckout] = useState(false)
   const [form, setForm] = useState({
     full_name: '',
     work_email: '',
@@ -471,9 +532,7 @@ function ClaimModal({ center, onClose }) {
           }),
         })
         setTicket(res.ticket_number)
-        setClaimStatus(res.status)
         setCenterName(res.center_name || center.name)
-        setCheckoutReady(res.checkout_ready || false)
         setStep(3)
       } catch (err) {
         setError(err.message)
@@ -482,6 +541,26 @@ function ClaimModal({ center, onClose }) {
       setTicket('DEMO-TICKET')
       setCenterName(center.name)
       setStep(3)
+    }
+  }
+
+  const goToCheckout = async interval => {
+    setBusyCheckout(true)
+    setError('')
+    if (apiEnabled()) {
+      try {
+        const res = await fetchApi('/api/billing/checkout-claim', {
+          method: 'POST',
+          body: JSON.stringify({ ticket_number: ticket, interval }),
+        })
+        window.location.href = res.checkout_url
+      } catch (err) {
+        setError(err.message)
+        setBusyCheckout(false)
+      }
+    } else {
+      setStep(4)
+      setBusyCheckout(false)
     }
   }
 
@@ -510,45 +589,27 @@ function ClaimModal({ center, onClose }) {
           const detail = res.detail
           throw new Error(typeof detail === 'string' ? detail : 'Upload failed')
         }
-        setClaimStatus(res.status || 'under_review')
-        setCheckoutReady(res.checkout_ready || false)
-        setStep(4)
+        setStep(5)
       } catch (err) {
         setError(err.message || 'Upload failed')
       }
     } else {
       setTimeout(() => {
-        setClaimStatus('under_review')
-        setCheckoutReady(false)
-        setStep(4)
+        setStep(5)
       }, 800)
     }
     setUploading(false)
   }
 
-  const goToCheckout = async interval => {
-    if (apiEnabled()) {
-      try {
-        const res = await fetchApi('/api/billing/checkout-claim', {
-          method: 'POST',
-          body: JSON.stringify({ ticket_number: ticket, interval }),
-        })
-        window.location.href = res.checkout_url
-      } catch (err) {
-        setError(err.message)
-      }
-    }
-  }
-
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className={`modal${step === 3 ? ' modal-plans' : ''}`} onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
 
         {step === 1 && (
           <>
             <div className="modal-header">
-              <span className="section-label">Step 1 of 3</span>
+              <span className="section-label">Step 1 of 4</span>
               <h3>Create Your Account</h3>
               <p>Set up your credentials to manage <strong>{center.name}</strong>.</p>
             </div>
@@ -566,7 +627,7 @@ function ClaimModal({ center, onClose }) {
         {step === 2 && (
           <>
             <div className="modal-header">
-              <span className="section-label">Step 2 of 3</span>
+              <span className="section-label">Step 2 of 4</span>
               <h3>Confirm Your Facility</h3>
               <p>Confirm you are claiming <strong>{centerName || center.name}</strong>.</p>
             </div>
@@ -585,7 +646,27 @@ function ClaimModal({ center, onClose }) {
         {step === 3 && (
           <>
             <div className="modal-header">
-              <span className="section-label">Step 3 of 3</span>
+              <span className="section-label">Step 3 of 4</span>
+              <h3>Choose monthly or annual</h3>
+              <p>Subscribe first to claim your listing — then upload certification for verification.</p>
+            </div>
+            {error && <p style={{ color: '#8c1126', marginBottom: '0.75rem' }}>{error}</p>}
+            <ListingPlanPicker
+              centerName={centerName || center.name}
+              ticket={ticket}
+              busy={busyCheckout}
+              onSelect={goToCheckout}
+            />
+            <button type="button" className="btn" style={{ background: '#e5e7eb', color: '#6b7280' }} onClick={() => setStep(2)} disabled={busyCheckout}>
+              Back
+            </button>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <div className="modal-header">
+              <span className="section-label">Step 4 of 4</span>
               <h3>Upload Certification</h3>
               <p>Provide proof you work at <strong>{centerName || center.name}</strong> (employment verification, business card, license, etc.)</p>
             </div>
@@ -595,46 +676,22 @@ function ClaimModal({ center, onClose }) {
                 {uploading ? 'Uploading…' : 'Choose File to Upload'}
                 <input type="file" accept="image/*,.pdf" onChange={handleCertUpload} style={{ display: 'none' }} disabled={uploading} />
               </label>
-              <button type="button" className="btn" style={{ background: '#e5e7eb', color: '#6b7280' }} onClick={() => setStep(2)}>Back</button>
             </div>
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="modal-success">
             <div className="modal-success-icon">✓</div>
-            {checkoutReady && claimStatus === 'certified' ? (
-              <>
-                <h3>Verified!</h3>
-                <p style={{ marginBottom: '0.75rem' }}>Your claim for <strong>{centerName || center.name}</strong> has been verified.</p>
-                <p style={{ marginBottom: '1rem' }}>Ticket: <strong>{ticket}</strong></p>
-                <div style={{ background: '#f0f9ff', border: '1px solid #98b8c4', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem', textAlign: 'left' }}>
-                  <h4 style={{ fontSize: '1rem', margin: '0 0 0.5rem', color: '#1a1a2e' }}>Subscribe to claim {centerName || center.name}</h4>
-                  <p style={{ fontSize: '0.9rem', color: '#4b5563', marginBottom: '1rem' }}>Subscribe now to publish your listing and start receiving leads.</p>
-                  <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
-                    <button type="button" className="btn" onClick={() => goToCheckout('year')} style={{ fontSize: '0.9rem' }}>
-                      <strong>$99/year</strong> <span style={{ fontSize: '0.8rem', marginLeft: '0.5rem', opacity: 0.85 }}>(Save 2 months!)</span>
-                    </button>
-                    <button type="button" className="btn" onClick={() => goToCheckout('month')} style={{ background: 'white', color: '#1a1a2e', border: '2px solid #e5e7eb', fontSize: '0.9rem' }}>
-                      $9.99/month
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>Proof Received — Pending Verification</h3>
-                <p style={{ marginBottom: '0.75rem' }}>
-                  Your claim for <strong>{centerName || center.name}</strong> is already submitted and waiting for an admin to verify your proof.
-                </p>
-                <p style={{ marginBottom: '0.75rem', color: '#4b5563', fontSize: '0.95rem' }}>
-                  Please wait until an admin verifies your certification. We sent a confirmation email to <strong>{form.work_email}</strong>, and you will get another email when verification is complete.
-                </p>
-                <p style={{ marginBottom: '1rem' }}>Ticket: <strong>{ticket}</strong></p>
-                <p style={{ marginBottom: '1.5rem' }}><Link to={`/claim-status/${ticket}`}>Track your claim status →</Link></p>
-              </>
-            )}
-
+            <h3>Proof Received — Pending Verification</h3>
+            <p style={{ marginBottom: '0.75rem' }}>
+              Your claim for <strong>{centerName || center.name}</strong> is submitted and waiting for an admin to verify your proof.
+            </p>
+            <p style={{ marginBottom: '0.75rem', color: '#4b5563', fontSize: '0.95rem' }}>
+              We sent a confirmation email to <strong>{form.work_email}</strong>. Your listing unlocks after verification.
+            </p>
+            <p style={{ marginBottom: '1rem' }}>Ticket: <strong>{ticket}</strong></p>
+            <p style={{ marginBottom: '1.5rem' }}><Link to={`/claim-status/${ticket}`}>Track your claim status →</Link></p>
             <button className="btn" style={{ background: '#e5e7eb', color: '#374151' }} onClick={onClose}>Close</button>
           </div>
         )}
@@ -643,21 +700,42 @@ function ClaimModal({ center, onClose }) {
   )
 }
 
-function filterCenters(centers, { query, state, service, insurance }) {
+function filterCenters(centers, { query, state, city, service, insurance, catalogNames = [] }) {
   const q = normalizeText(query)
   const insuranceNeedle = normalizeText(insurance)
+  const cityNeedle = normalizeText(city)
+  const isOtherInsurance = insuranceNeedle === 'other insurance' || insuranceNeedle === 'other'
+  const knownCatalog = new Set(
+    (catalogNames || [])
+      .map(normalizeText)
+      .filter(name => name && name !== 'other insurance'),
+  )
+
   return centers.filter(center => {
     if (state) {
-      const centerState = extractStateFromLocation(center.location)
+      const centerState = getCenterState(center)
       if (!centerState || normalizeText(centerState) !== normalizeText(state)) return false
     }
-    if (service && !centerMatchesService(center.specialties, service)) return false
+    if (cityNeedle) {
+      const centerCity = getCenterCity(center)
+      if (!centerCity || !normalizeText(centerCity).includes(cityNeedle)) return false
+    }
+    if (service && !centerMatchesService(center.specialties, service, center.levels_of_care)) return false
     if (insuranceNeedle) {
       const names = [
         ...(center.insurances || []),
         ...((center.insurance_details || []).map(d => d.name)),
-      ]
-      if (!names.some(name => normalizeText(name).includes(insuranceNeedle) || insuranceNeedle.includes(normalizeText(name)))) {
+      ].filter(Boolean)
+      if (isOtherInsurance) {
+        const matchesOther = names.some((name) => {
+          const n = normalizeText(name)
+          return n === 'other insurance' || (knownCatalog.size > 0 && !knownCatalog.has(n))
+        })
+        if (!matchesOther) return false
+      } else if (!names.some(name => {
+        const n = normalizeText(name)
+        return n.includes(insuranceNeedle) || insuranceNeedle.includes(n)
+      })) {
         return false
       }
     }
@@ -665,6 +743,8 @@ function filterCenters(centers, { query, state, service, insurance }) {
       const blob = normalizeText([
         center.name,
         center.location,
+        center.city,
+        center.state,
         center.description,
         ...(center.specialties || []),
         ...(center.insurances || []),
@@ -675,25 +755,61 @@ function filterCenters(centers, { query, state, service, insurance }) {
   })
 }
 
+function rankCenters(centers, { city } = {}) {
+  const cityNeedle = normalizeText(city)
+  return [...centers].sort((a, b) => {
+    if (cityNeedle) {
+      const aCity = normalizeText(getCenterCity(a)).includes(cityNeedle) ? 1 : 0
+      const bCity = normalizeText(getCenterCity(b)).includes(cityNeedle) ? 1 : 0
+      if (aCity !== bCity) return bCity - aCity
+    }
+    const aFeatured = a.featured ? 1 : 0
+    const bFeatured = b.featured ? 1 : 0
+    if (aFeatured !== bFeatured) return bFeatured - aFeatured
+    return String(a.name || '').localeCompare(String(b.name || ''))
+  })
+}
+
 // NOTE: Backend endpoint used for leads:
 // POST /api/rehab-centers/{slug}/leads body: { full_name, email, phone?, message, source_url? }
 
+const PAGE_SIZE = 10
+
 export default function RehabCenters() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [claimCenter, setClaimCenter] = useState(null)
   const [submitOpen, setSubmitOpen] = useState(false)
+  const [submitResumeToken, setSubmitResumeToken] = useState(null)
   const [centers, setCenters] = useState(STATIC_CENTERS)
   const [loading, setLoading] = useState(apiEnabled())
-  const [query, setQuery] = useState('')
-  const [stateFilter, setStateFilter] = useState('')
-  const [serviceFilter, setServiceFilter] = useState('')
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
+  const [stateFilter, setStateFilter] = useState(() => normalizeUsStateName(searchParams.get('state') || ''))
+  const [cityFilter, setCityFilter] = useState(() => searchParams.get('city') || '')
+  const [serviceFilter, setServiceFilter] = useState(() => searchParams.get('service') || '')
   const [insuranceFilter, setInsuranceFilter] = useState(() => searchParams.get('insurance') || '')
   const [insuranceOptions, setInsuranceOptions] = useState([])
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [geoLabel, setGeoLabel] = useState('')
+  const [strictCity, setStrictCity] = useState(() => Boolean(searchParams.get('city')))
 
   useEffect(() => {
-    const fromUrl = searchParams.get('insurance') || ''
-    setInsuranceFilter(fromUrl)
+    setQuery(searchParams.get('q') || '')
+    setStateFilter(normalizeUsStateName(searchParams.get('state') || ''))
+    setCityFilter(searchParams.get('city') || '')
+    setServiceFilter(searchParams.get('service') || '')
+    setInsuranceFilter(searchParams.get('insurance') || '')
+    setStrictCity(Boolean(searchParams.get('city')))
   }, [searchParams])
+
+  useEffect(() => {
+    const token = searchParams.get('submit_resume')
+    if (!token) return
+    setSubmitResumeToken(token)
+    setSubmitOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('submit_resume')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     if (!apiEnabled()) return
@@ -717,22 +833,120 @@ export default function RehabCenters() {
     }
   }, [])
 
-  const hasActiveFilters = Boolean(query || stateFilter || serviceFilter || insuranceFilter)
-  const filteredCenters = useMemo(
-    () => filterCenters(centers, {
+  // Default location from visitor IP when URL has no explicit state.
+  useEffect(() => {
+    let cancelled = false
+    if (searchParams.get('state')) return undefined
+
+    detectVisitorLocation().then((geo) => {
+      if (cancelled || !geo?.state) return
+      setGeoLabel([geo.city, geo.state].filter(Boolean).join(', '))
+      setSearchParams((prev) => {
+        if (prev.get('state')) return prev
+        const next = new URLSearchParams(prev)
+        next.set('state', geo.state)
+        if (geo.city && !next.get('city')) next.set('city', geo.city)
+        return next
+      }, { replace: true })
+    }).catch(() => {})
+
+    return () => { cancelled = true }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (!insuranceFilter) return
+    const list = document.getElementById('rehab-directory-results')
+    if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [insuranceFilter])
+
+  const catalogNames = useMemo(
+    () => insuranceOptions.map(item => item.name).filter(Boolean),
+    [insuranceOptions],
+  )
+
+  const filteredCenters = useMemo(() => {
+    const base = filterCenters(centers, {
       query,
       state: stateFilter,
+      city: strictCity ? cityFilter : '',
       service: serviceFilter,
       insurance: insuranceFilter,
-    }),
-    [centers, query, stateFilter, serviceFilter, insuranceFilter],
+      catalogNames,
+    })
+
+    // If city is too specific and returns nothing, fall back to state and rank by city.
+    if (strictCity && cityFilter && base.length === 0 && stateFilter) {
+      const stateOnly = filterCenters(centers, {
+        query,
+        state: stateFilter,
+        city: '',
+        service: serviceFilter,
+        insurance: insuranceFilter,
+        catalogNames,
+      })
+      return rankCenters(stateOnly, { city: cityFilter })
+    }
+
+    return rankCenters(base, { city: cityFilter })
+  }, [
+    centers,
+    query,
+    stateFilter,
+    cityFilter,
+    strictCity,
+    serviceFilter,
+    insuranceFilter,
+    catalogNames,
+  ])
+
+  const hasActiveFilters = Boolean(query || stateFilter || serviceFilter || insuranceFilter || cityFilter)
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [query, stateFilter, cityFilter, serviceFilter, insuranceFilter])
+
+  const visibleCenters = useMemo(
+    () => filteredCenters.slice(0, visibleCount),
+    [filteredCenters, visibleCount],
   )
+  const hasMore = visibleCount < filteredCenters.length
+
+  function patchParams(updates) {
+    const next = new URLSearchParams(searchParams)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value)
+      else next.delete(key)
+    })
+    setSearchParams(next, { replace: true })
+  }
+
+  function updateInsuranceFilter(value) {
+    setInsuranceFilter(value)
+    patchParams({ insurance: value })
+  }
+
+  function updateStateFilter(value) {
+    setStateFilter(value)
+    setCityFilter('')
+    setStrictCity(false)
+    setGeoLabel('')
+    patchParams({ state: value, city: '' })
+  }
+
+  function updateServiceFilter(value) {
+    setServiceFilter(value)
+    patchParams({ service: value })
+  }
 
   function clearFilters() {
     setQuery('')
     setStateFilter('')
+    setCityFilter('')
     setServiceFilter('')
     setInsuranceFilter('')
+    setStrictCity(false)
+    setGeoLabel('')
+    setSearchParams({}, { replace: true })
   }
 
   return (
@@ -754,16 +968,17 @@ export default function RehabCenters() {
           query={query}
           onQueryChange={setQuery}
           state={stateFilter}
-          onStateChange={setStateFilter}
+          onStateChange={updateStateFilter}
           service={serviceFilter}
-          onServiceChange={setServiceFilter}
+          onServiceChange={updateServiceFilter}
           insurance={insuranceFilter}
-          onInsuranceChange={setInsuranceFilter}
+          onInsuranceChange={updateInsuranceFilter}
           insuranceOptions={insuranceOptions}
           resultCount={filteredCenters.length}
           totalCount={centers.length}
           onClear={clearFilters}
           hasActiveFilters={hasActiveFilters}
+          locationHint={geoLabel || [cityFilter, stateFilter].filter(Boolean).join(', ')}
         />
       </div>
 
@@ -772,6 +987,13 @@ export default function RehabCenters() {
           <p>
             {loading ? (
               <>Loading featured centers…</>
+            ) : (stateFilter || cityFilter) ? (
+              <>
+                Showing centers near{' '}
+                <strong>{[cityFilter, stateFilter].filter(Boolean).join(', ') || 'you'}</strong>
+                {insuranceFilter ? <> that accept <strong>{insuranceFilter}</strong></> : null}
+                {' — '}top {Math.min(PAGE_SIZE, filteredCenters.length)} listed first.
+              </>
             ) : hasActiveFilters ? (
               <>Refine your search above or browse all <strong>{centers.length} centers</strong>.</>
             ) : (
@@ -781,7 +1003,7 @@ export default function RehabCenters() {
         </div>
       </div>
 
-      <section className="rehab-list-section">
+      <section className="rehab-list-section" id="rehab-directory-results">
         <div className="container rehab-list">
           {loading && <p style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>Loading centers…</p>}
           {!loading && filteredCenters.length === 0 && (
@@ -792,13 +1014,14 @@ export default function RehabCenters() {
               <button type="button" className="btn" onClick={clearFilters}>Clear all filters</button>
             </div>
           )}
-          {!loading && filteredCenters.map(center => {
+          {!loading && visibleCenters.map(center => {
             const landingPath = center.claimed ? rehabLandingPath(center) : null
+            const outbound = center.claimed ? resolveOutboundListingLink(center) : null
             return (
             <article className="rehab-card" key={center.id}>
               <div className="rehab-card-img-wrap">
                 {center.image && (landingPath
-                  ? <Link to={landingPath} aria-label={`View ${center.name} landing page`}><img src={center.image} alt={center.name} loading="lazy" /></Link>
+                  ? <Link to={landingPath} aria-label={`View ${center.name} listing`}><img src={center.image} alt={center.name} loading="lazy" /></Link>
                   : <img src={center.image} alt={center.name} loading="lazy" />
                 )}
               </div>
@@ -840,16 +1063,38 @@ export default function RehabCenters() {
                 </div>
                 <p className="rehab-description">{center.description}</p>
                 <div className="rehab-card-footer">
-                  {center.claimed && center.phone ? (
+                  {center.claimed && outbound ? (
                     <>
                       <div className="rehab-card-contacts">
-                        <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="rehab-contact"><FaPhone aria-hidden="true" /> {center.phone}</a>
+                        {center.phone && (
+                          <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="rehab-contact"><FaPhone aria-hidden="true" /> {center.phone}</a>
+                        )}
                         {center.contact_email && (
                           <a href={`mailto:${center.contact_email}`} className="rehab-contact"><FaEnvelope aria-hidden="true" /> {center.contact_email}</a>
                         )}
                       </div>
                       <div className="rehab-card-actions">
-                        {landingPath && <Link to={landingPath} className="btn rehab-action-btn">View</Link>}
+                        <a
+                          href={outbound.href}
+                          className="btn rehab-action-btn"
+                          {...(outbound.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        >
+                          {outbound.label}
+                        </a>
+                        {landingPath && (
+                          <Link to={landingPath} className="btn rehab-action-btn rehab-action-btn--secondary">About listing</Link>
+                        )}
+                      </div>
+                    </>
+                  ) : center.claimed ? (
+                    <>
+                      <div className="rehab-card-contacts">
+                        {center.phone && (
+                          <a href={`tel:${center.phone.replace(/\D/g, '')}`} className="rehab-contact"><FaPhone aria-hidden="true" /> {center.phone}</a>
+                        )}
+                      </div>
+                      <div className="rehab-card-actions">
+                        {landingPath && <Link to={landingPath} className="btn rehab-action-btn">About listing</Link>}
                       </div>
                     </>
                   ) : (
@@ -860,6 +1105,20 @@ export default function RehabCenters() {
             </article>
             )
           })}
+          {!loading && hasMore && (
+            <div className="rehab-show-more">
+              <p className="rehab-show-more-meta">
+                Showing {visibleCenters.length} of {filteredCenters.length} centers
+              </p>
+              <button
+                type="button"
+                className="btn rehab-show-more-btn"
+                onClick={() => setVisibleCount(count => count + PAGE_SIZE)}
+              >
+                Show more
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -879,7 +1138,15 @@ export default function RehabCenters() {
         </div>
       </section>
 
-      {submitOpen && <SubmitCenterModal onClose={() => setSubmitOpen(false)} />}
+      {submitOpen && (
+        <SubmitCenterModal
+          initialToken={submitResumeToken}
+          onClose={() => {
+            setSubmitOpen(false)
+            setSubmitResumeToken(null)
+          }}
+        />
+      )}
       {claimCenter && <ClaimModal center={claimCenter} onClose={() => setClaimCenter(null)} />}
     </main>
   )

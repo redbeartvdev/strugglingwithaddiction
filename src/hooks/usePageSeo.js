@@ -15,35 +15,53 @@ function stripHtml(html) {
   return (html || '').replace(/<[^>]*>/g, '').trim()
 }
 
-/** Apply document title + meta/OG tags for a blog post. */
-export function usePostSeo(post) {
+const SITE = 'Struggling With Addiction'
+
+/**
+ * Generic page SEO (title, description, OG). Pass null/undefined to skip.
+ * @param {{ title?: string, description?: string, image?: string, type?: string, noindex?: boolean }} seo
+ */
+export function usePageSeo(seo) {
   useEffect(() => {
-    if (!post) return
+    if (!seo) return
+    const title = stripHtml(seo.title || '')
+    const description = stripHtml(seo.description || '')
+    if (title) document.title = `${title} | ${SITE}`
+    else document.title = SITE
 
-    const title = stripHtml(post.metaTitle || post.title || 'Blog')
-    const description = stripHtml(post.metaDescription || post.excerpt || '')
-    const site = 'Struggling With Addiction'
-    document.title = `${title} | ${site}`
+    if (description) setMeta('description', description)
+    if (title) setMeta('og:title', title, 'property')
+    if (description) setMeta('og:description', description, 'property')
+    setMeta('og:type', seo.type || 'website', 'property')
+    if (seo.image) setMeta('og:image', seo.image, 'property')
 
-    setMeta('description', description)
-    setMeta('og:title', title, 'property')
-    setMeta('og:description', description, 'property')
-    setMeta('og:type', 'article', 'property')
-    if (post.featuredImage) setMeta('og:image', post.featuredImage, 'property')
-
-    if (post.seoNoindex) {
+    if (seo.noindex) {
       setMeta('robots', 'noindex, nofollow')
     } else {
-      const robots = document.querySelector('meta[name="robots"]')
-      if (robots) robots.remove()
+      document.querySelector('meta[name="robots"]')?.remove()
     }
 
     return () => {
-      document.title = site
+      document.title = SITE
       ;['description', 'og:title', 'og:description', 'og:type', 'og:image', 'robots'].forEach(name => {
         const attr = name.startsWith('og:') ? 'property' : 'name'
         document.querySelector(`meta[${attr}="${name}"]`)?.remove()
       })
     }
-  }, [post])
+  }, [seo?.title, seo?.description, seo?.image, seo?.type, seo?.noindex])
+}
+
+/** Apply document title + meta/OG tags for a blog post. */
+export function usePostSeo(post) {
+  usePageSeo(
+    post
+      ? {
+          title: post.metaTitle || post.title || 'Blog',
+          description: post.metaDescription || post.excerpt || '',
+          image: post.featuredImage || undefined,
+          type: 'article',
+          noindex: Boolean(post.seoNoindex),
+        }
+      : null,
+  )
 }

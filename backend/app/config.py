@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-    cors_origins: str = "http://localhost:5173,http://localhost:5174"
+    cors_origins: str = "http://localhost:5317,http://127.0.0.1:5317,http://localhost:5180,http://127.0.0.1:5180"
     admin_bootstrap_email: str = "admin@example.com"
     admin_bootstrap_password: str = "changeme123"
     import_users_default_password: str = "ChangeMeOnFirstLogin!"
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_monthly: str = ""
     stripe_price_yearly: str = ""
-    public_site_url: str = "http://127.0.0.1:5173"
+    public_site_url: str = "http://127.0.0.1:5317"
     admin_site_url: str = "http://127.0.0.1:5180"
     s3_endpoint_url: str = ""
     s3_access_key_id: str = ""

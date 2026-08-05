@@ -135,7 +135,12 @@ export default function ReviewsCarousel({ center }) {
           <h2>Reviews</h2>
           {payload.source === 'google' && (
             <p className="rpd-reviews-source">
-              From Google{payload.user_ratings_total ? ` · ${payload.user_ratings_total} ratings` : ''}
+              Live Google reviews{payload.user_ratings_total ? ` · ${payload.user_ratings_total} ratings` : ''}
+            </p>
+          )}
+          {payload.source === 'manual' && center?.google_reviews_url && (
+            <p className="rpd-reviews-source">
+              Manual testimonials — add a Google place link to pull live reviews
             </p>
           )}
         </div>

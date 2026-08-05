@@ -26,9 +26,13 @@ const Accessibility = lazy(() => import('./pages/Accessibility'))
 const About = lazy(() => import('./pages/About'))
 const AuthorPage = lazy(() => import('./pages/AuthorPage'))
 const ClaimStatus = lazy(() => import('./pages/ClaimStatus'))
+const SubmitCenterContinue = lazy(() => import('./pages/SubmitCenterContinue'))
 const PartnerPage = lazy(() => import('./pages/PartnerPage'))
 const ProviderLoginRedirect = lazy(() => import('./pages/ProviderLoginRedirect'))
 const SuperadminLoginRedirect = lazy(() => import('./pages/SuperadminLoginRedirect'))
+const InsuranceCoverageHub = lazy(() => import('./pages/InsuranceCoverageHub'))
+const InsuranceCarrierPage = lazy(() => import('./pages/InsuranceCarrierPage'))
+const InsuranceGuidePage = lazy(() => import('./pages/InsuranceGuidePage'))
 
 function PageLoader() {
   return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Open Sans, Helvetica, Arial, sans-serif', color: '#5FBDF6', fontSize: '1.1rem' }}>Loading…</div>
@@ -51,6 +55,7 @@ export default function App() {
           <Route path="/rehabs/united-states/:state/:city/:facility" element={<RehabCenterDetail />} />
           <Route path="/portal" element={<Portal />} />
           <Route path="/claim-status/:ticket" element={<ClaimStatus />} />
+          <Route path="/submit-center/:token" element={<SubmitCenterContinue />} />
           <Route path="/provider" element={<ProviderLoginRedirect />} />
           <Route path="/provider/login" element={<ProviderLoginRedirect />} />
           <Route path="/swa-login" element={<SuperadminLoginRedirect />} />
@@ -61,6 +66,9 @@ export default function App() {
           <Route path="/terms" element={<TermsOfUse />} />
           <Route path="/accessibility" element={<Accessibility />} />
           <Route path="/about" element={<About />} />
+          <Route path="/insurance-coverage" element={<InsuranceCoverageHub />} />
+          <Route path="/insurance-coverage/guides/:slug" element={<InsuranceGuidePage />} />
+          <Route path="/insurance-coverage/:slug" element={<InsuranceCarrierPage />} />
           <Route path="/our-team" element={<Navigate to="/about" replace />} />
           <Route path="/author/:slug" element={<AuthorPage />} />
           <Route path="*" element={<NotFound />} />

@@ -763,22 +763,6 @@
   }
 }
 
-.rpd-accreditation-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
-}
-
-.rpd-accreditation-card {
-  background: linear-gradient(180deg, #f8fbfc, #eef4f6);
-  border: 1px solid #d7e2e7;
-  border-radius: 14px;
-  padding: 1.1rem;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
 .rpd-map {
   margin: 1rem 0;
   border-radius: 14px;

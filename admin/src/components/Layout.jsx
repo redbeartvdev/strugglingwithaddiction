@@ -35,18 +35,33 @@ export function ClientLayout({ children }) {
     }
     api('/api/billing/subscription')
       .then(setSubscription)
-      // Do not lock the client out on a transient API failure.
       .catch(() => setSubscription({ status: 'unknown' }))
       .finally(() => setLoaded(true))
-  }, [user?.role])
+  }, [user?.role, location.pathname])
 
-  const inactive = user?.role === 'client'
+  const paymentOk = user?.role === 'client'
     && loaded
-    && !['active', 'trialing', 'past_due', 'unknown'].includes(subscription?.status)
+    && ['active', 'trialing', 'past_due', 'unknown'].includes(subscription?.status)
 
+  const inactive = user?.role === 'client' && loaded && !paymentOk
+
+  // Paid but listing not yet verified/claimed — allow Overview + Billing only
+  const verificationIncomplete = paymentOk
+    && subscription
+    && subscription.status !== 'unknown'
+    && !subscription.listing_claimed
+    && !subscription.verification_complete
+
+  const allowedWhileVerifying = ['/client', '/client/billing', '/client/account']
   if (inactive && location.pathname !== '/client/billing') {
     return <Navigate to="/client/billing" replace />
   }
+  if (
+    verificationIncomplete
+    && !allowedWhileVerifying.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`))
+  ) {
+    return <Navigate to="/client" replace />
+  }
 
-  return <Shell>{children}</Shell>
+  return <Shell verificationIncomplete={verificationIncomplete}>{children}</Shell>
 }

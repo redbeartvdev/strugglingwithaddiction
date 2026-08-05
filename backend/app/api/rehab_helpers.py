@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,26 @@ from app.models.insurance import InsuranceCatalog
 from app.models.rehab import RehabCenter
 from app.schemas.rehab import InsuranceDetail, RehabCenterPublic
 from app.services.storage import resolve_image_url
+
+# Keyword map mirrors src/lib/rehabServices.js REHAB_SERVICE_TYPES
+SERVICE_KEYWORDS: dict[str, list[str]] = {
+    "inpatient": ["inpatient", "residential"],
+    "outpatient": ["outpatient"],
+    "iop": ["iop", "intensive outpatient"],
+    "php": ["php", "partial hospitalization"],
+    "detox": ["detox", "medical detox"],
+    "dual-diagnosis": ["dual diagnosis", "co-occurring", "co occurring"],
+    "mental-health": ["mental health", "behavioral health"],
+    "trauma": ["trauma", "ptsd"],
+    "mat": ["mat", "medication-assisted", "medication assisted", "suboxone", "methadone"],
+    "telehealth": ["telehealth", "virtual", "online"],
+    "executive": ["executive"],
+    "equine": ["equine"],
+    "extended-care": ["extended care", "long-term", "long term"],
+    "family": ["family"],
+    "eating-disorders": ["eating disorder"],
+    "substance-use": ["substance use", "addiction"],
+}
 
 
 def center_has_active_subscription(db: Session, center: RehabCenter) -> bool:
@@ -20,6 +41,37 @@ def center_has_active_subscription(db: Session, center: RehabCenter) -> bool:
 def _norm(value: str) -> str:
     return " ".join(str(value or "").lower().replace("-", " ").split())
 
+
+def _norm_search(value: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9\s]+", " ", str(value or "").lower())
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def center_matches_service(center: RehabCenter, service_id: str | None) -> bool:
+    if not service_id:
+        return True
+    keywords = SERVICE_KEYWORDS.get(service_id.strip().lower())
+    if not keywords:
+        return False
+    haystack = _norm_search(" ".join([*(center.specialties or []), *(center.levels_of_care or [])]))
+    return any(_norm_search(kw) in haystack for kw in keywords)
+
+
+def center_matches_insurance(center: RehabCenter, insurance: str | None) -> bool:
+    if not insurance:
+        return True
+    needle = _norm_search(insurance)
+    if not needle:
+        return True
+    names = [n for n in (center.insurances or []) if n]
+    if not names:
+        return False
+    if needle in ("other insurance", "other"):
+        return any(
+            _norm_search(n) in ("other", "other insurance") or "other insurance" in _norm_search(n)
+            for n in names
+        )
+    return any(needle in _norm_search(n) or _norm_search(n) in needle for n in names)
 
 def resolve_insurance_details(db: Session, names: list[str] | None) -> list[InsuranceDetail]:
     """Map free-text insurance names to catalog rows (logos) when possible."""
@@ -73,7 +125,7 @@ def center_to_public(db: Session, center: RehabCenter) -> RehabCenterPublic:
         and center.featured_until
         and center.featured_until > datetime.now(timezone.utc)
     )
-    insurance_names = (center.insurances or []) if premium else []
+    insurance_names = center.insurances or []
     return RehabCenterPublic(
         id=center.id,
         slug=center.slug,
@@ -81,6 +133,7 @@ def center_to_public(db: Session, center: RehabCenter) -> RehabCenterPublic:
         location=center.location_display,
         phone=center.phone if premium else None,
         website=center.website if premium else None,
+        verification_url=center.verification_url if premium else None,
         contact_email=center.contact_email if premium else None,
         image=resolve_image_url(center.image_key),
         specialties=center.specialties or [],
@@ -89,17 +142,19 @@ def center_to_public(db: Session, center: RehabCenter) -> RehabCenterPublic:
         claimed=show_as_claimed,
         verified_badge=bool(premium and center.verified_badge),
         featured=featured,
+        # Insurance names stay public so directory logo filters work; logos stay premium.
         insurances=insurance_names,
         insurance_details=resolve_insurance_details(db, insurance_names) if premium else [],
-        levels_of_care=(center.levels_of_care or []) if premium else [],
+        # Levels of care stay public so directory service filters work for all listings.
+        levels_of_care=center.levels_of_care or [],
         amenities=(center.amenities or []) if premium else [],
         accreditations=(center.accreditations or []) if premium else [],
         google_maps_url=center.google_maps_url if premium else None,
         gallery_urls=[resolve_image_url(key) for key in (center.gallery_keys or [])] if premium else [],
         video_url=center.video_url if premium else None,
         address_line=center.address_line if premium else None,
-        city=center.city if premium else None,
-        state=center.state if premium else None,
+        city=center.city,
+        state=center.state,
         zip=center.zip if premium else None,
         google_reviews_url=center.google_reviews_url if premium else None,
         testimonials=(center.testimonials or []) if premium else [],

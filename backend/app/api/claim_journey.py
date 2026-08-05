@@ -186,8 +186,8 @@ def start_claim(body: ClaimStartRequest, db: Annotated[Session, Depends(get_db)]
         ticket_number=ticket,
         status=ClaimStatus.pending,
         center_name=center.name,
-        message="Account created. Upload your rehab certification to continue verification.",
-        checkout_ready=False,
+        message="Account created. Choose a monthly or yearly plan to continue — then upload certification for verification.",
+        checkout_ready=True,
         user_id=user.id,
     )
 
@@ -208,6 +208,11 @@ async def upload_claim_cert(
         raise HTTPException(status_code=404, detail="Ticket not found")
     if claim.status in (ClaimStatus.rejected, ClaimStatus.abandoned):
         raise HTTPException(status_code=400, detail="Claim is closed")
+    if not claim.payment_received_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Subscribe first — payment is required before uploading certification.",
+        )
 
     content = await file.read()
     if not content:
@@ -254,7 +259,7 @@ async def upload_claim_cert(
         status=claim.status,
         center_name=claim.center.name,
         message="Proof received. Your claim is pending admin verification — we emailed you a confirmation.",
-        checkout_ready=claim.status == ClaimStatus.certified,
+        checkout_ready=False,
         user_id=claim.submitter_user_id,
     )
 
@@ -329,10 +334,14 @@ def center_has_paid_access(db: Session, center: RehabCenter) -> bool:
 
 @router.post("/api/billing/checkout-claim")
 def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(get_db)]):
-    import stripe
+    from app.services.stripe_config import init_stripe_sdk, resolve_stripe_config
 
-    if not settings.stripe_secret_key:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+    st = init_stripe_sdk(db)
+    if not st:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe is not configured. Ask an admin to connect Stripe in Finance settings.",
+        )
     claim = (
         db.query(RehabCenterClaim)
         .options(joinedload(RehabCenterClaim.center))
@@ -341,8 +350,13 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    if claim.status != ClaimStatus.certified:
-        raise HTTPException(status_code=400, detail="Certification must be verified before subscribe")
+    if claim.status in (ClaimStatus.rejected, ClaimStatus.abandoned, ClaimStatus.approved):
+        raise HTTPException(status_code=400, detail="This claim cannot accept a new subscription")
+    if claim.payment_received_at:
+        # Already paid — allow re-checkout only if sub is not active
+        sub_existing = db.query(Subscription).filter(Subscription.user_id == claim.submitter_user_id).first()
+        if sub_existing and sub_existing.status in ("active", "trialing", "past_due"):
+            raise HTTPException(status_code=400, detail="Subscription already active for this claim")
     if not claim.submitter_user_id:
         raise HTTPException(status_code=400, detail="Claim has no user account")
 
@@ -350,12 +364,12 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
     if not user:
         raise HTTPException(status_code=400, detail="User missing")
 
-    stripe.api_key = settings.stripe_secret_key
     from app.models.billing import SubscriptionPlan
+    from app.api.billing import _price_for_interval
 
     sub_row = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     if not sub_row or not sub_row.stripe_customer_id:
-        customer = stripe.Customer.create(email=user.email, name=claim.full_name, metadata={"user_id": str(user.id)})
+        customer = st.Customer.create(email=user.email, name=claim.full_name, metadata={"user_id": str(user.id)})
         if not sub_row:
             sub_row = Subscription(user_id=user.id, stripe_customer_id=customer.id, status="pending")
             db.add(sub_row)
@@ -364,18 +378,18 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
         db.commit()
 
     interval = BillingInterval.year if body.interval == "year" else BillingInterval.month
-    price_id = settings.stripe_price_yearly if interval == BillingInterval.year else settings.stripe_price_monthly
-    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
-    if plan:
-        price_id = plan.stripe_price_id_yearly if interval == BillingInterval.year else plan.stripe_price_id_monthly or price_id
+    price_id = _price_for_interval(db, interval)
     if not price_id:
-        raise HTTPException(status_code=503, detail="Stripe price not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe price not configured. Set monthly/yearly price IDs in Finance settings.",
+        )
 
-    session = stripe.checkout.Session.create(
+    session = st.checkout.Session.create(
         customer=sub_row.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
-        success_url=f"{settings.admin_site_url}/client/billing?success=1",
+        success_url=f"{settings.public_site_url}/claim-status/{claim.ticket_number}?paid=1",
         cancel_url=f"{settings.public_site_url}/claim-status/{claim.ticket_number}?canceled=1",
         metadata={
             "user_id": str(user.id),
@@ -384,10 +398,32 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
         },
         subscription_data={"metadata": {"user_id": str(user.id), "claim_ticket": claim.ticket_number}},
     )
+    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
     sub_row.plan_id = plan.id if plan else None
     sub_row.interval = interval
     db.commit()
     return {"checkout_url": session.url}
+
+
+def _claim_status_message(claim: RehabCenterClaim) -> str:
+    paid = bool(claim.payment_received_at)
+    if claim.status == ClaimStatus.pending:
+        if not paid:
+            return "Choose a monthly or yearly plan to continue. After payment, upload your rehab certification."
+        return "Payment received. Upload your rehab certification to continue verification."
+    if claim.status == ClaimStatus.under_review:
+        return "Your claim is submitted and waiting for admin verification. We will email you when verification is complete."
+    if claim.status == ClaimStatus.certified:
+        if paid:
+            return "Verified and paid — your listing is being activated."
+        return "Verified — complete payment to unlock your listing (legacy path)."
+    if claim.status == ClaimStatus.approved:
+        return "Claimed and active. Log in to manage your listing."
+    if claim.status == ClaimStatus.rejected:
+        return "Your claim was not approved."
+    if claim.status == ClaimStatus.abandoned:
+        return "This claim expired. Start again from the listing page."
+    return ""
 
 
 @router.get("/api/rehab/claims/{ticket}/detail", response_model=ClaimStatusPublic)
@@ -400,29 +436,30 @@ def claim_status_detail(ticket: str, db: Annotated[Session, Depends(get_db)]):
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    messages = {
-        ClaimStatus.pending: "Upload your rehab certification to continue.",
-        ClaimStatus.under_review: "Your claim is submitted and waiting for admin verification. Check your email for a confirmation — we will notify you again when verification is complete.",
-        ClaimStatus.certified: "Verified — choose a plan to claim your listing.",
-        ClaimStatus.approved: "Claimed and active. Log in to manage your listing.",
-        ClaimStatus.rejected: "Your claim was not approved.",
-        ClaimStatus.abandoned: "This claim expired. Start again from the listing page.",
-    }
+    paid = bool(claim.payment_received_at)
     return ClaimStatusPublic(
         ticket_number=claim.ticket_number,
         status=claim.status,
         center_name=claim.center.name,
         submitted_at=claim.created_at,
         reviewed_at=claim.reviewed_at,
-        message=messages.get(claim.status, ""),
+        message=_claim_status_message(claim),
         certification_uploaded=bool(claim.business_license_url),
         email_domain_matched=bool(claim.email_domain_matched),
         phone_verified=bool(claim.phone_verified_at),
+        payment_received=paid,
+        checkout_ready=not paid and claim.status in (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified),
     )
 
 
-def grant_claim_on_payment(db: Session, *, user_id: int, claim_ticket: str | None = None, rehab_center_id: int | None = None) -> None:
-    """Called from Stripe webhook — unlocks listing after payment."""
+def record_payment_on_claim(
+    db: Session,
+    *,
+    user_id: int,
+    claim_ticket: str | None = None,
+    rehab_center_id: int | None = None,
+) -> None:
+    """Called from Stripe webhook after checkout — activates user, records payment, keeps listing locked until certify."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return
@@ -437,38 +474,101 @@ def grant_claim_on_payment(db: Session, *, user_id: int, claim_ticket: str | Non
             .order_by(RehabCenterClaim.created_at.desc())
             .first()
         )
+    now = datetime.now(timezone.utc)
     center = None
     if claim:
-        claim.status = ClaimStatus.approved
-        claim.reviewed_at = datetime.now(timezone.utc)
+        claim.payment_received_at = claim.payment_received_at or now
+        # Reserve ownership; listing unlocks only after admin certifies
         center = db.query(RehabCenter).filter(RehabCenter.id == claim.rehab_center_id).first()
+        if center:
+            center.owner_user_id = user_id
+            center.claimed = False
+            center.contact_visible = False
+        # If already certified (legacy verify-then-pay), unlock now
+        if claim.status == ClaimStatus.certified:
+            grant_listing_after_verify(db, claim=claim, user=user)
+            return
     elif rehab_center_id:
         center = db.query(RehabCenter).filter(RehabCenter.id == rehab_center_id).first()
-    else:
-        center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == user_id).first()
+        if center:
+            center.owner_user_id = user_id
 
-    if center:
-        newly_claimed = not center.claimed
-        center.claimed = True
-        center.contact_visible = True
-        center.owner_user_id = user_id
-        if claim and claim.cert_verified_at:
-            center.cert_verified_at = claim.cert_verified_at
-        if newly_claimed:
-            send_email(
-                db,
-                to_email=user.email,
-                template_key="welcome",
-                context={
-                    "name": claim.full_name if claim else user.email,
-                    "center_name": center.name,
-                    "login_url": f"{settings.public_site_url.rstrip('/')}/portal",
-                    "billing_url": f"{settings.admin_site_url}/client/billing",
-                    "receipt_url": f"{settings.admin_site_url}/client/billing",
-                },
-                user_id=user.id,
-                rehab_center_id=center.id,
-            )
+
+def grant_listing_after_verify(
+    db: Session,
+    *,
+    claim: RehabCenterClaim,
+    user: User | None = None,
+    send_welcome: bool = True,
+) -> None:
+    """Unlock listing after admin certifies a paid claim (or legacy certified+pay)."""
+    if not user and claim.submitter_user_id:
+        user = db.query(User).filter(User.id == claim.submitter_user_id).first()
+    if not user:
+        return
+    user.is_active = True
+    claim.status = ClaimStatus.approved
+    claim.reviewed_at = claim.reviewed_at or datetime.now(timezone.utc)
+    center = db.query(RehabCenter).filter(RehabCenter.id == claim.rehab_center_id).first()
+    if not center:
+        return
+    newly_claimed = not center.claimed
+    center.claimed = True
+    center.contact_visible = True
+    center.owner_user_id = user.id
+    if claim.cert_verified_at:
+        center.cert_verified_at = claim.cert_verified_at
+    if newly_claimed and send_welcome:
+        send_email(
+            db,
+            to_email=user.email,
+            template_key="welcome",
+            context={
+                "name": claim.full_name if claim else user.email,
+                "center_name": center.name,
+                "login_url": f"{settings.public_site_url.rstrip('/')}/portal",
+                "billing_url": f"{settings.admin_site_url}/client/billing",
+                "receipt_url": f"{settings.admin_site_url}/client/billing",
+            },
+            user_id=user.id,
+            rehab_center_id=center.id,
+        )
+
+
+def grant_claim_on_payment(db: Session, *, user_id: int, claim_ticket: str | None = None, rehab_center_id: int | None = None) -> None:
+    """Backward-compatible alias — pay-first flow uses record_payment_on_claim."""
+    record_payment_on_claim(db, user_id=user_id, claim_ticket=claim_ticket, rehab_center_id=rehab_center_id)
+
+
+def cancel_and_refund_claim_subscription(db: Session, claim: RehabCenterClaim) -> dict:
+    """Cancel Stripe subscription and refund latest charge when a paid claim is rejected."""
+    from app.services.stripe_config import init_stripe_sdk
+
+    result = {"canceled": False, "refunded": False, "error": None}
+    if not claim.submitter_user_id:
+        return result
+    sub = db.query(Subscription).filter(Subscription.user_id == claim.submitter_user_id).first()
+    if not sub:
+        return result
+    st = init_stripe_sdk(db)
+    if not st:
+        result["error"] = "Stripe not configured"
+        return result
+    try:
+        if sub.stripe_subscription_id:
+            st.Subscription.cancel(sub.stripe_subscription_id)
+            result["canceled"] = True
+        if sub.stripe_customer_id:
+            charges = st.Charge.list(customer=sub.stripe_customer_id, limit=5)
+            for ch in charges.data:
+                if ch.paid and not ch.refunded:
+                    st.Refund.create(charge=ch.id)
+                    result["refunded"] = True
+                    break
+        sub.status = "canceled"
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = str(exc)
+    return result
 
 
 def downgrade_center_after_cancel(db: Session, user_id: int, *, send_winback: bool = True) -> None:
@@ -509,21 +609,7 @@ def downgrade_center_after_cancel(db: Session, user_id: int, *, send_winback: bo
 
 
 def schedule_abandon_reminder(db: Session, claim: RehabCenterClaim) -> None:
-    """Mark claims older than 24h without cert for reminder (called by cron-ish endpoint)."""
-    if claim.reminder_sent_at or claim.business_license_url:
-        return
-    if claim.created_at and claim.created_at > datetime.now(timezone.utc) - timedelta(hours=24):
-        return
-    send_email(
-        db,
-        to_email=claim.work_email,
-        template_key="claim_abandon_reminder",
-        context={
-            "name": claim.full_name,
-            "center_name": claim.center.name if claim.center else "your center",
-            "claim_url": f"{settings.public_site_url}/claim-status/{claim.ticket_number}",
-        },
-        user_id=claim.submitter_user_id,
-        rehab_center_id=claim.rehab_center_id,
-    )
-    claim.reminder_sent_at = datetime.now(timezone.utc)
+    """Backward-compatible wrapper — day-1/day-2 abandon emails + lead."""
+    from app.services.abandonment import process_claim_abandonment
+
+    process_claim_abandonment(db, claim)

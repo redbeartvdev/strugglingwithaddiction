@@ -76,6 +76,7 @@ export default function ClientDashboard() {
   const [center, setCenter] = useState(null)
   const [analytics, setAnalytics] = useState(null)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [sub, setSub] = useState(null)
 
   useEffect(() => {
     try {
@@ -94,6 +95,9 @@ export default function ClientDashboard() {
     api('/api/client/analytics?range=today')
       .then(setAnalytics)
       .catch(() => setAnalytics(null))
+    api('/api/billing/subscription')
+      .then(setSub)
+      .catch(() => setSub(null))
   }, [])
 
   function dismissWelcome() {
@@ -105,9 +109,20 @@ export default function ClientDashboard() {
     setShowWelcome(false)
   }
 
+  async function openPortal() {
+    try {
+      const { portal_url } = await api('/api/billing/portal', { method: 'POST' })
+      window.location.href = portal_url
+    } catch {
+      /* ignore */
+    }
+  }
+
   const pct = center?.completeness?.percent ?? 0
   const insuranceCount = (center?.insurances || []).length
   const summary = analytics?.summary
+  const paymentFailed = Boolean(sub?.payment_failed)
+  const needsVerification = sub?.payment_ok && !sub?.listing_claimed && !sub?.verification_complete
 
   return (
     <div className="page-stack cd-page">
@@ -123,6 +138,37 @@ export default function ClientDashboard() {
           What&apos;s new
         </button>
       </section>
+
+      {paymentFailed && (
+        <Card>
+          <p className="eyebrow">Payment renewal</p>
+          <p style={{ marginTop: 8, fontWeight: 600 }}>Your latest renewal payment did not go through.</p>
+          <p className="muted" style={{ marginTop: 4 }}>Update your card so your listing stays active after Stripe retries finish.</p>
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button type="button" onClick={openPortal}>Update payment method</Button>
+            <Link className="btn btn-ghost" to="/client/billing">View invoices</Link>
+          </div>
+        </Card>
+      )}
+
+      {needsVerification && (
+        <Card>
+          <p className="eyebrow">Finish verification</p>
+          <p style={{ marginTop: 8 }}>
+            Subscription is active. Complete certification and phone verification so we can unlock your public listing.
+          </p>
+          {sub?.claim_ticket && (
+            <p className="muted" style={{ marginTop: 8 }}>
+              Ticket: <strong>{sub.claim_ticket}</strong>
+              {' · '}
+              <a href={`${import.meta.env.VITE_PUBLIC_SITE_URL || 'http://127.0.0.1:5317'}/claim-status/${sub.claim_ticket}`} target="_blank" rel="noreferrer">
+                Open claim status →
+              </a>
+            </p>
+          )}
+          <Link className="btn btn-ghost" to="/client/billing" style={{ marginTop: 12, display: 'inline-block' }}>Billing & invoices</Link>
+        </Card>
+      )}
 
       {center?.public_listing_url && (
         <Card className="listing-summary">

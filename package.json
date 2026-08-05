@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:admin": "npm run dev --prefix admin",
-    "dev:api": "cd backend && .venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev": "vite --host 127.0.0.1 --port 5317",
+    "dev:admin": "npm run dev --prefix admin -- --host 127.0.0.1 --port 5180",
+    "dev:api": "cd backend && .venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8317",
     "prebuild": "node scripts/verify-team-images.mjs && node scripts/generate-recent-posts.mjs",
     "build": "vite build",
     "lint": "eslint .",

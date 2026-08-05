@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
+import { buildRehabDirectoryUrl } from '../lib/rehabServices'
+import { detectVisitorLocation } from '../lib/geo'
 import './InsuranceAcceptedSection.css'
 
 /** Featured commercial brands for the homepage logo strip (fallbacks when API is offline). */
@@ -26,6 +28,7 @@ const HOMEPAGE_SLUGS = new Set(FALLBACK_INSURANCES.map(i => i.slug))
 
 export default function InsuranceAcceptedSection() {
   const [items, setItems] = useState(FALLBACK_INSURANCES)
+  const [geo, setGeo] = useState({ state: '', city: '' })
 
   useEffect(() => {
     if (!apiEnabled()) return
@@ -41,6 +44,12 @@ export default function InsuranceAcceptedSection() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    detectVisitorLocation()
+      .then(setGeo)
+      .catch(() => {})
+  }, [])
+
   return (
     <section className="insurance-accepted-section" id="insurance-accepted" aria-labelledby="insurance-accepted-heading">
       <div className="container">
@@ -48,8 +57,8 @@ export default function InsuranceAcceptedSection() {
           <span className="section-label">Insurance Accepted</span>
           <h2 id="insurance-accepted-heading">Search by the coverage you already have</h2>
           <p className="section-desc">
-            Select a plan to find treatment centers that accept it. Providers manage their accepted
-            insurance from their client portal so listings stay accurate.
+            Open a carrier guide to learn how coverage usually works, then browse facilities that list that plan.
+            Providers manage accepted insurance from their portal so listings stay accurate.
           </p>
         </div>
 
@@ -57,9 +66,9 @@ export default function InsuranceAcceptedSection() {
           {items.map(item => (
             <li key={item.slug || item.name}>
               <Link
-                to={`/rehab-centers?insurance=${encodeURIComponent(item.name)}`}
+                to={`/insurance-coverage/${item.slug}`}
                 className="insurance-accepted-link"
-                aria-label={`Find centers that accept ${item.name}`}
+                aria-label={`Does ${item.name} cover rehab?`}
               >
                 <img src={item.logo_url} alt="" loading="lazy" width={160} height={48} />
                 <span>{item.name}</span>
@@ -69,7 +78,15 @@ export default function InsuranceAcceptedSection() {
         </ul>
 
         <div className="text-center insurance-accepted-cta">
-          <Link to="/rehab-centers" className="btn">Browse all treatment centers</Link>
+          <Link
+            to={buildRehabDirectoryUrl({ state: geo.state, city: geo.city })}
+            className="btn"
+          >
+            Browse all centers
+          </Link>
+          <Link to="/insurance-coverage" className="btn btn-outline" style={{ marginLeft: '0.75rem' }}>
+            Insurance coverage hub
+          </Link>
         </div>
       </div>
     </section>

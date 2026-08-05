@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import ARRAY, Boolean, DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import ARRAY, Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,8 +23,8 @@ class CenterSource(str, enum.Enum):
 class ClaimStatus(str, enum.Enum):
     pending = "pending"
     under_review = "under_review"
-    certified = "certified"  # cert verified; awaiting / during subscribe
-    approved = "approved"  # payment complete, claim granted
+    certified = "certified"  # cert verified; if unpaid (legacy) await pay; if paid → approve unlocks
+    approved = "approved"  # paid + verified, listing claimed
     rejected = "rejected"
     abandoned = "abandoned"
 
@@ -53,6 +53,7 @@ class RehabCenter(Base, TimestampMixin):
     lng: Mapped[float | None] = mapped_column(nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     website: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    verification_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     outreach_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     outreach_unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -108,7 +109,10 @@ class RehabCenterClaim(Base, TimestampMixin):
     phone_otp_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cert_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    abandon_reminders_sent: Mapped[int] = mapped_column(Integer, default=0)
+    abandon_lead_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

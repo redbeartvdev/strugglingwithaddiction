@@ -73,7 +73,7 @@ export default function SwaLogin() {
 
           {apiOk === false && (
             <p className="provider-login-status err">
-              API offline. Start Postgres and uvicorn on port 8000.
+              API offline. Start Postgres and uvicorn on port 8317.
             </p>
           )}
           {apiOk === true && (

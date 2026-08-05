@@ -1,6 +1,7 @@
 """Public center submissions + admin Submission Center queue."""
 from __future__ import annotations
 
+import secrets
 import re
 from datetime import datetime, timezone
 from typing import Annotated
@@ -33,10 +34,27 @@ class CenterSubmissionCreate(BaseModel):
     services: list[str] = Field(default_factory=list, min_length=1)
     insurances: list[str] = Field(default_factory=list, min_length=1)
     description: str = Field(min_length=20, max_length=8000)
+    resume_token: str | None = None
+
+
+class CenterSubmissionDraft(BaseModel):
+    resume_token: str | None = None
+    full_name: str | None = Field(default=None, max_length=255)
+    center_name: str | None = Field(default=None, max_length=255)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=50)
+    address_line: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, max_length=100)
+    state: str | None = Field(default=None, max_length=100)
+    zip: str | None = Field(default=None, max_length=20)
+    services: list[str] = Field(default_factory=list)
+    insurances: list[str] = Field(default_factory=list)
+    description: str | None = Field(default=None, max_length=8000)
 
 
 class CenterSubmissionOut(BaseModel):
     id: int
+    resume_token: str | None = None
     full_name: str
     center_name: str
     email: str
@@ -65,17 +83,18 @@ class CenterSubmissionReview(BaseModel):
     publish: bool = False
 
 
-def _to_out(row: CenterSubmission) -> CenterSubmissionOut:
+def _to_out(row: CenterSubmission, *, include_token: bool = False) -> CenterSubmissionOut:
     parts = [p for p in (row.address_line, row.city, row.state, row.zip) if p]
     return CenterSubmissionOut(
         id=row.id,
-        full_name=row.full_name,
-        center_name=row.center_name,
-        email=row.email,
-        phone=row.phone,
-        address_line=row.address_line,
-        city=row.city,
-        state=row.state,
+        resume_token=row.resume_token if include_token else None,
+        full_name=row.full_name or "",
+        center_name=row.center_name or "",
+        email=row.email or "",
+        phone=row.phone or "",
+        address_line=row.address_line or "",
+        city=row.city or "",
+        state=row.state or "",
         zip=row.zip,
         services=list(row.services or []),
         insurances=list(row.insurances or []),
@@ -106,33 +125,36 @@ def _clean_list(values: list[str], *, max_items: int = 40) -> list[str]:
     return out
 
 
-@router.post("/api/center-submissions", response_model=CenterSubmissionOut)
-def submit_center(body: CenterSubmissionCreate, db: Annotated[Session, Depends(get_db)]):
-    services = _clean_list(body.services)
-    insurances = _clean_list(body.insurances)
-    if not services:
-        raise HTTPException(status_code=400, detail="Select at least one type of service")
-    if not insurances:
-        raise HTTPException(status_code=400, detail="Select at least one insurance type")
+def _new_resume_token() -> str:
+    return secrets.token_urlsafe(24)
 
-    row = CenterSubmission(
-        full_name=body.full_name.strip(),
-        center_name=body.center_name.strip(),
-        email=str(body.email).lower().strip(),
-        phone=body.phone.strip(),
-        address_line=body.address_line.strip(),
-        city=body.city.strip(),
-        state=body.state.strip(),
-        zip=(body.zip or "").strip() or None,
-        services=services,
-        insurances=insurances,
-        description=(body.description or "").strip(),
-        status=CenterSubmissionStatus.pending,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
 
+def _apply_draft_fields(row: CenterSubmission, body: CenterSubmissionDraft) -> None:
+    if body.full_name is not None:
+        row.full_name = body.full_name.strip()
+    if body.center_name is not None:
+        row.center_name = body.center_name.strip()
+    if body.email is not None:
+        row.email = str(body.email).lower().strip()
+    if body.phone is not None:
+        row.phone = body.phone.strip()
+    if body.address_line is not None:
+        row.address_line = body.address_line.strip()
+    if body.city is not None:
+        row.city = body.city.strip()
+    if body.state is not None:
+        row.state = body.state.strip()
+    if body.zip is not None:
+        row.zip = body.zip.strip() or None
+    if body.services is not None:
+        row.services = _clean_list(body.services)
+    if body.insurances is not None:
+        row.insurances = _clean_list(body.insurances)
+    if body.description is not None:
+        row.description = (body.description or "").strip()
+
+
+def _notify_submission_received(db: Session, row: CenterSubmission) -> None:
     delivery = resolve_email_delivery(db)
     ops = delivery.get("ops_email") or settings.email_from
     location = ", ".join(p for p in (row.address_line, row.city, row.state, row.zip) if p)
@@ -143,8 +165,8 @@ def submit_center(body: CenterSubmissionCreate, db: Annotated[Session, Depends(g
         "lead_phone": row.phone,
         "center_name": row.center_name,
         "location": location,
-        "services": ", ".join(services),
-        "insurances": ", ".join(insurances),
+        "services": ", ".join(row.services or []),
+        "insurances": ", ".join(row.insurances or []),
         "description": row.description or "",
         "admin_submissions_url": admin_url,
         "submission_id": str(row.id),
@@ -162,13 +184,147 @@ def submit_center(body: CenterSubmissionCreate, db: Annotated[Session, Depends(g
         template_key="center_submission_received",
         context=context,
     )
-    return _to_out(row)
+
+
+@router.post("/api/center-submissions/draft", response_model=CenterSubmissionOut)
+def save_submission_draft(body: CenterSubmissionDraft, db: Annotated[Session, Depends(get_db)]):
+    """Autosave unfinished submit-your-center forms so we can email a continue link."""
+    email = str(body.email).lower().strip() if body.email else ""
+    center_name = (body.center_name or "").strip()
+    if not email and not body.resume_token:
+        raise HTTPException(status_code=400, detail="Email is required to save a draft")
+    if not center_name and not body.resume_token:
+        raise HTTPException(status_code=400, detail="Center name is required to save a draft")
+
+    row: CenterSubmission | None = None
+    if body.resume_token:
+        row = (
+            db.query(CenterSubmission)
+            .filter(
+                CenterSubmission.resume_token == body.resume_token,
+                CenterSubmission.status.in_(
+                    [CenterSubmissionStatus.draft, CenterSubmissionStatus.abandoned]
+                ),
+            )
+            .first()
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Draft not found")
+
+    if not row:
+        row = CenterSubmission(
+            resume_token=_new_resume_token(),
+            status=CenterSubmissionStatus.draft,
+            full_name="",
+            center_name=center_name,
+            email=email,
+            phone="",
+            address_line="",
+            city="",
+            state="",
+            description="",
+            services=[],
+            insurances=[],
+        )
+        db.add(row)
+
+    if row.status == CenterSubmissionStatus.abandoned:
+        row.status = CenterSubmissionStatus.draft
+        row.abandon_lead_created_at = None
+
+    _apply_draft_fields(row, body)
+    if not row.resume_token:
+        row.resume_token = _new_resume_token()
+    db.commit()
+    db.refresh(row)
+    return _to_out(row, include_token=True)
+
+
+@router.get("/api/center-submissions/resume/{token}", response_model=CenterSubmissionOut)
+def get_submission_draft(token: str, db: Annotated[Session, Depends(get_db)]):
+    row = (
+        db.query(CenterSubmission)
+        .filter(CenterSubmission.resume_token == token)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if row.status not in (
+        CenterSubmissionStatus.draft,
+        CenterSubmissionStatus.abandoned,
+        CenterSubmissionStatus.pending,
+    ):
+        raise HTTPException(status_code=400, detail="This submission can no longer be edited")
+    return _to_out(row, include_token=True)
+
+
+@router.post("/api/center-submissions", response_model=CenterSubmissionOut)
+def submit_center(body: CenterSubmissionCreate, db: Annotated[Session, Depends(get_db)]):
+    services = _clean_list(body.services)
+    insurances = _clean_list(body.insurances)
+    if not services:
+        raise HTTPException(status_code=400, detail="Select at least one type of service")
+    if not insurances:
+        raise HTTPException(status_code=400, detail="Select at least one insurance type")
+
+    row: CenterSubmission | None = None
+    if body.resume_token:
+        row = (
+            db.query(CenterSubmission)
+            .filter(
+                CenterSubmission.resume_token == body.resume_token,
+                CenterSubmission.status.in_(
+                    [CenterSubmissionStatus.draft, CenterSubmissionStatus.abandoned]
+                ),
+            )
+            .first()
+        )
+
+    if row:
+        row.full_name = body.full_name.strip()
+        row.center_name = body.center_name.strip()
+        row.email = str(body.email).lower().strip()
+        row.phone = body.phone.strip()
+        row.address_line = body.address_line.strip()
+        row.city = body.city.strip()
+        row.state = body.state.strip()
+        row.zip = (body.zip or "").strip() or None
+        row.services = services
+        row.insurances = insurances
+        row.description = (body.description or "").strip()
+        row.status = CenterSubmissionStatus.pending
+        row.abandon_reminders_sent = 0
+        row.reminder_sent_at = None
+        row.abandon_lead_created_at = None
+    else:
+        row = CenterSubmission(
+            resume_token=_new_resume_token(),
+            full_name=body.full_name.strip(),
+            center_name=body.center_name.strip(),
+            email=str(body.email).lower().strip(),
+            phone=body.phone.strip(),
+            address_line=body.address_line.strip(),
+            city=body.city.strip(),
+            state=body.state.strip(),
+            zip=(body.zip or "").strip() or None,
+            services=services,
+            insurances=insurances,
+            description=(body.description or "").strip(),
+            status=CenterSubmissionStatus.pending,
+        )
+        db.add(row)
+
+    db.commit()
+    db.refresh(row)
+    _notify_submission_received(db, row)
+    return _to_out(row, include_token=True)
 
 
 @router.get("/api/admin/center-submissions", response_model=list[CenterSubmissionOut])
 def admin_list_submissions(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
     rows = (
         db.query(CenterSubmission)
+        .filter(CenterSubmission.status != CenterSubmissionStatus.draft)
         .order_by(CenterSubmission.created_at.desc())
         .limit(300)
         .all()

@@ -11,6 +11,7 @@ logger = logging.getLogger("swa")
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 from app.models.billing import BillingInterval, Subscription, SubscriptionPlan
+from app.data.insurance_editorial import INSURANCE_EDITORIAL_SEED
 from app.models.insurance import InsuranceCatalog
 from app.models.profile import UserProfile
 from app.models.rehab import RehabCenter, ListingStatus, CenterSource, ClaimStatus, RehabCenterClaim
@@ -42,6 +43,7 @@ USA_INSURANCE_SEED = [
     ("Centene", "centene", "/images/insurance/centene.png", 190),
     ("Private Pay", "private-pay", "/images/insurance/private-pay.png", 200),
     ("Self Pay", "self-pay", "/images/insurance/self-pay.png", 210),
+    ("Other Insurance", "other-insurance", "/images/insurance/other-insurance.png", 220),
 ]
 
 settings = get_settings()
@@ -235,7 +237,7 @@ def bootstrap_plans(db: Session) -> None:
         stripe_price_id_yearly=settings.stripe_price_yearly or None,
         is_active=True,
         sort_order=0,
-        features={"blog": True, "listing": True, "landing_page": True, "price_month": "9.99", "price_year": "99"},
+        features={"blog": True, "listing": True, "landing_page": True, "price_month": "9.99", "price_year": "99.99"},
     )
     db.add(plan)
     db.commit()
@@ -374,27 +376,33 @@ def seed_insurance_catalog(db: Session) -> dict[str, int]:
     """Idempotent seed of USA insurance options with PNG logos.
 
     Returns counts: created, updated, total.
+    Editorial fields are filled only when empty so admin edits survive reseed.
     """
     existing = {row.slug: row for row in db.query(InsuranceCatalog).all()}
     created = 0
     updated = 0
     for name, slug, logo_path, sort_order in USA_INSURANCE_SEED:
         row = existing.get(slug)
+        editorial = INSURANCE_EDITORIAL_SEED.get(slug)
         if row:
             row.name = name
             row.logo_path = logo_path
             row.sort_order = sort_order
+            if editorial and not (row.content_html or "").strip():
+                for key, value in editorial.items():
+                    setattr(row, key, value)
             updated += 1
             continue
-        db.add(
-            InsuranceCatalog(
-                name=name,
-                slug=slug,
-                logo_path=logo_path,
-                enabled=True,
-                sort_order=sort_order,
-            )
+        payload = dict(
+            name=name,
+            slug=slug,
+            logo_path=logo_path,
+            enabled=True,
+            sort_order=sort_order,
         )
+        if editorial:
+            payload.update(editorial)
+        db.add(InsuranceCatalog(**payload))
         created += 1
     db.commit()
     total = db.query(InsuranceCatalog).count()

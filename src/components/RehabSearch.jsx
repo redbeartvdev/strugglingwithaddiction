@@ -60,12 +60,17 @@ export default function RehabSearch({
   totalCount,
   onClear,
   hasActiveFilters,
+  locationHint = '',
 }) {
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(insurance || state))
   const [focused, setFocused] = useState(false)
   const [hintIdx, setHintIdx] = useState(0)
   const [thinking, setThinking] = useState(false)
   const typedPrompt = useTypewriter(AI_PROMPTS)
+
+  useEffect(() => {
+    if (insurance || state) setFiltersOpen(true)
+  }, [insurance, state])
 
   useEffect(() => {
     if (!hasActiveFilters) return
@@ -207,6 +212,7 @@ export default function RehabSearch({
               {hasActiveFilters ? (
                 <>
                   Found <strong>{resultCount}</strong> of {totalCount} centers
+                  {locationHint ? <> near <strong>{locationHint}</strong></> : null}
                 </>
               ) : (
                 <>

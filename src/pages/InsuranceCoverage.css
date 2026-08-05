@@ -1,0 +1,300 @@
+.icov-page {
+  --icov-ink: #1a2332;
+  --icov-muted: #5a6578;
+  --icov-accent: #8c1126;
+  --icov-sky: #5FBDF6;
+  --icov-surface: #f4f7fb;
+  --icov-line: rgba(26, 35, 50, 0.1);
+  color: var(--icov-ink);
+}
+
+.icov-hero {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(95, 189, 246, 0.18), transparent 55%),
+    linear-gradient(165deg, #0f1a28 0%, #1a2f45 48%, #243b55 100%);
+  color: #f5f8fc;
+  padding: 4.5rem 0 3.5rem;
+}
+
+.icov-hero--carrier {
+  padding-top: 3.25rem;
+}
+
+.icov-hero-inner {
+  max-width: 720px;
+}
+
+.icov-hero .section-label {
+  color: var(--icov-sky);
+}
+
+.icov-hero h1 {
+  margin: 0.35rem 0 0.85rem;
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.icov-hero p {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: rgba(245, 248, 252, 0.88);
+}
+
+.icov-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.icov-hero .btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.icov-hero .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icov-breadcrumb {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  color: rgba(245, 248, 252, 0.7);
+}
+
+.icov-breadcrumb a {
+  color: var(--icov-sky);
+  text-decoration: none;
+}
+
+.icov-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.icov-carrier-logo {
+  display: block;
+  height: 48px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.icov-section {
+  padding: 3.5rem 0;
+}
+
+.icov-section--muted {
+  background: var(--icov-surface);
+}
+
+.icov-section-head {
+  max-width: 640px;
+  margin-bottom: 1.75rem;
+}
+
+.icov-section-head h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+.icov-section-head p {
+  margin: 0;
+  color: var(--icov-muted);
+  line-height: 1.5;
+}
+
+.icov-carrier-grid,
+.icov-guide-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.icov-carrier-card,
+.icov-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid var(--icov-line);
+  border-radius: 10px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.icov-carrier-card:hover,
+.icov-guide-card:hover {
+  border-color: rgba(95, 189, 246, 0.55);
+  box-shadow: 0 8px 24px rgba(15, 26, 40, 0.06);
+}
+
+.icov-carrier-card img {
+  height: 40px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.icov-carrier-card strong,
+.icov-guide-card strong {
+  font-size: 1.02rem;
+  line-height: 1.3;
+  color: var(--icov-ink);
+}
+
+.icov-carrier-card span,
+.icov-guide-card span {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--icov-muted);
+}
+
+.icov-prose {
+  max-width: 720px;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.icov-prose h2 {
+  margin: 1.75rem 0 0.6rem;
+  font-size: 1.25rem;
+}
+
+.icov-prose p,
+.icov-prose ul {
+  margin: 0 0 1rem;
+  color: var(--icov-ink);
+}
+
+.icov-prose ul {
+  padding-left: 1.25rem;
+}
+
+.icov-prose em {
+  color: var(--icov-muted);
+}
+
+.icov-guide-section + .icov-guide-section {
+  margin-top: 1.75rem;
+}
+
+.icov-disclaimer {
+  margin-top: 2rem !important;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--icov-line);
+}
+
+.icov-empty {
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.icov-muted {
+  color: var(--icov-muted);
+}
+
+.icov-facilities {
+  padding: 2.5rem 0 3.5rem;
+}
+
+.icov-facilities-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.icov-facilities-head h2 {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 1.45rem;
+}
+
+.icov-facilities-head p {
+  margin: 0;
+  max-width: 540px;
+  color: var(--icov-muted);
+  line-height: 1.5;
+}
+
+.icov-facility-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.icov-facility-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--icov-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.icov-facility-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.icov-facility-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.icov-facility-card h3 a:hover {
+  color: var(--icov-accent);
+}
+
+.icov-facility-loc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--icov-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.icov-facility-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.icov-facility-actions .btn-outline {
+  background: transparent;
+  color: var(--icov-accent);
+  border: 1px solid rgba(140, 17, 38, 0.35);
+}
+
+@media (max-width: 640px) {
+  .icov-hero {
+    padding: 3.25rem 0 2.5rem;
+  }
+
+  .icov-facility-card {
+    align-items: flex-start;
+  }
+}

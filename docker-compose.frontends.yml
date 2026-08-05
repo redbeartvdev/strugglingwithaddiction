@@ -1,0 +1,48 @@
+services:
+  # Dev frontends kept alive by OrbStack (survive Cursor shell exits)
+  public:
+    image: node:22-bookworm
+    container_name: swa-public-vite
+    working_dir: /app
+    ports:
+      - "5317:5317"
+    environment:
+      VITE_API_PROXY: http://host.docker.internal:8317
+      VITE_ADMIN_SITE_URL: http://127.0.0.1:5180
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - swa_public_node_modules:/app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      bash -lc "npm install --no-fund --no-audit &&
+      npx vite --host 0.0.0.0 --port 5317 --strictPort"
+    restart: unless-stopped
+
+  admin:
+    image: node:22-bookworm
+    container_name: swa-admin-vite
+    working_dir: /app/admin
+    ports:
+      - "5180:5180"
+    environment:
+      VITE_API_PROXY: http://host.docker.internal:8317
+      VITE_PUBLIC_PROXY: http://host.docker.internal:5317
+      VITE_PUBLIC_SITE_URL: http://127.0.0.1:5317
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - swa_admin_node_modules:/app/admin/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - public
+    command: >
+      bash -lc "npm install --no-fund --no-audit &&
+      npx vite --host 0.0.0.0 --port 5180 --strictPort"
+    restart: unless-stopped
+
+volumes:
+  swa_public_node_modules:
+  swa_admin_node_modules:

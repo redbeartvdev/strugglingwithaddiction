@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
+import ListingPlanPicker from '../components/ListingPlanPicker'
 import './RehabCenters.css'
 
 export default function ClaimStatus() {
   const { ticket } = useParams()
+  const [searchParams] = useSearchParams()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,6 +25,13 @@ export default function ClaimStatus() {
 
   useEffect(() => { load() }, [ticket])
 
+  useEffect(() => {
+    if (searchParams.get('paid') === '1') {
+      const t = setTimeout(load, 1500)
+      return () => clearTimeout(t)
+    }
+  }, [searchParams])
+
   async function uploadCert(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -39,7 +48,7 @@ export default function ClaimStatus() {
       const text = await res.text()
       const json = text ? JSON.parse(text) : null
       if (!res.ok) throw new Error(json?.detail || 'Upload failed')
-      setData(d => ({ ...d, status: json.status, message: json.message }))
+      setData(d => ({ ...d, status: json.status, message: json.message, payment_received: true }))
       load()
     } catch (err) {
       setError(err.message)
@@ -95,26 +104,44 @@ export default function ClaimStatus() {
     }
   }
 
+  const needsPayment = data && !data.payment_received && data.checkout_ready
+  const canUploadCert = data && data.payment_received && (data.status === 'pending' || data.status === 'under_review')
+
   return (
     <main className="rehab-page" style={{ padding: '4rem 1rem' }}>
-      <div className="container" style={{ maxWidth: 560 }}>
+      <div className="container" style={{ maxWidth: needsPayment ? 760 : 560 }}>
         <h1>Claim Status</h1>
+        {searchParams.get('paid') === '1' && (
+          <p style={{ color: '#166534', marginTop: 8 }}>Payment received — continue verification below.</p>
+        )}
         {error && <p style={{ color: '#8c1126' }}>{error}</p>}
         {data && (
           <div className="card" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <p><strong>Ticket:</strong> {data.ticket_number}</p>
             <p><strong>Center:</strong> {data.center_name}</p>
             <p><strong>Status:</strong> {data.status}</p>
+            <p><strong>Payment:</strong> {data.payment_received ? 'Received' : 'Required'}</p>
             <p style={{ marginTop: '1rem' }}>{data.message}</p>
 
-            {(data.status === 'pending' || data.status === 'under_review') && (
+            {needsPayment && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <ListingPlanPicker
+                  centerName={data.center_name}
+                  ticket={data.ticket_number}
+                  busy={busy}
+                  onSelect={subscribe}
+                />
+              </div>
+            )}
+
+            {canUploadCert && (
               <label style={{ display: 'block', marginTop: '1.25rem' }}>
                 Upload rehab certification (required)
                 <input type="file" accept=".pdf,image/*" disabled={busy} onChange={uploadCert} style={{ display: 'block', marginTop: 8 }} />
               </label>
             )}
 
-            {data.status !== 'approved' && (
+            {data.status !== 'approved' && data.payment_received && (
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                 <p><strong>Ownership verification</strong></p>
                 <p style={{ fontSize: '.9rem' }}>Certificate: {data.certification_uploaded ? '✓ uploaded' : 'pending'}</p>
@@ -140,16 +167,6 @@ export default function ClaimStatus() {
                   </>
                 )}
                 {phoneMessage && <p style={{ fontSize: '.9rem', marginTop: 8 }}>{phoneMessage}</p>}
-              </div>
-            )}
-
-            {data.status === 'certified' && (
-              <div style={{ marginTop: '1.25rem' }}>
-                <p style={{ marginBottom: 12 }}>Choose a plan to claim your listing:</p>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <button type="button" className="btn" disabled={busy} onClick={() => subscribe('month')}>$9.99 / mo</button>
-                  <button type="button" className="btn" disabled={busy} onClick={() => subscribe('year')}>$99 / yr (2 months free)</button>
-                </div>
               </div>
             )}
 

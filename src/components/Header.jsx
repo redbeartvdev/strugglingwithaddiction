@@ -33,6 +33,9 @@ export default function Header() {
           <NavLink to="/rehab-centers" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Directory
           </NavLink>
+          <NavLink to="/insurance-coverage" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
+            Insurance
+          </NavLink>
           <NavLink to="/blog" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Blog
           </NavLink>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiUpload } from '../../api'
 import Button from '../../components/ui/Button'
@@ -15,6 +15,8 @@ function textToList(text) {
     .map(s => s.trim())
     .filter(Boolean)
 }
+
+const OTHER_INSURANCE_NAME = 'Other Insurance'
 
 const RANGE_OPTIONS = [
   ['1h', '1 hour'],
@@ -33,6 +35,125 @@ const TABS = [
   ['media', 'Media'],
   ['analytics', 'Analytics'],
 ]
+
+function InsuranceMultiSelect({ options, value, onChange, disabled, placeholder = 'Select insurance…' }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    function onDocClick(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return options
+    return options.filter(opt => opt.label.toLowerCase().includes(q))
+  }, [options, query])
+
+  function toggle(optValue) {
+    if (disabled) return
+    onChange(
+      value.includes(optValue)
+        ? value.filter(n => n !== optValue)
+        : [...value, optValue],
+    )
+  }
+
+  function remove(optValue) {
+    if (disabled) return
+    onChange(value.filter(n => n !== optValue))
+  }
+
+  const summary = value.length === 0
+    ? placeholder
+    : value.length === 1
+      ? value[0]
+      : `${value.length} selected`
+
+  return (
+    <div className={`mc-multiselect${disabled ? ' is-disabled' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className={`mc-multiselect-trigger${open ? ' is-open' : ''}${value.length ? ' has-value' : ''}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+      >
+        <span>{summary}</span>
+        <span className="mc-multiselect-caret" aria-hidden="true" />
+      </button>
+
+      {value.length > 0 && (
+        <div className="mc-multiselect-chips">
+          {value.map(item => (
+            <button
+              key={item}
+              type="button"
+              className="mc-multiselect-chip"
+              disabled={disabled}
+              onClick={() => remove(item)}
+              aria-label={`Remove ${item}`}
+            >
+              {item}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && !disabled && (
+        <div className="mc-multiselect-panel" role="listbox" aria-multiselectable="true">
+          <input
+            type="search"
+            className="mc-multiselect-search"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search insurance…"
+            autoFocus
+            aria-label="Search insurance"
+          />
+          <div className="mc-multiselect-options">
+            {filtered.length === 0 ? (
+              <p className="mc-multiselect-empty">No matches</p>
+            ) : (
+              filtered.map(opt => {
+                const selected = value.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={`mc-multiselect-option${selected ? ' is-on' : ''}`}
+                    onClick={() => toggle(opt.value)}
+                  >
+                    {opt.logo && <img src={opt.logo} alt="" className="mc-multiselect-logo" />}
+                    <span>{opt.label}</span>
+                    <span className="mc-multiselect-check" aria-hidden="true">{selected ? '✓' : ''}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function StatCard({ label, value, hint }) {
   return (
@@ -197,6 +318,7 @@ export default function ClientMyCenter() {
   const [saving, setSaving] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
   const [uploadingHero, setUploadingHero] = useState(false)
+  const [customInsuranceDraft, setCustomInsuranceDraft] = useState('')
 
   useEffect(() => {
     const next = searchParams.get('tab')
@@ -227,10 +349,10 @@ export default function ClientMyCenter() {
           zip: c.zip || '',
           phone: c.phone || '',
           website: c.website || '',
+          verification_url: c.verification_url || '',
           contact_email: c.contact_email || '',
           google_maps_url: c.google_maps_url || '',
           google_reviews_url: c.google_reviews_url || '',
-          video_url: c.video_url || '',
           specialties: listToText(c.specialties),
           levels_of_care: listToText(c.levels_of_care),
           amenities: listToText(c.amenities),
@@ -245,14 +367,51 @@ export default function ClientMyCenter() {
           .map(i => i.name)
         const custom = names.filter(n => !catalogNames.has(n.toLowerCase())
           && !matched.some(m => m.toLowerCase() === n.toLowerCase()))
-        setSelectedInsurance([...matched, ...custom])
+        const merged = [...matched, ...custom]
+        if (custom.length > 0 && !merged.some(n => n.toLowerCase() === OTHER_INSURANCE_NAME.toLowerCase())) {
+          const other = (ins || []).find(i => i.name === OTHER_INSURANCE_NAME || i.slug === 'other-insurance')
+          if (other) merged.push(other.name)
+          else merged.push(OTHER_INSURANCE_NAME)
+        }
+        setSelectedInsurance(merged)
       }
     }).catch(() => setCenter(null))
   }, [])
 
   const locked = center?.dashboard_locked
 
-  const insurancePayload = useMemo(() => selectedInsurance.filter(Boolean), [selectedInsurance])
+  const catalogNameSet = useMemo(
+    () => new Set(catalog.map(item => item.name)),
+    [catalog],
+  )
+
+  const insuranceOptions = useMemo(
+    () => catalog.map(item => ({
+      value: item.name,
+      label: item.name,
+      logo: item.logo_url,
+    })),
+    [catalog],
+  )
+
+  const catalogSelected = useMemo(
+    () => selectedInsurance.filter(n => catalogNameSet.has(n)),
+    [selectedInsurance, catalogNameSet],
+  )
+
+  const customInsurances = useMemo(
+    () => selectedInsurance.filter(n => !catalogNameSet.has(n)),
+    [selectedInsurance, catalogNameSet],
+  )
+
+  const insurancePayload = useMemo(() => {
+    const names = selectedInsurance.filter(Boolean)
+    const hasCustom = names.some(n => !catalogNameSet.has(n))
+    if (hasCustom && !names.some(n => n.toLowerCase() === OTHER_INSURANCE_NAME.toLowerCase())) {
+      return [...names, OTHER_INSURANCE_NAME]
+    }
+    return names
+  }, [selectedInsurance, catalogNameSet])
 
   async function save(e) {
     e?.preventDefault?.()
@@ -263,6 +422,7 @@ export default function ClientMyCenter() {
     try {
       const body = {
         ...form,
+        video_url: '',
         specialties: textToList(form.specialties),
         insurances: insurancePayload,
         levels_of_care: textToList(form.levels_of_care),
@@ -281,10 +441,47 @@ export default function ClientMyCenter() {
     }
   }
 
-  function toggleInsurance(name) {
-    setSelectedInsurance(prev => (
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    ))
+  function setCatalogInsurance(nextCatalogNames) {
+    const next = [...nextCatalogNames, ...customInsurances]
+    if (
+      customInsurances.length > 0
+      && !next.some(n => n.toLowerCase() === OTHER_INSURANCE_NAME.toLowerCase())
+    ) {
+      next.push(OTHER_INSURANCE_NAME)
+    }
+    setSelectedInsurance(next)
+  }
+
+  function addCustomInsurance() {
+    const name = customInsuranceDraft.trim()
+    if (!name) return
+    const exists = selectedInsurance.some(n => n.toLowerCase() === name.toLowerCase())
+    if (exists || catalogNameSet.has(name)) {
+      if (catalogNameSet.has(name) && !selectedInsurance.includes(name)) {
+        setSelectedInsurance(prev => [...prev, name])
+      }
+      setCustomInsuranceDraft('')
+      return
+    }
+    const otherName = catalog.find(i => i.slug === 'other-insurance' || i.name === OTHER_INSURANCE_NAME)?.name
+      || OTHER_INSURANCE_NAME
+    setSelectedInsurance(prev => {
+      const next = [...prev, name]
+      if (!next.some(n => n.toLowerCase() === otherName.toLowerCase())) next.push(otherName)
+      return next
+    })
+    setCustomInsuranceDraft('')
+  }
+
+  function removeCustomInsurance(name) {
+    setSelectedInsurance(prev => {
+      const next = prev.filter(n => n !== name)
+      const stillHasCustom = next.some(n => !catalogNameSet.has(n))
+      if (!stillHasCustom) {
+        return next.filter(n => n.toLowerCase() !== OTHER_INSURANCE_NAME.toLowerCase())
+      }
+      return next
+    })
   }
 
   async function uploadHero(e) {
@@ -354,7 +551,7 @@ export default function ClientMyCenter() {
     ['Write your description', Boolean(form.description?.trim())],
     ['Add services and levels of care', Boolean(form.specialties?.trim() && form.levels_of_care?.trim())],
     ['Select accepted insurance', insurancePayload.length > 0],
-    ['Add a hero, video, or gallery media', Boolean(center.image_url || form.video_url?.trim() || center.gallery_keys?.length)],
+    ['Add a hero or gallery image', Boolean(center.image_url || center.gallery_keys?.length)],
   ]
 
   return (
@@ -471,16 +668,30 @@ export default function ClientMyCenter() {
               ['zip', 'ZIP', 'text'],
               ['phone', 'Phone', 'text'],
               ['website', 'Website', 'text'],
+              ['verification_url', 'Insurance / benefits verification page URL', 'text'],
               ['contact_email', 'Contact email', 'email'],
               ['google_maps_url', 'Google Map link', 'text'],
-              ['google_reviews_url', 'Google reviews link', 'text'],
             ].map(([key, label, type]) => (
-              <label key={key} className="field">
+              <label key={key} className={`field${key === 'verification_url' ? ' form-span-2' : ''}`}>
                 <span className="field-label">{label}</span>
-                <input type={type} disabled={locked} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+                <input type={type} disabled={locked} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={key === 'verification_url' ? 'https://… (optional — used for directory Check coverage CTA)' : undefined} />
               </label>
             ))}
           </div>
+
+          <label className="field">
+            <span className="field-label">Google reviews / Maps place link</span>
+            <input
+              type="text"
+              disabled={locked}
+              value={form.google_reviews_url}
+              onChange={e => setForm(f => ({ ...f, google_reviews_url: e.target.value }))}
+              placeholder="Paste your Google Business / Maps place URL"
+            />
+            <p className="muted" style={{ marginTop: 6 }}>
+              Paste your Google Maps or Google Business Profile link. When configured, your public landing page pulls live Google review feeds automatically. Manual testimonials below are used as a fallback.
+            </p>
+          </label>
 
           <p className="eyebrow">Care details</p>
           <div className="form-grid-2">
@@ -497,7 +708,7 @@ export default function ClientMyCenter() {
             ))}
           </div>
           <label className="field">
-            <span className="field-label">Testimonials (one per line)</span>
+            <span className="field-label">Manual testimonials (one per line — fallback if Google feed is unavailable)</span>
             <textarea rows={3} disabled={locked} value={form.testimonials} onChange={e => setForm(f => ({ ...f, testimonials: e.target.value }))} />
           </label>
 
@@ -512,43 +723,65 @@ export default function ClientMyCenter() {
           <div className="mc-insurance-head">
             <div>
               <p className="eyebrow">USA insurance</p>
-              <p className="page-sub" style={{ margin: 0 }}>Check the plans you accept. Logos appear on your landing page and power the public search filter.</p>
+              <p className="page-sub" style={{ margin: 0 }}>
+                Select the plans you accept. Logos appear on your landing page and power the directory insurance filter.
+              </p>
             </div>
             <p className="muted">{insurancePayload.length} selected</p>
           </div>
 
-          <div className="mc-insurance-grid">
-            {catalog.map(item => {
-              const checked = selectedInsurance.includes(item.name)
-              return (
-                <label key={item.id} className={`mc-insurance-card${checked ? ' is-on' : ''}`}>
-                  <input
-                    type="checkbox"
-                    disabled={locked}
-                    checked={checked}
-                    onChange={() => toggleInsurance(item.name)}
-                  />
-                  <img src={item.logo_url} alt="" />
-                  <span>{item.name}</span>
-                </label>
-              )
-            })}
-          </div>
-
-          <label className="field" style={{ marginTop: 16 }}>
-            <span className="field-label">Other / custom insurance (one per line)</span>
-            <textarea
-              rows={3}
+          <label className="field">
+            <span className="field-label">Accepted insurance</span>
+            <InsuranceMultiSelect
+              options={insuranceOptions}
+              value={catalogSelected}
+              onChange={setCatalogInsurance}
               disabled={locked}
-              value={selectedInsurance.filter(n => !catalog.some(c => c.name === n)).join('\n')}
-              onChange={e => {
-                const custom = textToList(e.target.value)
-                const fromCatalog = selectedInsurance.filter(n => catalog.some(c => c.name === n))
-                setSelectedInsurance([...fromCatalog, ...custom])
-              }}
-              placeholder="e.g. Regional plan name"
+              placeholder="Select insurance plans…"
             />
           </label>
+
+          <div className="mc-custom-insurance">
+            <span className="field-label">Custom insurance (Other Insurance)</span>
+            <p className="muted" style={{ margin: '4px 0 10px' }}>
+              If your plan is not listed, add it here. Custom plans are grouped under Other Insurance for directory filtering.
+            </p>
+            <div className="mc-custom-insurance-row">
+              <input
+                type="text"
+                disabled={locked}
+                value={customInsuranceDraft}
+                onChange={e => setCustomInsuranceDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addCustomInsurance()
+                  }
+                }}
+                placeholder="e.g. Regional plan name"
+              />
+              <Button type="button" disabled={locked || !customInsuranceDraft.trim()} onClick={addCustomInsurance}>
+                Add
+              </Button>
+            </div>
+            {customInsurances.length > 0 && (
+              <div className="mc-multiselect-chips" style={{ marginTop: 10 }}>
+                {customInsurances.map(item => (
+                  <button
+                    key={item}
+                    type="button"
+                    className="mc-multiselect-chip"
+                    disabled={locked}
+                    onClick={() => removeCustomInsurance(item)}
+                    aria-label={`Remove ${item}`}
+                  >
+                    {item}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="form-actions">
             <Button type="button" disabled={saving || locked} onClick={save}>
@@ -561,10 +794,9 @@ export default function ClientMyCenter() {
       {tab === 'media' && (
         <div className="card card-flat form-stack">
           <p className="eyebrow">Media</p>
-          <label className="field">
-            <span className="field-label">Video URL</span>
-            <input disabled={locked} value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} />
-          </label>
+          <p className="page-sub" style={{ marginTop: 0 }}>
+            Images only — uploads are converted to AVIF for faster landing pages.
+          </p>
 
           <div className="field">
             <span className="field-label">Hero / cover image</span>
@@ -572,13 +804,13 @@ export default function ClientMyCenter() {
               <img src={center.image_url} alt="" className="mc-hero-preview" />
             )}
             <input type="file" accept="image/*" disabled={locked || uploadingHero} onChange={uploadHero} />
-            <p className="muted">Shown in the landing hero and directory card.</p>
+            <p className="muted">Shown in the landing hero and directory card. Converted to AVIF on upload.</p>
           </div>
 
           <div className="field">
             <span className="field-label">Gallery images</span>
             <input type="file" accept="image/*" disabled={locked || uploadingGallery} onChange={uploadGallery} />
-            <p className="muted">Upload up to 12 images, 8MB each.</p>
+            <p className="muted">Upload up to 12 images, 8MB each. Each file is converted to AVIF.</p>
             {(center.gallery_urls || []).length > 0 && (
               <div className="mc-gallery">
                 {center.gallery_urls.map((url, index) => (

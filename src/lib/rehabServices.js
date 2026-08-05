@@ -40,9 +40,10 @@ export const REHAB_INSURANCE_TYPES = [
 ]
 
 /** Build a directory URL using the shared query-param filter mechanism. */
-export function buildRehabDirectoryUrl({ state, service, insurance } = {}) {
+export function buildRehabDirectoryUrl({ state, city, service, insurance } = {}) {
   const params = new URLSearchParams()
   if (state) params.set('state', state)
+  if (city) params.set('city', city)
   if (service) params.set('service', service)
   if (insurance) params.set('insurance', insurance)
   const query = params.toString()
@@ -66,11 +67,34 @@ export function normalizeText(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-export function centerMatchesService(specialties, serviceId) {
+/** Match a service/level-of-care filter against specialties and levels_of_care. */
+export function centerMatchesService(specialties, serviceId, levelsOfCare = []) {
   const service = REHAB_SERVICE_TYPES.find(s => s.id === serviceId)
   if (!service) return false
-  const haystack = normalizeText((specialties || []).join(' '))
+  const haystack = normalizeText([...(specialties || []), ...(levelsOfCare || [])].join(' '))
   return service.keywords.some(kw => haystack.includes(normalizeText(kw)))
+}
+
+/** Whether a center attests to accepting a carrier (display name from catalog). */
+export function centerMatchesCarrier(center, insuranceName) {
+  if (!insuranceName) return true
+  const needle = normalizeText(insuranceName)
+  if (!needle) return true
+  const names = [
+    ...(center?.insurances || []),
+    ...((center?.insurance_details || []).map(d => d.name)),
+  ].filter(Boolean)
+  if (!names.length) return false
+  if (needle === 'other insurance') {
+    return names.some(n => {
+      const t = normalizeText(n)
+      return t === 'other' || t === 'other insurance' || t.includes('other insurance')
+    })
+  }
+  return names.some(n => {
+    const t = normalizeText(n)
+    return t === needle || t.includes(needle) || needle.includes(t)
+  })
 }
 
 export function specialtyMatchesAnyService(specialty, serviceIds) {
@@ -88,6 +112,21 @@ export function extractStateFromLocation(location) {
   const parts = location.split(',').map(p => p.trim()).filter(Boolean)
   if (!parts.length) return null
   return parts[parts.length - 1]
+}
+
+export function extractCityFromLocation(location) {
+  if (!location) return null
+  const parts = location.split(',').map(p => p.trim()).filter(Boolean)
+  if (parts.length < 2) return parts[0] || null
+  return parts[0]
+}
+
+export function getCenterState(center) {
+  return center?.state || extractStateFromLocation(center?.location) || null
+}
+
+export function getCenterCity(center) {
+  return center?.city || extractCityFromLocation(center?.location) || null
 }
 
 export function centerInsuranceAccepted(center) {

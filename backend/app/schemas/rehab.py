@@ -18,6 +18,7 @@ class RehabCenterPublic(BaseModel):
     location: str
     phone: str | None = None
     website: str | None = None
+    verification_url: str | None = None
     image: str | None = None
     specialties: list[str]
     description: str
@@ -76,6 +77,7 @@ class RehabCenterAdmin(BaseModel):
     zip: str | None
     phone: str | None
     website: str | None
+    verification_url: str | None = None
     contact_email: str | None = None
     outreach_email: str | None = None
     samhsa_id: str | None = None
@@ -119,6 +121,7 @@ class RehabCenterCreate(BaseModel):
     zip: str | None = None
     phone: str | None = None
     website: str | None = None
+    verification_url: str | None = None
     contact_email: str | None = None
     outreach_email: str | None = None
     google_maps_url: str | None = None
@@ -151,6 +154,7 @@ class RehabCenterUpdate(BaseModel):
     zip: str | None = None
     phone: str | None = None
     website: str | None = None
+    verification_url: str | None = None
     contact_email: str | None = None
     outreach_email: str | None = None
     google_maps_url: str | None = None
@@ -202,6 +206,8 @@ class ClaimStatusPublic(BaseModel):
     certification_uploaded: bool = False
     email_domain_matched: bool = False
     phone_verified: bool = False
+    payment_received: bool = False
+    checkout_ready: bool = False
 
 
 class ClaimAdmin(BaseModel):
@@ -220,6 +226,7 @@ class ClaimAdmin(BaseModel):
     proof_of_affiliation_url: str | None = None
     email_domain_matched: bool = False
     cert_verified_at: datetime | None = None
+    payment_received_at: datetime | None = None
     admin_notes: str | None
     created_at: datetime
     reviewed_at: datetime | None

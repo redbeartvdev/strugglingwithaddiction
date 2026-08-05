@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import { api, apiBlob } from '../../api'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
+import {
+  LISTING_DISCOUNT_PCT,
+  LISTING_FEATURES,
+  LISTING_MONTHLY_PRICE,
+  LISTING_YEARLY_EFFECTIVE_MO,
+  LISTING_YEARLY_FULL,
+  LISTING_YEARLY_PRICE,
+  LISTING_YEARLY_SAVINGS,
+} from '../../lib/listingPlans'
 
 function formatDate(value) {
   if (!value) return '—'
@@ -105,21 +114,44 @@ export default function ClientBilling() {
       </header>
 
       {!active && (
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
           <Card>
-            <p className="eyebrow">Monthly</p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: '8px 0' }}>$9.99<span style={{ fontSize: '1rem' }}>/mo</span></p>
-            <p className="muted">Flexible, month-to-month billing.</p>
-            <Button type="button" style={{ marginTop: 12 }} onClick={() => checkout('month')}>
-              Choose monthly
+            <p className="eyebrow">Best value · Save {LISTING_DISCOUNT_PCT}%</p>
+            <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: '8px 0' }}>
+              ${LISTING_YEARLY_PRICE.toFixed(2)}
+              <span style={{ fontSize: '1rem' }}>/yr</span>
+            </p>
+            <p className="muted">Only ${LISTING_YEARLY_EFFECTIVE_MO.toFixed(2)}/mo billed annually</p>
+            <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 14, color: 'var(--muted, #6b7280)' }}>
+              <li>
+                <span style={{ textDecoration: 'line-through' }}>${LISTING_YEARLY_FULL.toFixed(2)}</span>
+                {' '}→ ${LISTING_YEARLY_PRICE.toFixed(2)}
+              </li>
+              <li>You save ${LISTING_YEARLY_SAVINGS.toFixed(2)} / year</li>
+            </ul>
+            <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 13 }}>
+              {LISTING_FEATURES.map(f => <li key={f}>{f}</li>)}
+            </ul>
+            <Button type="button" style={{ marginTop: 12 }} onClick={() => checkout('year')}>
+              Choose annual
             </Button>
           </Card>
           <Card>
-            <p className="eyebrow">Annual — push this tier</p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: '8px 0' }}>$99<span style={{ fontSize: '1rem' }}>/yr</span></p>
-            <p className="muted">= 2 months free. Locks in a year of upsell touchpoints.</p>
-            <Button type="button" style={{ marginTop: 12 }} onClick={() => checkout('year')}>
-              Choose annual
+            <p className="eyebrow">Monthly</p>
+            <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: '8px 0' }}>
+              ${LISTING_MONTHLY_PRICE.toFixed(2)}
+              <span style={{ fontSize: '1rem' }}>/mo</span>
+            </p>
+            <p className="muted">Flexible — cancel anytime</p>
+            <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 14, color: 'var(--muted, #6b7280)' }}>
+              <li>Billed every month</li>
+              <li>Annual total if kept: ${LISTING_YEARLY_FULL.toFixed(2)}</li>
+            </ul>
+            <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 13 }}>
+              {LISTING_FEATURES.map(f => <li key={f}>{f}</li>)}
+            </ul>
+            <Button type="button" variant="ghost" style={{ marginTop: 12 }} onClick={() => checkout('month')}>
+              Choose monthly
             </Button>
           </Card>
         </div>
@@ -128,10 +160,22 @@ export default function ClientBilling() {
       {active && (
         <Card>
           <p>Plan: {sub?.plan_name || 'Base listing'} · {sub?.interval || '—'}</p>
-          {sub?.status === 'past_due' && (
+      {sub?.status === 'past_due' && (
             <p className="form-error" style={{ marginTop: 8 }}>
               Your latest payment needs attention. Update your card before Stripe’s retries are exhausted.
             </p>
+          )}
+          {sub?.status === 'unpaid' && (
+            <p className="form-error" style={{ marginTop: 8 }}>
+              Payment failed and retries were exhausted. Update your card to restore your listing.
+            </p>
+          )}
+          {(sub?.status === 'past_due' || sub?.status === 'unpaid') && (
+            <div className="card" style={{ marginTop: 12, padding: 12, border: '1px solid #fecaca', background: '#fef2f2' }}>
+              <p className="eyebrow">Payment renewal</p>
+              <p style={{ marginTop: 4 }}>This alert only appears when a renewal payment did not go through.</p>
+              <Button type="button" style={{ marginTop: 8 }} onClick={portal}>Update payment method</Button>
+            </div>
           )}
           {sub?.current_period_end && (
             <p className="muted">Current period ends {new Date(sub.current_period_end).toLocaleDateString()}</p>
@@ -159,9 +203,9 @@ export default function ClientBilling() {
 
         {loadingHistory ? (
           <p className="muted" style={{ marginTop: 16 }}>Loading invoices…</p>
-        ) : !meta.stripe_configured ? (
-          <p className="muted" style={{ marginTop: 16 }}>Stripe is not configured yet — invoices will appear here after billing is connected.</p>
-        ) : !meta.has_customer ? (
+        ) : !meta.stripe_configured && invoices.length === 0 ? (
+          <p className="muted" style={{ marginTop: 16 }}>No invoices yet.</p>
+        ) : !meta.has_customer && invoices.length === 0 ? (
           <p className="muted" style={{ marginTop: 16 }}>No billing account yet. Choose a plan above to start.</p>
         ) : invoices.length === 0 ? (
           <p className="muted" style={{ marginTop: 16 }}>No invoices yet.</p>
@@ -191,16 +235,40 @@ export default function ClientBilling() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={busyPdf === inv.id || (!inv.invoice_pdf && inv.status === 'draft')}
+                        disabled={busyPdf === `view-${inv.id}` || (!inv.invoice_pdf && inv.status === 'draft')}
+                        onClick={async () => {
+                          setBusyPdf(`view-${inv.id}`)
+                          try {
+                            if (inv.hosted_invoice_url) {
+                              window.open(inv.hosted_invoice_url, '_blank', 'noopener,noreferrer')
+                              return
+                            }
+                            if (inv.invoice_pdf) {
+                              window.open(inv.invoice_pdf, '_blank', 'noopener,noreferrer')
+                              return
+                            }
+                            const { blob } = await apiBlob(`/api/billing/invoices/${inv.id}/pdf`)
+                            const url = URL.createObjectURL(blob)
+                            window.open(url, '_blank', 'noopener,noreferrer')
+                            setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                          } catch (e) {
+                            setErr(e.message)
+                          } finally {
+                            setBusyPdf('')
+                          }
+                        }}
+                      >
+                        {busyPdf === `view-${inv.id}` ? '…' : 'View'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busyPdf === inv.id || (!inv.invoice_pdf && inv.status === 'draft' && !inv.id)}
                         onClick={() => downloadInvoicePdf(inv)}
                       >
-                        {busyPdf === inv.id ? '…' : 'PDF'}
+                        {busyPdf === inv.id ? '…' : 'Download PDF'}
                       </Button>
-                      {inv.hosted_invoice_url && (
-                        <a className="btn btn-ghost btn-sm" href={inv.hosted_invoice_url} target="_blank" rel="noreferrer">
-                          View
-                        </a>
-                      )}
                     </td>
                   </tr>
                 ))}
