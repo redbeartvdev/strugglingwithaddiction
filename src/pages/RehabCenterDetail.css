@@ -443,7 +443,7 @@
 }
 
 .rpd-side-card .rpd-form-eyebrow {
-  color: var(--brand-blue);
+  color: #fff;
   margin-bottom: 0.55rem;
 }
 
@@ -451,6 +451,14 @@
   width: 100%;
   margin-top: 0.35rem;
   justify-content: center;
+  background: var(--brand-red, #8c1126);
+  border-color: var(--brand-red, #8c1126);
+}
+
+.rpd-side-call:hover {
+  background: #a0142d;
+  border-color: #a0142d;
+  box-shadow: 0 6px 20px rgba(140, 17, 38, 0.35);
 }
 
 .rpd-side-link {

@@ -1048,7 +1048,7 @@ export default function RehabCenters() {
                     </div>
                   </div>
                   {!center.claimed && (
-                    <button className="btn rehab-claim-btn" onClick={() => setClaimCenter(center)}>Claim This Center</button>
+                    <button className="btn btn-outline rehab-claim-btn" onClick={() => setClaimCenter(center)}>Claim This Center</button>
                   )}
                 </div>
                 <div className="rehab-specialties">

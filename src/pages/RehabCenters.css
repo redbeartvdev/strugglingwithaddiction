@@ -224,6 +224,16 @@
   font-size: 0.8rem;
   flex-shrink: 0;
   letter-spacing: 0.06em;
+  background-color: transparent;
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.rehab-claim-btn:hover {
+  background-color: rgba(95, 189, 246, 0.1);
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+  box-shadow: 0 6px 18px rgba(95, 189, 246, 0.18);
 }
 
 .rehab-unclaimed-notice {
