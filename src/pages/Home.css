@@ -522,7 +522,9 @@
 /* ── State Map ────────────────────────────── */
 .home-state-map-section {
   padding: 3.5rem 0 4rem;
-  background: var(--white);
+  background: #eef3f8;
+  border-top: 1px solid rgba(26, 35, 50, 0.06);
+  border-bottom: 1px solid rgba(26, 35, 50, 0.06);
 }
 
 .home-state-map-layout {

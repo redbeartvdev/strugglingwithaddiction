@@ -11,7 +11,6 @@ import {
 import { useRecentPosts } from '../hooks/useBlogData'
 import GuidedFinder from '../components/GuidedFinder'
 import NewsletterSection from '../components/NewsletterSection'
-import InsuranceAcceptedSection from '../components/InsuranceAcceptedSection'
 import './Home.css'
 
 const USStateMap = lazy(() => import('../components/USStateMap'))
@@ -306,8 +305,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <InsuranceAcceptedSection />
 
       {/* ── State Map ───────────────────────────── */}
       <section className="home-state-map-section" id="find-by-state">

@@ -74,8 +74,8 @@ export default function InsuranceAcceptedSection() {
           <span className="section-label">Insurance Accepted</span>
           <h2 id="insurance-accepted-heading">Search by the coverage you already have</h2>
           <p className="section-desc">
-            Choose a carrier to filter the directory for facilities that list that plan.
-            Providers manage accepted insurance from their portal so listings stay accurate.
+            Easily search and filter facilities by the insurance plans they accept.
+            Our provider-managed directory helps you find treatment facilities that work with your coverage.
           </p>
         </div>
 
