@@ -108,6 +108,12 @@
   background: var(--icov-surface);
 }
 
+.icov-section--directory {
+  background: #e8eef5;
+  border-top: 1px solid rgba(26, 35, 50, 0.06);
+  border-bottom: 1px solid rgba(26, 35, 50, 0.06);
+}
+
 .icov-section-head {
   max-width: 640px;
   margin-bottom: 1.75rem;
@@ -135,8 +141,11 @@
   gap: 1rem;
 }
 
-.icov-carrier-card,
-.icov-guide-card {
+.icov-guide-grid {
+  gap: 1.75rem;
+}
+
+.icov-carrier-card {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -150,10 +159,29 @@
   transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
 }
 
-.icov-carrier-card:hover,
-.icov-guide-card:hover {
+.icov-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  padding: 2rem 2rem 1.85rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 8px 28px rgba(26, 26, 46, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.icov-carrier-card:hover {
   border-color: rgba(95, 189, 246, 0.55);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.09);
+  transform: translateY(-3px);
+}
+
+.icov-guide-card:hover {
+  box-shadow: 0 12px 36px rgba(26, 26, 46, 0.12);
   transform: translateY(-3px);
 }
 
@@ -283,19 +311,67 @@
   border-top: 1px solid var(--icov-line);
 }
 
-.icov-faq-list details {
+.icov-faq-item {
   border-bottom: 1px solid var(--icov-line);
 }
 
-.icov-faq-list summary {
+.icov-faq-trigger {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: 100%;
   padding: 1rem 0;
-  cursor: pointer;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-weight: 700;
+  text-align: left;
+  cursor: pointer;
 }
 
-.icov-faq-list details p {
-  padding: 0 0 1rem;
+.icov-faq-marker {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  margin-top: 0.45rem;
+  border-style: solid;
+  border-width: 0.32rem 0 0.32rem 0.48rem;
+  border-color: transparent transparent transparent currentColor;
+  transform-origin: 35% 50%;
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.icov-faq-item.is-open .icov-faq-marker {
+  transform: rotate(90deg);
+}
+
+.icov-faq-panel {
+  overflow: hidden;
+  height: 0;
+  transition: height 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.icov-faq-panel-inner {
+  min-height: 0;
+}
+
+.icov-faq-panel-inner p {
+  margin: 0;
+  padding: 0 0 1.15rem 1.15rem;
   color: var(--icov-muted);
+  line-height: 1.6;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.icov-faq-item.is-open .icov-faq-panel-inner p {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.12s;
 }
 
 .icov-help-box {
@@ -358,7 +434,14 @@
 }
 
 .icov-facilities {
-  padding: 2.5rem 0 3.5rem;
+  padding: 0;
+}
+
+.icov-section--directory .icov-facility-card {
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(26, 26, 46, 0.07);
+  padding: 1.25rem 1.5rem;
 }
 
 .icov-facilities-head {

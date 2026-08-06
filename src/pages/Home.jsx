@@ -352,7 +352,8 @@ export default function Home() {
           <div className="testimonials-grid">
             {testimonials.map(t => (
               <figure className="testimonial-card" key={t.name}>
-                <blockquote>"{t.quote}"</blockquote>
+                <span className="testimonial-quote-mark" aria-hidden="true">“</span>
+                <blockquote>{t.quote}</blockquote>
                 <figcaption>
                   <strong>{t.name}</strong>
                   <span>{t.detail}</span>

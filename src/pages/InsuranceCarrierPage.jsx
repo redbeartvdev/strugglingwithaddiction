@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { usePageSeo } from '../hooks/usePageSeo'
@@ -12,6 +12,48 @@ import {
 } from '../data/insuranceCarrierContent'
 import CarrierFacilitiesModule from '../components/CarrierFacilitiesModule'
 import './InsuranceCoverage.css'
+
+function FaqItem({ question, answer }) {
+  const [open, setOpen] = useState(false)
+  const innerRef = useRef(null)
+  const [height, setHeight] = useState(0)
+
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+
+    const sync = () => setHeight(el.scrollHeight)
+    sync()
+
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [answer])
+
+  return (
+    <div className={`icov-faq-item${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="icov-faq-trigger"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="icov-faq-marker" aria-hidden="true" />
+        {question}
+      </button>
+      <div
+        className="icov-faq-panel"
+        style={{ height: open ? height : 0 }}
+        aria-hidden={!open}
+      >
+        <div ref={innerRef} className="icov-faq-panel-inner">
+          <p>{answer}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function InsuranceCarrierPage() {
   const { slug } = useParams()
@@ -82,9 +124,11 @@ export default function InsuranceCarrierPage() {
               : <p>Coverage depends on your specific plan. Always confirm with your insurance company and the treatment center.</p>}
           </div>
         </section>
-        <div className="container">
-          <CarrierFacilitiesModule insuranceName={catalog.name} state={geo.state} />
-        </div>
+        <section className="icov-section icov-section--directory">
+          <div className="container">
+            <CarrierFacilitiesModule insuranceName={catalog.name} state={geo.state} />
+          </div>
+        </section>
       </main>
     )
   }
@@ -300,9 +344,11 @@ export default function InsuranceCarrierPage() {
         </div>
       </section>
 
-      <div className="container">
-        <CarrierFacilitiesModule insuranceName={content.directoryName} state={geo.state} />
-      </div>
+      <section className="icov-section icov-section--directory">
+        <div className="container">
+          <CarrierFacilitiesModule insuranceName={content.directoryName} state={geo.state} />
+        </div>
+      </section>
 
       <section className="icov-section">
         <div className="container icov-prose">
@@ -310,10 +356,7 @@ export default function InsuranceCarrierPage() {
             <h2 id="faq">Frequently asked questions</h2>
             <div className="icov-faq-list">
               {[...content.faqs, ...commonFaqs].map(([question, answer]) => (
-                <details key={question}>
-                  <summary>{question}</summary>
-                  <p>{answer}</p>
-                </details>
+                <FaqItem key={question} question={question} answer={answer} />
               ))}
             </div>
           </section>
