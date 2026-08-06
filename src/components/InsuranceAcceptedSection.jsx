@@ -87,13 +87,7 @@ export default function InsuranceAcceptedSection() {
         </ul>
 
         <div className="text-center insurance-accepted-cta">
-          <Link
-            to={buildRehabDirectoryUrl({ state: geo.state, city: geo.city })}
-            className="btn"
-          >
-            Browse all centers
-          </Link>
-          <Link to="/insurance-coverage" className="btn btn-outline" style={{ marginLeft: '0.75rem' }}>
+          <Link to="/insurance-coverage" className="btn btn-outline">
             Insurance coverage hub
           </Link>
         </div>
