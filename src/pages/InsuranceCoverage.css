@@ -165,13 +165,13 @@
   gap: 0.55rem;
   height: 100%;
   padding: 2rem 2rem 1.85rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 14px;
   background: var(--white);
   box-shadow: 0 8px 28px rgba(26, 26, 46, 0.07);
   text-decoration: none;
   color: inherit;
-  transition: box-shadow 0.3s, transform 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
 }
 
 .icov-carrier-card:hover {
@@ -181,7 +181,8 @@
 }
 
 .icov-guide-card:hover {
-  box-shadow: 0 12px 36px rgba(26, 26, 46, 0.12);
+  border-color: rgba(95, 189, 246, 0.55);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.09);
   transform: translateY(-3px);
 }
 
