@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { buildRehabDirectoryUrl } from '../lib/rehabServices'
 import { detectVisitorLocation } from '../lib/geo'
-import { getInsuranceCarrierContent } from '../data/insuranceCarrierContent'
 import './InsuranceAcceptedSection.css'
 
 /** Featured commercial brands for the homepage logo strip (fallbacks when API is offline). */
@@ -28,8 +27,11 @@ const FALLBACK_INSURANCES = [
 const HOMEPAGE_SLUGS = new Set(FALLBACK_INSURANCES.map(i => i.slug))
 
 export default function InsuranceAcceptedSection() {
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const [items, setItems] = useState(FALLBACK_INSURANCES)
   const [geo, setGeo] = useState({ state: '', city: '' })
+  const onDirectory = location.pathname.startsWith('/rehab-centers')
 
   useEffect(() => {
     if (!apiEnabled()) return
@@ -51,6 +53,20 @@ export default function InsuranceAcceptedSection() {
       .catch(() => {})
   }, [])
 
+  function directoryFilterHref(insuranceName) {
+    if (onDirectory) {
+      const next = new URLSearchParams(searchParams)
+      next.set('insurance', insuranceName)
+      const query = next.toString()
+      return query ? `/rehab-centers?${query}` : '/rehab-centers'
+    }
+    return buildRehabDirectoryUrl({
+      insurance: insuranceName,
+      state: geo.state,
+      city: geo.city,
+    })
+  }
+
   return (
     <section className="insurance-accepted-section" id="insurance-accepted" aria-labelledby="insurance-accepted-heading">
       <div className="container">
@@ -58,7 +74,7 @@ export default function InsuranceAcceptedSection() {
           <span className="section-label">Insurance Accepted</span>
           <h2 id="insurance-accepted-heading">Search by the coverage you already have</h2>
           <p className="section-desc">
-            Open a carrier guide to learn how coverage usually works, then browse facilities that list that plan.
+            Choose a carrier to filter the directory for facilities that list that plan.
             Providers manage accepted insurance from their portal so listings stay accurate.
           </p>
         </div>
@@ -67,17 +83,9 @@ export default function InsuranceAcceptedSection() {
           {items.map(item => (
             <li key={item.slug || item.name}>
               <Link
-                to={
-                  getInsuranceCarrierContent(item.slug)
-                    ? `/insurance/${item.slug}`
-                    : buildRehabDirectoryUrl({ insurance: item.name, state: geo.state, city: geo.city })
-                }
+                to={directoryFilterHref(item.name)}
                 className="insurance-accepted-link"
-                aria-label={
-                  getInsuranceCarrierContent(item.slug)
-                    ? `Does ${item.name} cover rehab?`
-                    : `Find facilities that list ${item.name}`
-                }
+                aria-label={`Filter directory by ${item.name}`}
               >
                 <img src={item.logo_url} alt="" loading="lazy" width={160} height={48} />
                 <span>{item.name}</span>
