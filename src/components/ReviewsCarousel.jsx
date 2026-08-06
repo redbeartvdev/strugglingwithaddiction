@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FaChevronLeft, FaChevronRight, FaStar } from 'react-icons/fa'
 import { apiEnabled, fetchApi } from '../lib/api'
+
+const AUTOPLAY_MS = 4000
+const SLIDE_MS = 900
 
 function Stars({ rating = 5 }) {
   const value = Math.round(Number(rating) || 0)
@@ -11,21 +14,6 @@ function Stars({ rating = 5 }) {
       ))}
     </span>
   )
-}
-
-function useVisibleCount() {
-  const [count, setCount] = useState(3)
-  useEffect(() => {
-    const sync = () => {
-      if (window.matchMedia('(max-width: 640px)').matches) setCount(1)
-      else if (window.matchMedia('(max-width: 900px)').matches) setCount(2)
-      else setCount(3)
-    }
-    sync()
-    window.addEventListener('resize', sync)
-    return () => window.removeEventListener('resize', sync)
-  }, [])
-  return count
 }
 
 function normalizeLocal(testimonials = [], defaultRating = 5) {
@@ -45,9 +33,10 @@ function normalizeLocal(testimonials = [], defaultRating = 5) {
 
 export default function ReviewsCarousel({ center }) {
   const slug = center?.slug || center?.id
-  const visibleCount = useVisibleCount()
   const [page, setPage] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [instant, setInstant] = useState(false)
+  const prevPageRef = useRef(0)
   const [payload, setPayload] = useState(() => ({
     source: 'manual',
     rating: center?.rating,
@@ -67,6 +56,7 @@ export default function ReviewsCarousel({ center }) {
     }
     setPayload(local)
     setPage(0)
+    prevPageRef.current = 0
 
     if (!apiEnabled() || !slug) return undefined
 
@@ -81,6 +71,7 @@ export default function ReviewsCarousel({ center }) {
           reviews: data.reviews,
         })
         setPage(0)
+        prevPageRef.current = 0
       })
       .catch(() => {
         /* keep local testimonials */
@@ -90,22 +81,36 @@ export default function ReviewsCarousel({ center }) {
   }, [slug, center?.rating, center?.google_reviews_url, center?.testimonials])
 
   const reviews = payload.reviews || []
-  const pageCount = Math.max(1, Math.ceil(reviews.length / visibleCount))
+  const pageCount = Math.max(1, reviews.length)
   const safePage = ((page % pageCount) + pageCount) % pageCount
-  const start = safePage * visibleCount
-  const visible = reviews.slice(start, start + visibleCount)
 
   useEffect(() => {
-    setPage(0)
-  }, [visibleCount])
+    const prev = prevPageRef.current
+    const dist = Math.abs(safePage - prev)
+    // Skip the long reverse scroll when wrapping around the ends
+    if (dist > 1) {
+      setInstant(true)
+      const id = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setInstant(false))
+      })
+      prevPageRef.current = safePage
+      return () => window.cancelAnimationFrame(id)
+    }
+    prevPageRef.current = safePage
+    return undefined
+  }, [safePage])
 
   useEffect(() => {
     if (paused || pageCount <= 1) return undefined
     const id = window.setInterval(() => {
       setPage(current => current + 1)
-    }, 7000)
+    }, AUTOPLAY_MS)
     return () => window.clearInterval(id)
   }, [paused, pageCount])
+
+  const goTo = (index) => setPage(index)
+  const goPrev = () => setPage(current => current - 1)
+  const goNext = () => setPage(current => current + 1)
 
   if (!reviews.length) {
     return (
@@ -146,40 +151,51 @@ export default function ReviewsCarousel({ center }) {
         </div>
       </div>
 
-      <div className="rpd-review-carousel" data-cols={visibleCount}>
+      <div className="rpd-review-carousel" data-cols="1">
         {pageCount > 1 && (
           <button
             type="button"
             className="rpd-carousel-nav is-prev"
-            aria-label="Previous reviews"
-            onClick={() => setPage(current => current - 1)}
+            aria-label="Previous review"
+            onClick={goPrev}
           >
             <FaChevronLeft aria-hidden="true" />
           </button>
         )}
 
-        <div className="rpd-review-track" role="list">
-          {visible.map((item, index) => (
-            <blockquote key={`${safePage}-${index}-${item.author || 'r'}`} className="rpd-review" role="listitem">
-              <Stars rating={item.rating ?? 5} />
-              <p>{item.quote}</p>
-              <footer className="rpd-review-meta">
-                {item.author && <cite>{item.author}</cite>}
-                {item.relative_time && <span>{item.relative_time}</span>}
-              </footer>
-            </blockquote>
-          ))}
-          {Array.from({ length: Math.max(0, visibleCount - visible.length) }).map((_, i) => (
-            <div key={`pad-${i}`} className="rpd-review is-placeholder" aria-hidden="true" />
-          ))}
+        <div className="rpd-review-viewport">
+          <div
+            className={`rpd-review-track${instant ? ' is-instant' : ''}`}
+            role="list"
+            style={{
+              transform: `translateX(-${safePage * 100}%)`,
+              transitionDuration: instant ? '0ms' : `${SLIDE_MS}ms`,
+            }}
+          >
+            {reviews.map((item, index) => (
+              <blockquote
+                key={`${index}-${item.author || 'r'}`}
+                className="rpd-review"
+                role="listitem"
+                aria-hidden={index !== safePage}
+              >
+                <Stars rating={item.rating ?? 5} />
+                <p>{item.quote}</p>
+                <footer className="rpd-review-meta">
+                  {item.author && <cite>{item.author}</cite>}
+                  {item.relative_time && <span>{item.relative_time}</span>}
+                </footer>
+              </blockquote>
+            ))}
+          </div>
         </div>
 
         {pageCount > 1 && (
           <button
             type="button"
             className="rpd-carousel-nav is-next"
-            aria-label="Next reviews"
-            onClick={() => setPage(current => current + 1)}
+            aria-label="Next review"
+            onClick={goNext}
           >
             <FaChevronRight aria-hidden="true" />
           </button>
@@ -194,9 +210,9 @@ export default function ReviewsCarousel({ center }) {
               type="button"
               role="tab"
               aria-selected={i === safePage}
-              aria-label={`Show reviews page ${i + 1}`}
+              aria-label={`Show review ${i + 1}`}
               className={`rpd-carousel-dot${i === safePage ? ' is-active' : ''}`}
-              onClick={() => setPage(i)}
+              onClick={() => goTo(i)}
             />
           ))}
         </div>

@@ -89,9 +89,12 @@ export default function CarrierFacilitiesModule({
                   )}
                 </div>
                 <div className="icov-facility-actions">
+                  {landing && (
+                    <Link className="btn" to={landing}>About this center</Link>
+                  )}
                   {outbound && (
                     <a
-                      className="btn"
+                      className="btn btn-outline"
                       href={outbound.href}
                       {...(outbound.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     >
@@ -102,9 +105,6 @@ export default function CarrierFacilitiesModule({
                     <a className="btn" href={`tel:${center.phone.replace(/\D/g, '')}`}>
                       <FaPhone aria-hidden="true" /> Call admissions
                     </a>
-                  )}
-                  {landing && (
-                    <Link className="btn btn-outline" to={landing}>About listing</Link>
                   )}
                 </div>
               </li>

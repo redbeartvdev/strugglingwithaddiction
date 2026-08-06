@@ -674,7 +674,7 @@ export default function ClientMyCenter() {
             ].map(([key, label, type]) => (
               <label key={key} className={`field${key === 'verification_url' ? ' form-span-2' : ''}`}>
                 <span className="field-label">{label}</span>
-                <input type={type} disabled={locked} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={key === 'verification_url' ? 'https://… (optional — used for directory Check coverage CTA)' : undefined} />
+                <input type={type} disabled={locked} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={key === 'verification_url' ? 'https://… (optional — used for directory Visit Website CTA)' : undefined} />
               </label>
             ))}
           </div>
