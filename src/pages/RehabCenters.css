@@ -294,6 +294,8 @@
   flex-wrap: wrap;
   padding-top: 1rem;
   border-top: 1px solid #f3f4f6;
+  container-type: inline-size;
+  container-name: rehab-card-footer;
 }
 
 .rehab-card-contacts {
@@ -311,6 +313,7 @@
   flex-wrap: wrap;
   margin-left: auto;
   flex-shrink: 0;
+  max-width: 100%;
 }
 
 .rehab-contact {
@@ -338,10 +341,30 @@
   padding: 0.55rem 1.1rem;
   font-size: 0.78rem;
   letter-spacing: 0.06em;
-  line-height: 1;
+  line-height: 1.2;
   white-space: nowrap;
   text-decoration: none;
   box-sizing: border-box;
+}
+
+@container rehab-card-footer (max-width: 560px) {
+  .rehab-card-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .rehab-action-btn {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+  }
 }
 
 .rehab-action-btn--secondary {
@@ -886,25 +909,39 @@
   .rehab-card-img-wrap { height: 240px; min-height: unset; }
   .rehab-cta-inner { grid-template-columns: 1fr; }
   .rehab-cta-btns { flex-direction: row; flex-wrap: wrap; }
+  .rehab-card-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rehab-card-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .rehab-action-btn {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+  }
 }
 
 @media (max-width: 600px) {
   .rehab-card-top { flex-direction: column; }
   .rehab-claim-btn { width: 100%; text-align: center; }
   .form-row { grid-template-columns: 1fr; }
-  .rehab-card-footer { flex-direction: column; align-items: stretch; }
   .rehab-card-contacts {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.55rem;
     width: 100%;
   }
-  .rehab-card-actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: stretch;
-  }
-  .rehab-action-btn { flex: 1 1 0; min-width: 0; padding-left: 0.75rem; padding-right: 0.75rem; }
   .rehab-call-btn { margin-left: 0; width: 100%; text-align: center; }
   .rehab-intro-inner { flex-direction: column; gap: 0.5rem; }
   .modal { padding: 1.75rem 1.25rem; }
