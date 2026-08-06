@@ -1018,7 +1018,7 @@ export default function RehabCenters() {
             const landingPath = center.claimed ? rehabLandingPath(center) : null
             const outbound = center.claimed ? resolveOutboundListingLink(center) : null
             return (
-            <article className="rehab-card" key={center.id}>
+            <article className={`rehab-card${center.claimed ? '' : ' rehab-card--unclaimed'}`} key={center.id}>
               <div className={`rehab-card-img-wrap${center.claimed ? '' : ' rehab-card-img-wrap--unclaimed'}`}>
                 {center.image && (landingPath
                   ? <Link to={landingPath} aria-label={`View ${center.name} listing`}><img src={center.image} alt={center.name} loading="lazy" /></Link>
@@ -1042,7 +1042,7 @@ export default function RehabCenters() {
                       <span className="rehab-location"><FaMapMarkerAlt aria-hidden="true" /> {center.location}</span>
                       <span className="rehab-stars" aria-label={`${center.rating} out of 5 stars`}>
                         {Array.from({ length: 5 }).map((_, i) => (
-                          <FaStar key={i} style={{ color: i < center.rating ? '#8c1126' : '#e5e7eb' }} />
+                          <FaStar key={i} className={i < center.rating ? 'is-on' : undefined} />
                         ))}
                       </span>
                     </div>

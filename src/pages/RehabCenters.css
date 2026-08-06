@@ -176,6 +176,14 @@
   font-size: 0.85rem;
 }
 
+.rehab-stars svg {
+  color: #e5e7eb;
+}
+
+.rehab-stars svg.is-on {
+  color: #8c1126;
+}
+
 .rehab-name-row {
   display: flex;
   align-items: center;
@@ -227,6 +235,8 @@
   background-color: transparent;
   border-color: var(--brand-blue);
   color: var(--brand-blue);
+  position: relative;
+  z-index: 1;
 }
 
 .rehab-claim-btn:hover {
@@ -248,6 +258,59 @@
 .rehab-unclaimed-notice svg {
   color: #d1d5db;
   flex-shrink: 0;
+}
+
+/* ── Unclaimed listing tone ───────────────── */
+.rehab-card--unclaimed {
+  background: #f9fafb;
+  border-color: #e8eaed;
+}
+
+.rehab-card--unclaimed .rehab-card-top > div,
+.rehab-card--unclaimed .rehab-specialties,
+.rehab-card--unclaimed .rehab-description,
+.rehab-card--unclaimed .rehab-card-footer {
+  opacity: 0.88;
+  filter: grayscale(0.25);
+}
+
+.rehab-card--unclaimed .rehab-card-top h2,
+.rehab-card--unclaimed .rehab-card-top h2 a {
+  color: #4b5563;
+}
+
+.rehab-card--unclaimed .rehab-location,
+.rehab-card--unclaimed .rehab-location svg,
+.rehab-card--unclaimed .rehab-description {
+  color: #7b8494;
+}
+
+.rehab-card--unclaimed .rehab-stars svg {
+  color: #dde1e7;
+}
+
+.rehab-card--unclaimed .rehab-stars svg.is-on {
+  color: #b7a0a5;
+}
+
+.rehab-card--unclaimed .rehab-tag,
+.rehab-card--unclaimed .rehab-tag--match {
+  background: rgba(95, 189, 246, 0.06);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #6b7280;
+  transform: none;
+}
+
+.rehab-card--unclaimed .rehab-verified-badge,
+.rehab-card--unclaimed .rehab-featured-badge {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #7b8494;
+}
+
+.rehab-card--unclaimed .rehab-claim-btn {
+  opacity: 1;
+  filter: none;
 }
 
 /* ── Specialties ──────────────────────────── */
