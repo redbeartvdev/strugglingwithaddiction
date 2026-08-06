@@ -26,7 +26,7 @@ const NAV_BY_ROLE = {
     { to: '/admin/lifecycle', label: 'Lifecycle', Icon: IconSettings },
     { to: '/admin/emails', label: 'Emails', Icon: IconFile },
     { to: '/admin/insurances', label: 'Insurance', Icon: IconCard },
-    { to: '/admin/profile', label: 'Settings', Icon: IconSettings },
+    { to: '/admin/settings', label: 'Settings', Icon: IconSettings },
   ],
   editor: [
     { to: '/editor', label: 'Overview', end: true, Icon: IconHome },
@@ -109,7 +109,15 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
           type="button"
           className="avatar-btn"
           title={user?.email}
-          onClick={() => navigate(subscriptionLocked ? '/client/billing' : (user?.role === 'client' ? '/client/account' : `/${user?.role}/profile`))}
+          onClick={() => navigate(
+            subscriptionLocked
+              ? '/client/billing'
+              : user?.role === 'client'
+                ? '/client/account'
+                : user?.role === 'admin'
+                  ? '/admin/settings?tab=account'
+                  : `/${user?.role}/profile`,
+          )}
         >
           {initials(user?.display_name, user?.email)}
         </button>

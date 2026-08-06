@@ -3,10 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { usePageSeo } from '../hooks/usePageSeo'
 import { INSURANCE_GUIDES } from '../data/insuranceGuides'
-import {
-  MEDICAID_STATE_PAGES,
-  PRIORITY_INSURANCE_CARRIERS,
-} from '../data/insuranceCarrierContent'
+import { PRIORITY_INSURANCE_CARRIERS } from '../data/insuranceCarrierContent'
 import './InsuranceCoverage.css'
 
 export default function InsuranceCoverageHub() {
@@ -76,23 +73,7 @@ export default function InsuranceCoverageHub() {
         </div>
       </section>
 
-      <section className="icov-section icov-section--muted">
-        <div className="container">
-          <div className="icov-section-head">
-            <h2>Medicaid coverage by state</h2>
-            <p>Medicaid rules and managed care networks differ by state. Choose your state for local program information.</p>
-          </div>
-          <ul className="icov-state-link-grid">
-            {MEDICAID_STATE_PAGES.map((item) => (
-              <li key={item.slug}>
-                <Link to={`/insurance/${item.slug}`}>{item.name}</Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="icov-section" id="guides">
+      <section className="icov-section icov-section--muted" id="guides">
         <div className="container">
           <div className="icov-section-head">
             <h2>Guides</h2>

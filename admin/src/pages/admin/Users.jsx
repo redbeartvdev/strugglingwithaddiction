@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
 
-export default function AdminUsers() {
+export default function AdminUsers({ embedded = false }) {
   const [users, setUsers] = useState([])
   const [form, setForm] = useState({ email: '', password: '', role: 'client', display_name: '', is_active: false })
   const [invite, setInvite] = useState({ email: '', display_name: '' })
+  const [editId, setEditId] = useState(null)
+  const [editForm, setEditForm] = useState({ email: '', role: 'client', is_active: true, password: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -64,12 +66,67 @@ export default function AdminUsers() {
     }
   }
 
+  function startEdit(u) {
+    setEditId(u.id)
+    setEditForm({
+      email: u.email || '',
+      role: u.role || 'client',
+      is_active: !!u.is_active,
+      password: '',
+    })
+    setError('')
+    setMessage('')
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault()
+    if (!editId) return
+    setBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      const body = {
+        email: editForm.email,
+        role: editForm.role,
+        is_active: editForm.role === 'admin' ? true : editForm.is_active,
+      }
+      if (editForm.password.trim()) body.password = editForm.password.trim()
+      await api(`/api/admin/users/${editId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+      setEditId(null)
+      setMessage('User updated.')
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removeUser(u) {
+    if (!confirm(`Delete ${u.email}? This cannot be undone.`)) return
+    setError('')
+    setMessage('')
+    try {
+      await api(`/api/admin/users/${u.id}`, { method: 'DELETE' })
+      if (editId === u.id) setEditId(null)
+      setMessage('User deleted.')
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <h1 className="page-title">Users.</h1>
-        <p className="page-sub">Invite superadmins and manage platform accounts.</p>
-      </header>
+      {!embedded && (
+        <header className="page-header">
+          <h1 className="page-title">Users.</h1>
+          <p className="page-sub">Invite superadmins and manage platform accounts.</p>
+        </header>
+      )}
       {error && <p className="error">{error}</p>}
       {message && <p className="success">{message}</p>}
       <form className="card" onSubmit={inviteSuperadmin}>
@@ -117,6 +174,65 @@ export default function AdminUsers() {
           <button type="submit" className="btn btn-primary" disabled={busy}>Create</button>
         </div>
       </form>
+
+      {editId && (
+        <form className="card" onSubmit={saveEdit}>
+          <p className="eyebrow">Edit user</p>
+          <div className="form-grid-2">
+            <div>
+              <label>Email</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label>Role</label>
+              <select
+                value={editForm.role}
+                onChange={e => setEditForm(f => ({
+                  ...f,
+                  role: e.target.value,
+                  is_active: e.target.value === 'admin' ? true : f.is_active,
+                }))}
+              >
+                <option value="admin">Superadmin</option>
+                <option value="editor">Editor</option>
+                <option value="client">Client</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-grid-2">
+            <div>
+              <label>New password (optional)</label>
+              <input
+                type="password"
+                value={editForm.password}
+                onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="Leave blank to keep"
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={editForm.is_active}
+                  disabled={editForm.role === 'admin'}
+                  onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))}
+                />
+                Active
+              </label>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={busy}>Save changes</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setEditId(null)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
       <div className="card card-pad-0 table-wrap">
         <table>
           <thead><tr><th>Email</th><th>Role</th><th>Active</th><th></th></tr></thead>
@@ -126,7 +242,10 @@ export default function AdminUsers() {
                 <td>{u.email}</td>
                 <td><span className="badge">{u.role === 'admin' ? 'superadmin' : u.role}</span></td>
                 <td>{u.is_active ? 'Yes' : 'No'}</td>
-                <td>
+                <td className="table-actions">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEdit(u)}>
+                    Edit
+                  </button>
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
@@ -135,6 +254,13 @@ export default function AdminUsers() {
                     title={u.role === 'admin' ? 'Superadmins remain active; demote them before deactivation.' : undefined}
                   >
                     Toggle
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => removeUser(u)}
+                  >
+                    Delete
                   </button>
                 </td>
               </tr>
