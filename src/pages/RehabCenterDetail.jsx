@@ -275,7 +275,7 @@ export default function RehabCenterDetail() {
   const outbound = resolveOutboundListingLink(center)
   const coverageHref = outbound?.kind === 'url' ? outbound.href : null
   const websiteHref = center.website ? withDirectoryAttribution(center.website) : null
-  const coverageLabel = center.verification_url ? 'Check coverage' : 'Visit website'
+  const coverageLabel = 'Visit Website'
 
   return (
     <main className="rpd-page">

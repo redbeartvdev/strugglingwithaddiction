@@ -48,7 +48,7 @@ export function resolveOutboundListingLink(center) {
     return {
       href,
       kind: 'url',
-      label: 'Check coverage',
+      label: 'Visit Website',
       external: true,
     }
   }
@@ -58,7 +58,7 @@ export function resolveOutboundListingLink(center) {
     return {
       href,
       kind: 'url',
-      label: 'Check coverage',
+      label: 'Visit Website',
       external: true,
     }
   }

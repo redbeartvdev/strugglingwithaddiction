@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch, FaLock } from 'react-icons/fa'
 import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
 import { centerMatchesService, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
@@ -1019,7 +1019,7 @@ export default function RehabCenters() {
             const outbound = center.claimed ? resolveOutboundListingLink(center) : null
             return (
             <article className="rehab-card" key={center.id}>
-              <div className="rehab-card-img-wrap">
+              <div className={`rehab-card-img-wrap${center.claimed ? '' : ' rehab-card-img-wrap--unclaimed'}`}>
                 {center.image && (landingPath
                   ? <Link to={landingPath} aria-label={`View ${center.name} listing`}><img src={center.image} alt={center.name} loading="lazy" /></Link>
                   : <img src={center.image} alt={center.name} loading="lazy" />
@@ -1074,16 +1074,16 @@ export default function RehabCenters() {
                         )}
                       </div>
                       <div className="rehab-card-actions">
+                        {landingPath && (
+                          <Link to={landingPath} className="btn rehab-action-btn">About this center</Link>
+                        )}
                         <a
                           href={outbound.href}
-                          className="btn rehab-action-btn"
+                          className="btn rehab-action-btn rehab-action-btn--secondary"
                           {...(outbound.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                         >
                           {outbound.label}
                         </a>
-                        {landingPath && (
-                          <Link to={landingPath} className="btn rehab-action-btn rehab-action-btn--secondary">About listing</Link>
-                        )}
                       </div>
                     </>
                   ) : center.claimed ? (
@@ -1094,11 +1094,11 @@ export default function RehabCenters() {
                         )}
                       </div>
                       <div className="rehab-card-actions">
-                        {landingPath && <Link to={landingPath} className="btn rehab-action-btn">About listing</Link>}
+                        {landingPath && <Link to={landingPath} className="btn rehab-action-btn">About this center</Link>}
                       </div>
                     </>
                   ) : (
-                    <p className="rehab-unclaimed-notice"><FaPhone aria-hidden="true" /> Contact info available after claiming this listing.</p>
+                    <p className="rehab-unclaimed-notice"><FaLock aria-hidden="true" /> Contact info available after claiming this listing.</p>
                   )}
                 </div>
               </div>
