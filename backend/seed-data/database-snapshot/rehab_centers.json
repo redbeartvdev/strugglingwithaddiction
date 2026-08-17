@@ -35,8 +35,7 @@
       "Aetna",
       "Blue Cross Blue Shield",
       "Cigna",
-      "UnitedHealthcare",
-      "Private Pay"
+      "UnitedHealthcare"
     ],
     "levels_of_care": [
       "Detox",
@@ -110,8 +109,7 @@
       "Blue Cross Blue Shield",
       "Cigna",
       "UnitedHealthcare",
-      "Tricare",
-      "Private Pay"
+      "Tricare"
     ],
     "levels_of_care": [
       "Detox",

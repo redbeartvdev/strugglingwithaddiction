@@ -57,7 +57,7 @@ export default function InsuranceCoverageHub() {
               <li key={c.slug}>
                 <Link to={`/insurance/${c.slug}`} className="icov-carrier-card">
                   {c.logo_url && (
-                    <img src={c.logo_url} alt="" width={140} height={42} loading="lazy" />
+                    <img src={c.logo_url} alt="" width={180} height={56} loading="lazy" />
                   )}
                   <strong>{`Does ${c.name} cover drug and alcohol rehab?`}</strong>
                   <span>

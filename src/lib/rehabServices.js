@@ -36,7 +36,6 @@ export const REHAB_INSURANCE_TYPES = [
   { id: 'medicare', label: 'Medicare' },
   { id: 'tricare', label: 'TRICARE' },
   { id: 'va', label: 'VA Benefits' },
-  { id: 'self-pay', label: 'Self-Pay / No Insurance' },
 ]
 
 /** Build a directory URL using the shared query-param filter mechanism. */

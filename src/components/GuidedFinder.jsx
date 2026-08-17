@@ -24,7 +24,6 @@ const FALLBACK_CARRIERS = [
   'Tricare',
   'Medicaid',
   'Medicare',
-  'Self Pay',
 ]
 
 export default function GuidedFinder({ variant = 'full' }) {

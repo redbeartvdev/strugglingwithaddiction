@@ -190,15 +190,28 @@
   color: #fff;
 }
 
+.rpd-hero-actions .rpd-secondary-btn {
+  background: #fff;
+  border: 1px solid rgba(140, 17, 38, 0.35);
+  color: var(--brand-red, #8c1126);
+}
+
+.rpd-hero-actions .rpd-secondary-btn:hover {
+  background: #f8f0f2;
+  color: var(--brand-red, #8c1126);
+  border-color: rgba(140, 17, 38, 0.5);
+}
+
 .rpd-content .rpd-secondary-btn {
   background: #fff;
-  border: 1px solid var(--rpd-line);
-  color: var(--rpd-ink);
+  border: 1px solid rgba(140, 17, 38, 0.35);
+  color: var(--brand-red, #8c1126);
 }
 
 .rpd-content .rpd-secondary-btn:hover {
-  background: var(--rpd-soft);
-  color: var(--rpd-ink);
+  background: #f8f0f2;
+  color: var(--brand-red, #8c1126);
+  border-color: rgba(140, 17, 38, 0.5);
 }
 
 .rpd-stars {
@@ -832,14 +845,15 @@
 }
 
 .rpd-contact-band .rpd-secondary-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #fff;
+  background: #fff;
+  border: 1px solid rgba(140, 17, 38, 0.35);
+  color: var(--brand-red, #8c1126);
 }
 
 .rpd-contact-band .rpd-secondary-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: #f8f0f2;
+  color: var(--brand-red, #8c1126);
+  border-color: rgba(140, 17, 38, 0.5);
 }
 
 .rpd-mobile-bar {

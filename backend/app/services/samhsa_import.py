@@ -46,7 +46,7 @@ TEMPLATE_EXAMPLE_ROW = {
     "description": "Basic SAMHSA-seeded listing. Centers claim and expand this profile.",
     "specialties": "Detox|Residential|IOP",
     "levels_of_care": "Detox|Inpatient|Outpatient",
-    "insurances": "Medicaid|Private Pay",
+    "insurances": "Medicaid",
     "amenities": "Private rooms|Fitness",
     "accreditations": "Joint Commission|CARF",
     "google_maps_url": "https://maps.google.com/?q=Phoenix+AZ",

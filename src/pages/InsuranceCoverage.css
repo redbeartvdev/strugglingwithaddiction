@@ -54,13 +54,15 @@
 }
 
 .icov-hero .btn-outline {
-  background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: #fff;
+  color: var(--icov-accent);
+  border: 1px solid rgba(140, 17, 38, 0.35);
 }
 
 .icov-hero .btn-outline:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #f8f0f2;
+  color: var(--icov-accent);
+  border-color: rgba(140, 17, 38, 0.5);
 }
 
 .icov-hero .icov-breadcrumb {
@@ -154,6 +156,7 @@
   border: 1px solid var(--icov-line);
   border-radius: 10px;
   background: #fff;
+  box-shadow: 0 8px 28px rgba(26, 26, 46, 0.07);
   text-decoration: none;
   color: inherit;
   transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
@@ -187,10 +190,12 @@
 }
 
 .icov-carrier-card img {
-  height: 40px;
-  width: auto;
-  max-width: 140px;
+  display: block;
+  width: 180px;
+  height: 56px;
+  max-width: 100%;
   object-fit: contain;
+  object-position: left center;
   align-self: flex-start;
 }
 

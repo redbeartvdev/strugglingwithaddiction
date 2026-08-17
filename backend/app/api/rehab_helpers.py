@@ -88,21 +88,25 @@ def resolve_insurance_details(db: Session, names: list[str] | None) -> list[Insu
         "united healthcare": "unitedhealthcare",
         "united health": "unitedhealthcare",
         "uhc": "unitedhealthcare",
-        "private pay": "private pay",
-        "self-pay": "self pay",
-        "selfpay": "self pay",
         "most major insurance": None,
+        "private pay": None,
+        "private-pay": None,
+        "self pay": None,
+        "self-pay": None,
+        "selfpay": None,
     }
     details: list[InsuranceDetail] = []
     seen: set[str] = set()
+    skip = {"private pay", "private-pay", "self pay", "self-pay", "selfpay"}
     for raw in names:
         key = _norm(raw)
         if not key or key in seen:
             continue
+        if key in skip:
+            continue
         seen.add(key)
         alias = aliases.get(key, key)
         if alias is None:
-            details.append(InsuranceDetail(name=raw, slug=None, logo_url=None))
             continue
         row = by_name.get(alias) or by_slug.get(alias.replace(" ", "-")) or by_name.get(key) or by_slug.get(key)
         if row:
@@ -125,7 +129,10 @@ def center_to_public(db: Session, center: RehabCenter) -> RehabCenterPublic:
         and center.featured_until
         and center.featured_until > datetime.now(timezone.utc)
     )
-    insurance_names = center.insurances or []
+    insurance_names = [
+        name for name in (center.insurances or [])
+        if str(name).strip().lower() not in {"private pay", "private-pay", "self pay", "self-pay", "selfpay"}
+    ]
     return RehabCenterPublic(
         id=center.id,
         slug=center.slug,

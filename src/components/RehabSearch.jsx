@@ -193,7 +193,6 @@ export default function RehabSearch({
                           { name: 'Tricare' },
                           { name: 'Medicaid' },
                           { name: 'Medicare' },
-                          { name: 'Private Pay' },
                         ]
                     ).map(opt => (
                       <option key={opt.slug || opt.name} value={opt.name}>{opt.name}</option>

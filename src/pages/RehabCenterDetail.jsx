@@ -109,7 +109,8 @@ function ChipList({ items }) {
 }
 
 function InsuranceList({ details, names }) {
-  const items = (details?.length ? details : (names || []).map(name => ({ name, logo_url: null })))
+  const raw = details?.length ? details : (names || []).map(name => ({ name, logo_url: null }))
+  const items = raw.filter(item => !/^(private|self)[\s-]?pay$/i.test(item?.name || ''))
   if (!items.length) return null
   return (
     <ul className="rpd-insurance-logos">
@@ -376,7 +377,7 @@ export default function RehabCenterDetail() {
           </section>
 
           <section id="insurance" className="rpd-section">
-            <h2>Insurance & payment</h2>
+            <h2>Insurance providers</h2>
             <InsuranceList details={center.insurance_details} names={center.insurances} />
             {!center.insurances?.length && !center.insurance_details?.length && (
               <p className="rpd-muted">Ask the center about accepted plans using the inquiry form.</p>

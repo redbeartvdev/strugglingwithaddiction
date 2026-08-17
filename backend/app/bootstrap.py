@@ -41,8 +41,6 @@ USA_INSURANCE_SEED = [
     ("Oscar Health", "oscar", "/images/insurance/oscar.png", 170),
     ("WellCare", "wellcare", "/images/insurance/wellcare.png", 180),
     ("Centene", "centene", "/images/insurance/centene.png", 190),
-    ("Private Pay", "private-pay", "/images/insurance/private-pay.png", 200),
-    ("Self Pay", "self-pay", "/images/insurance/self-pay.png", 210),
     ("Other Insurance", "other-insurance", "/images/insurance/other-insurance.png", 220),
 ]
 
@@ -72,7 +70,7 @@ REHAB_SEED = [
         ],
         "specialties": ["Inpatient Residential", "Medical Detox", "Dual Diagnosis", "Telehealth"],
         "levels_of_care": ["Detox", "Residential", "IOP", "Outpatient"],
-        "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare", "Private Pay"],
+        "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare"],
         "amenities": ["Private rooms", "Fitness center", "Family program"],
         "accreditations": ["Joint Commission", "CARF"],
         "testimonials": [
@@ -109,7 +107,7 @@ REHAB_SEED = [
         ],
         "specialties": ["Medical Detox", "Inpatient", "Dual Diagnosis", "Executive Program"],
         "levels_of_care": ["Detox", "Residential", "PHP", "IOP"],
-        "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare", "Tricare", "Private Pay"],
+        "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare", "Tricare"],
         "amenities": ["Executive track", "Medical staff onsite", "Family workshops"],
         "accreditations": ["Joint Commission"],
         "testimonials": [
@@ -326,8 +324,13 @@ def seed_rehab_centers(db: Session) -> None:
         # Keep demo placeholder insurance lists aligned with the USA catalog.
         old_demo = {"most major insurance", "private pay", "blue cross"}
         current = {str(x).lower() for x in (center.insurances or [])}
-        if item.get("insurances") and item.get("claimed") and (not current or current <= old_demo):
+        if item.get("insurances") and item.get("claimed") and (not current or current <= old_demo or "private pay" in current):
             center.insurances = item["insurances"]
+        elif center.insurances:
+            center.insurances = [
+                n for n in center.insurances
+                if str(n).strip().lower() not in {"private pay", "self pay", "self-pay"}
+            ]
         if item.get("claimed"):
             center.claimed = True
             center.contact_visible = True
@@ -412,6 +415,18 @@ def seed_insurance_catalog(db: Session) -> dict[str, int]:
         db.add(InsuranceCatalog(**payload))
         created += 1
     db.commit()
-    total = db.query(InsuranceCatalog).count()
-    logger.info("Insurance catalog seed: created=%s updated=%s total=%s", created, updated, total)
+    # Private Pay / Self Pay were removed from the public catalog — disable legacy rows.
+    retired = (
+        db.query(InsuranceCatalog)
+        .filter(InsuranceCatalog.slug.in_(("private-pay", "self-pay")))
+        .all()
+    )
+    for row in retired:
+        if row.enabled:
+            row.enabled = False
+            updated += 1
+    if retired:
+        db.commit()
+    total = db.query(InsuranceCatalog).filter(InsuranceCatalog.enabled.is_(True)).count()
+    logger.info("Insurance catalog seed: created=%s updated=%s enabled=%s", created, updated, total)
     return {"created": created, "updated": updated, "total": total}
