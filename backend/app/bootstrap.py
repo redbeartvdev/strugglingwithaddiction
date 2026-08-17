@@ -263,7 +263,7 @@ def _ensure_active_subscription(db: Session, user: User) -> None:
 
 
 def _ensure_claimed_owner(db: Session, center: RehabCenter, owner_email: str, owner_name: str) -> None:
-    email = owner_email.lower()
+    email = owner_email.lower().strip()
     user = db.query(User).filter(User.email == email).first()
     if not user:
         user = User(
@@ -278,13 +278,16 @@ def _ensure_claimed_owner(db: Session, center: RehabCenter, owner_email: str, ow
     else:
         user.role = UserRole.client
         user.is_active = True
-        user.password_hash = hash_password(DEMO_PROVIDER_PASSWORD)
         profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
         if not profile:
             db.add(UserProfile(user_id=user.id, display_name=owner_name, slug=f"provider-{center.slug}"))
+        elif not profile.display_name:
+            profile.display_name = owner_name
     center.owner_user_id = user.id
     center.claimed = True
     center.contact_visible = True
+    if not center.contact_email:
+        center.contact_email = email
     _ensure_active_subscription(db, user)
 
 
@@ -350,7 +353,71 @@ def seed_rehab_centers(db: Session) -> None:
 
 
 def activate_claimed_providers(db: Session) -> None:
-    """Ensure owners of claimed listings (and approved claims) can sign in."""
+    """Link claimed/verified listings to client accounts and keep those accounts active."""
+    linked = 0
+
+    # Re-assert seed demo ownership every boot (idempotent).
+    for item in REHAB_SEED:
+        if not item.get("claimed") or not item.get("owner_email"):
+            continue
+        center = db.query(RehabCenter).filter(RehabCenter.slug == item["slug"]).first()
+        if not center:
+            continue
+        try:
+            _ensure_claimed_owner(db, center, item["owner_email"], item.get("owner_name") or center.name)
+            linked += 1
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Failed to sync claimed owner for %s", item.get("slug"))
+
+    # Claimed centers with a contact email but no owner → attach matching client user.
+    orphans = (
+        db.query(RehabCenter)
+        .filter(
+            RehabCenter.claimed.is_(True),
+            RehabCenter.owner_user_id.is_(None),
+            RehabCenter.contact_email.isnot(None),
+            RehabCenter.deleted_at.is_(None),
+        )
+        .all()
+    )
+    for center in orphans:
+        email = (center.contact_email or "").strip().lower()
+        if not email:
+            continue
+        user = db.query(User).filter(User.email == email, User.role == UserRole.client).first()
+        if not user:
+            continue
+        center.owner_user_id = user.id
+        center.contact_visible = True
+        user.is_active = True
+        _ensure_active_subscription(db, user)
+        linked += 1
+
+    # Approved claims must keep center.owner_user_id = submitter.
+    approved_claims = (
+        db.query(RehabCenterClaim)
+        .filter(
+            RehabCenterClaim.status == ClaimStatus.approved,
+            RehabCenterClaim.submitter_user_id.isnot(None),
+        )
+        .all()
+    )
+    for claim in approved_claims:
+        user = db.query(User).filter(User.id == claim.submitter_user_id).first()
+        if not user:
+            continue
+        if user.role == UserRole.client and not user.is_active:
+            user.is_active = True
+        center = db.query(RehabCenter).filter(RehabCenter.id == claim.rehab_center_id).first()
+        if center and center.owner_user_id != user.id:
+            center.owner_user_id = user.id
+            center.claimed = True
+            center.contact_visible = True
+            _ensure_active_subscription(db, user)
+            linked += 1
+
     claimed_centers = (
         db.query(RehabCenter)
         .filter(RehabCenter.claimed.is_(True), RehabCenter.owner_user_id.isnot(None))
@@ -362,24 +429,16 @@ def activate_claimed_providers(db: Session) -> None:
         if user and user.role == UserRole.client and not user.is_active:
             user.is_active = True
             activated += 1
+        if user and user.role == UserRole.client:
+            _ensure_active_subscription(db, user)
 
-    approved_claims = (
-        db.query(RehabCenterClaim)
-        .filter(
-            RehabCenterClaim.status == ClaimStatus.approved,
-            RehabCenterClaim.submitter_user_id.isnot(None),
+    db.commit()
+    if linked or activated:
+        logger.info(
+            "Synced claimed center owners (linked/updated=%s, activated=%s)",
+            linked,
+            activated,
         )
-        .all()
-    )
-    for claim in approved_claims:
-        user = db.query(User).filter(User.id == claim.submitter_user_id).first()
-        if user and user.role == UserRole.client and not user.is_active:
-            user.is_active = True
-            activated += 1
-
-    if activated:
-        db.commit()
-        logger.info("Activated %s claimed/approved provider account(s)", activated)
 
 
 def seed_insurance_catalog(db: Session) -> dict[str, int]:
