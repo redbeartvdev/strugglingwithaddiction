@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
       <section className="legal-body">
         <div className="container">
           <div className="legal-content">
-            <span className="legal-meta">Last updated: May 2025</span>
+            <span className="legal-meta">Last updated: May 2026</span>
 
             <h2>1. Introduction</h2>
             <p>
