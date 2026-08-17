@@ -92,32 +92,45 @@ def _import_blog_from_dir(db: Session, data_dir: Path) -> int:
     for p in posts:
         if db.query(Post).filter(Post.legacy_wp_id == p["id"]).first():
             continue
-        post = Post(
-            legacy_wp_id=p["id"],
-            slug=p["slug"],
-            title=p.get("title", ""),
-            excerpt=p.get("excerpt", ""),
-            content_html=p.get("content", ""),
-            featured_image_key=p.get("featuredImage"),
-            status=PostStatus.published,
-            author_id=p.get("authorId"),
-            published_at=datetime.fromisoformat(p["date"])
-            if p.get("date")
-            else datetime.now(timezone.utc),
-            meta_title=p.get("metaTitle") or None,
-            meta_description=p.get("metaDescription") or None,
-        )
-        db.add(post)
-        db.flush()
-        for cid in p.get("categories") or []:
-            if cid in cat_map:
-                post.categories.append(cat_map[cid])
-        for cn in p.get("categoryNames") or []:
-            cat = db.query(Category).filter(Category.id == cn["id"]).first()
-            if cat and cat not in post.categories:
-                post.categories.append(cat)
-        added += 1
-    db.commit()
+        if db.query(Post).filter(Post.slug == p["slug"]).first():
+            continue
+        try:
+            author_id = p.get("authorId")
+            if author_id is not None and not db.query(Author).filter(Author.id == author_id).first():
+                author_id = None
+            published_at = (
+                datetime.fromisoformat(p["date"]).replace(tzinfo=timezone.utc)
+                if p.get("date")
+                else datetime.now(timezone.utc)
+            )
+            post = Post(
+                legacy_wp_id=p["id"],
+                slug=p["slug"],
+                title=p.get("title", ""),
+                excerpt=p.get("excerpt", ""),
+                content_html=p.get("content", ""),
+                featured_image_key=p.get("featuredImage"),
+                status=PostStatus.published,
+                author_id=author_id,
+                published_at=published_at,
+                meta_title=p.get("metaTitle") or None,
+                meta_description=p.get("metaDescription") or None,
+            )
+            db.add(post)
+            db.flush()
+            for cid in p.get("categories") or []:
+                if cid in cat_map:
+                    post.categories.append(cat_map[cid])
+            for cn in p.get("categoryNames") or []:
+                cat = db.query(Category).filter(Category.id == cn["id"]).first()
+                if cat and cat not in post.categories:
+                    post.categories.append(cat)
+            db.commit()
+            added += 1
+            logger.info("Imported blog post slug=%s legacy_wp_id=%s", p.get("slug"), p.get("id"))
+        except Exception:
+            db.rollback()
+            logger.exception("Failed importing blog post slug=%s id=%s", p.get("slug"), p.get("id"))
     logger.info("Imported %s blog posts (%s total)", added, db.query(Post).count())
     return added
 
