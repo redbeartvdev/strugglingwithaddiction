@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import ActiveSubscriber, AdminUser
 from app.database import get_db
@@ -149,6 +149,98 @@ def _should_skip_site_path(path: str) -> bool:
     return False
 
 
+def _query_center_views_leads(
+    db: Session,
+    center_id: int,
+    start: datetime,
+    end: datetime,
+) -> tuple[list[CenterPageView], list[CenterLead]]:
+    views = (
+        db.query(CenterPageView)
+        .filter(
+            CenterPageView.rehab_center_id == center_id,
+            CenterPageView.visited_at >= start,
+            CenterPageView.visited_at <= end,
+        )
+        .order_by(CenterPageView.visited_at.asc())
+        .all()
+    )
+    leads = (
+        db.query(CenterLead)
+        .filter(
+            CenterLead.rehab_center_id == center_id,
+            CenterLead.created_at >= start,
+            CenterLead.created_at <= end,
+        )
+        .order_by(CenterLead.created_at.asc())
+        .all()
+    )
+    return views, leads
+
+
+def _analytics_payload_for_center(
+    center: RehabCenter,
+    views: list[CenterPageView],
+    leads: list[CenterLead],
+    start: datetime,
+    end: datetime,
+    range_key: str | None,
+) -> dict[str, Any]:
+    unique_sessions = len({v.session_key for v in views if v.session_key})
+    state_counts = Counter((v.visitor_state or "Unknown") for v in views)
+    device_counts = Counter((v.device_type or "desktop") for v in views)
+
+    lead_states: Counter[str] = Counter()
+    for lead in leads:
+        state = "Unknown"
+        if lead.source_url:
+            parts = urlparse(lead.source_url).path.strip("/").split("/")
+            if len(parts) >= 3 and parts[0] == "rehabs" and parts[1] == "united-states":
+                state = parts[2].replace("-", " ").title()
+        lead_states[state] += 1
+
+    owner = getattr(center, "owner", None)
+    return {
+        "center_id": center.id,
+        "center_name": center.name,
+        "slug": center.slug,
+        "city": center.city,
+        "state": center.state,
+        "claimed": bool(center.claimed),
+        "listing_status": center.listing_status.value if center.listing_status else None,
+        "owner_email": owner.email if owner else None,
+        "range": range_key or "custom",
+        "date_from": start.isoformat(),
+        "date_to": end.isoformat(),
+        "summary": {
+            "page_views": len(views),
+            "unique_sessions": unique_sessions or len(views),
+            "leads": len(leads),
+            "unread_leads": sum(1 for item in leads if not item.read_at),
+            "conversion_rate": round((len(leads) / len(views)) * 100, 1) if views else 0.0,
+        },
+        "by_state": [
+            {"state": key, "views": count, "leads": lead_states.get(key, 0)}
+            for key, count in state_counts.most_common(25)
+        ],
+        "by_device": [
+            {"device": key, "views": count}
+            for key, count in device_counts.most_common()
+        ],
+        "series": _bucket_series(views, leads, start, end),
+        "recent_leads": [
+            {
+                "id": item.id,
+                "full_name": item.full_name,
+                "email": item.email,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "read_at": item.read_at.isoformat() if item.read_at else None,
+            }
+            for item in sorted(leads, key=lambda row: row.created_at or start, reverse=True)[:8]
+        ],
+    }
+
+
 @router.post("/api/rehab-centers/{slug}/views")
 def track_center_view(
     slug: str,
@@ -222,74 +314,8 @@ def client_analytics(
         raise HTTPException(status_code=404, detail="No center linked")
 
     start, end = _resolve_range(range, date_from, date_to)
-
-    views = (
-        db.query(CenterPageView)
-        .filter(
-            CenterPageView.rehab_center_id == center.id,
-            CenterPageView.visited_at >= start,
-            CenterPageView.visited_at <= end,
-        )
-        .order_by(CenterPageView.visited_at.asc())
-        .all()
-    )
-    leads = (
-        db.query(CenterLead)
-        .filter(
-            CenterLead.rehab_center_id == center.id,
-            CenterLead.created_at >= start,
-            CenterLead.created_at <= end,
-        )
-        .order_by(CenterLead.created_at.asc())
-        .all()
-    )
-
-    unique_sessions = len({v.session_key for v in views if v.session_key})
-    state_counts = Counter((v.visitor_state or "Unknown") for v in views)
-    device_counts = Counter((v.device_type or "desktop") for v in views)
-
-    lead_states: Counter[str] = Counter()
-    for lead in leads:
-        state = "Unknown"
-        if lead.source_url:
-            parts = urlparse(lead.source_url).path.strip("/").split("/")
-            if len(parts) >= 3 and parts[0] == "rehabs" and parts[1] == "united-states":
-                state = parts[2].replace("-", " ").title()
-        lead_states[state] += 1
-
-    return {
-        "center_id": center.id,
-        "center_name": center.name,
-        "range": range or "custom",
-        "date_from": start.isoformat(),
-        "date_to": end.isoformat(),
-        "summary": {
-            "page_views": len(views),
-            "unique_sessions": unique_sessions or len(views),
-            "leads": len(leads),
-            "unread_leads": sum(1 for l in leads if not l.read_at),
-            "conversion_rate": round((len(leads) / len(views)) * 100, 1) if views else 0.0,
-        },
-        "by_state": [
-            {"state": k, "views": v, "leads": lead_states.get(k, 0)}
-            for k, v in state_counts.most_common(25)
-        ],
-        "by_device": [
-            {"device": k, "views": v}
-            for k, v in device_counts.most_common()
-        ],
-        "series": _bucket_series(views, leads, start, end),
-        "recent_leads": [
-            {
-                "id": l.id,
-                "full_name": l.full_name,
-                "email": l.email,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
-                "read_at": l.read_at.isoformat() if l.read_at else None,
-            }
-            for l in sorted(leads, key=lambda x: x.created_at or start, reverse=True)[:8]
-        ],
-    }
+    views, leads = _query_center_views_leads(db, center.id, start, end)
+    return _analytics_payload_for_center(center, views, leads, start, end, range)
 
 
 @router.get("/api/admin/analytics")
@@ -412,3 +438,49 @@ def admin_analytics(
             for l in sorted(leads, key=lambda x: x.created_at or start, reverse=True)[:10]
         ],
     }
+
+
+@router.get("/api/admin/analytics/provider-options")
+def admin_provider_options(_: AdminUser, db: Annotated[Session, Depends(get_db)]) -> list[dict[str, Any]]:
+    """Lightweight center picker — names only, no analytics."""
+    centers = (
+        db.query(RehabCenter)
+        .filter(RehabCenter.deleted_at.is_(None))
+        .order_by(RehabCenter.name.asc())
+        .all()
+    )
+    return [
+        {
+            "center_id": center.id,
+            "name": center.name,
+            "slug": center.slug,
+            "city": center.city,
+            "state": center.state,
+            "claimed": bool(center.claimed),
+        }
+        for center in centers
+    ]
+
+
+@router.get("/api/admin/analytics/providers")
+def admin_provider_analytics(
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    center_id: int = Query(...),
+    range: str | None = Query(default="today"),
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> dict[str, Any]:
+    start, end = _resolve_range(range, date_from, date_to)
+    selected = (
+        db.query(RehabCenter)
+        .options(joinedload(RehabCenter.owner))
+        .filter(RehabCenter.id == center_id, RehabCenter.deleted_at.is_(None))
+        .first()
+    )
+    if selected is None:
+        raise HTTPException(status_code=404, detail="Center not found")
+
+    views, leads = _query_center_views_leads(db, selected.id, start, end)
+    return _analytics_payload_for_center(selected, views, leads, start, end, range)
+

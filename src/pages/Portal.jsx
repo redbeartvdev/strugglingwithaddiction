@@ -45,8 +45,18 @@ function destinationForRole(role) {
   return `${getAdminSiteUrl()}${providerDashboardPath()}`
 }
 
+function encodeHandoffPayload(data) {
+  const json = JSON.stringify({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    role: data.role,
+  })
+  return btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
 function handoffToProviderDashboard(data) {
   const adminBase = getAdminSiteUrl()
+  const dest = destinationForRole(data.role)
   let sameOrigin = false
   try {
     sameOrigin = new URL(adminBase, window.location.origin).origin === window.location.origin
@@ -58,17 +68,21 @@ function handoffToProviderDashboard(data) {
     localStorage.setItem('access_token', data.access_token)
     localStorage.setItem('refresh_token', data.refresh_token)
     localStorage.setItem('role', data.role)
-    window.location.assign(destinationForRole(data.role))
+    window.location.assign(dest)
     return
   }
 
   // Local dual-server: public site and admin SPA are different origins.
-  const payload = encodeURIComponent(btoa(JSON.stringify({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    role: data.role,
-  })))
-  window.location.assign(`${adminBase}/login#swa-auth=${payload}`)
+  try {
+    window.name = `swa-auth:${JSON.stringify({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      role: data.role,
+    })}`
+  } catch {
+    /* window.name may be unavailable */
+  }
+  window.location.assign(`${dest}#swa-auth=${encodeHandoffPayload(data)}`)
 }
 
 export default function Portal() {
@@ -178,7 +192,6 @@ export default function Portal() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
-                      minLength={8}
                     />
                   </div>
                   {error && (

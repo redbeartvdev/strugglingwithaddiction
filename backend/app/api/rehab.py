@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 
@@ -41,6 +41,7 @@ from app.schemas.rehab import (
 from app.config import get_settings
 from app.services.email import send_email
 from app.services.google_reviews import fetch_google_reviews, normalize_manual_testimonials
+from app.services.storage import get_public_url, resolve_image_url, upload_image_as_avif
 from app.services.tickets import generate_claim_ticket
 
 router = APIRouter(tags=["rehab"])
@@ -49,6 +50,13 @@ settings = get_settings()
 
 def _landing_segment(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
+
+
+def _admin_center_out(center: RehabCenter) -> RehabCenterAdmin:
+    item = RehabCenterAdmin.model_validate(center)
+    item.image_url = resolve_image_url(center.image_key)
+    item.gallery_urls = [get_public_url(k) for k in (center.gallery_keys or [])]
+    return item
 
 
 @router.get("/api/rehab-centers", response_model=list[RehabCenterPublic])
@@ -234,27 +242,18 @@ def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
 
 @router.get("/api/admin/rehab-centers", response_model=list[RehabCenterAdmin])
 def admin_list_centers(_: AdminUser, db: Annotated[Session, Depends(get_db)], trash: bool = Query(False)):
-    from app.services.storage import resolve_image_url
     q = db.query(RehabCenter)
     q = q.filter(RehabCenter.deleted_at.isnot(None) if trash else RehabCenter.deleted_at.is_(None))
     centers = q.order_by(RehabCenter.updated_at.desc()).all()
-    result = []
-    for c in centers:
-        item = RehabCenterAdmin.model_validate(c)
-        item.image_url = resolve_image_url(c.image_key)
-        result.append(item)
-    return result
+    return [_admin_center_out(c) for c in centers]
 
 
 @router.get("/api/admin/rehab-centers/{center_id}", response_model=RehabCenterAdmin)
 def admin_get_center(center_id: int, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
-    from app.services.storage import resolve_image_url
     center = db.query(RehabCenter).filter(RehabCenter.id == center_id).first()
     if not center:
         raise HTTPException(status_code=404, detail="Center not found")
-    item = RehabCenterAdmin.model_validate(center)
-    item.image_url = resolve_image_url(center.image_key)
-    return item
+    return _admin_center_out(center)
 
 
 @router.post("/api/admin/rehab-centers", response_model=RehabCenterAdmin, status_code=201)
@@ -267,8 +266,7 @@ def create_center(body: RehabCenterCreate, _: AdminUser, db: Annotated[Session, 
     db.add(center)
     db.commit()
     db.refresh(center)
-    out = RehabCenterAdmin.model_validate(center)
-    return out
+    return _admin_center_out(center)
 
 
 @router.patch("/api/admin/rehab-centers/{center_id}", response_model=RehabCenterAdmin)
@@ -280,9 +278,13 @@ def update_center(center_id: int, body: RehabCenterUpdate, _: AdminUser, db: Ann
         setattr(center, k, v)
     if body.listing_status == ListingStatus.published and center.published_at is None:
         center.published_at = body.published_at if body.published_at is not None else datetime.now(timezone.utc)
+    if any(k in body.model_dump(exclude_unset=True) for k in ("city", "state", "address_line")):
+        parts = [p for p in (center.city, center.state) if p]
+        if parts:
+            center.location_display = ", ".join(parts)
     db.commit()
     db.refresh(center)
-    return RehabCenterAdmin.model_validate(center)
+    return _admin_center_out(center)
 
 
 @router.delete("/api/admin/rehab-centers/{center_id}", status_code=204)
@@ -304,7 +306,7 @@ def restore_center(center_id: int, _: AdminUser, db: Annotated[Session, Depends(
     center.deleted_at = None
     db.commit()
     db.refresh(center)
-    return RehabCenterAdmin.model_validate(center)
+    return _admin_center_out(center)
 
 
 @router.delete("/api/admin/rehab-centers/{center_id}/permanent", status_code=204)
@@ -316,6 +318,79 @@ def permanent_delete_center(center_id: int, _: AdminUser, db: Annotated[Session,
         raise HTTPException(status_code=400, detail="Move to trash first")
     db.delete(center)
     db.commit()
+
+
+def _require_center(db: Session, center_id: int) -> RehabCenter:
+    center = db.query(RehabCenter).filter(RehabCenter.id == center_id).first()
+    if not center:
+        raise HTTPException(status_code=404, detail="Center not found")
+    return center
+
+
+@router.post("/api/admin/rehab-centers/{center_id}/hero")
+async def admin_upload_hero(
+    center_id: int,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    file: UploadFile = File(...),
+):
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Hero uploads must be images")
+    content = await file.read()
+    if not content or len(content) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Hero image must be between 1 byte and 8MB")
+    center = _require_center(db, center_id)
+    key = upload_image_as_avif(content, file.filename or "hero.jpg")
+    center.image_key = key
+    db.commit()
+    return {"image_key": key, "image_url": resolve_image_url(key)}
+
+
+@router.post("/api/admin/rehab-centers/{center_id}/gallery")
+async def admin_upload_gallery(
+    center_id: int,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    file: UploadFile = File(...),
+):
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Gallery uploads must be images")
+    content = await file.read()
+    if not content or len(content) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Gallery image must be between 1 byte and 8MB")
+    center = _require_center(db, center_id)
+    keys = list(center.gallery_keys or [])
+    if len(keys) >= 12:
+        raise HTTPException(status_code=400, detail="A listing can have up to 12 gallery images")
+    key = upload_image_as_avif(content, file.filename or "gallery.jpg")
+    keys.append(key)
+    center.gallery_keys = keys
+    if not center.image_key:
+        center.image_key = key
+    db.commit()
+    return {
+        "gallery_keys": keys,
+        "gallery_urls": [get_public_url(k) for k in keys],
+        "image_key": center.image_key,
+        "image_url": resolve_image_url(center.image_key),
+    }
+
+
+@router.delete("/api/admin/rehab-centers/{center_id}/gallery/{index}")
+def admin_delete_gallery(
+    center_id: int,
+    index: int,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    center = _require_center(db, center_id)
+    keys = list(center.gallery_keys or [])
+    if index < 0 or index >= len(keys):
+        raise HTTPException(status_code=404, detail="Gallery image not found")
+    keys.pop(index)
+    center.gallery_keys = keys
+    db.commit()
+    return {"gallery_keys": keys, "gallery_urls": [get_public_url(k) for k in keys]}
 
 
 @router.get("/api/admin/claims", response_model=list[ClaimAdmin])

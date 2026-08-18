@@ -6,8 +6,9 @@ import re
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -321,14 +322,22 @@ def submit_center(body: CenterSubmissionCreate, db: Annotated[Session, Depends(g
 
 
 @router.get("/api/admin/center-submissions", response_model=list[CenterSubmissionOut])
-def admin_list_submissions(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
-    rows = (
+def admin_list_submissions(
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    rehab_center_id: int | None = Query(default=None),
+):
+    q = (
         db.query(CenterSubmission)
         .filter(CenterSubmission.status != CenterSubmissionStatus.draft)
-        .order_by(CenterSubmission.created_at.desc())
-        .limit(300)
-        .all()
     )
+    if rehab_center_id:
+        center = db.query(RehabCenter).filter(RehabCenter.id == rehab_center_id).first()
+        filters = [CenterSubmission.rehab_center_id == rehab_center_id]
+        if center and center.name:
+            filters.append(CenterSubmission.center_name.ilike(center.name))
+        q = q.filter(or_(*filters))
+    rows = q.order_by(CenterSubmission.created_at.desc()).limit(300).all()
     return [_to_out(r) for r in rows]
 
 
