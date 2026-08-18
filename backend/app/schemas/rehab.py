@@ -87,6 +87,7 @@ class RehabCenterAdmin(BaseModel):
     image_key: str | None
     image_url: str | None = None
     gallery_keys: list | None = None
+    gallery_urls: list[str] = Field(default_factory=list)
     rating: float
     specialties: list[str]
     insurances: list[str] | None = None

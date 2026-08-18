@@ -52,6 +52,20 @@ function initials(name, email) {
   return n.slice(0, 2).toUpperCase()
 }
 
+function accountPath(user, subscriptionLocked) {
+  if (subscriptionLocked) return '/client/billing'
+  if (user?.role === 'client') return '/client/account'
+  if (user?.role === 'admin') return '/admin/settings?tab=account'
+  return `/${user?.role}/profile`
+}
+
+function workspaceLabel(role) {
+  if (role === 'admin') return 'Admin'
+  if (role === 'client') return 'Provider'
+  if (role === 'editor') return 'Editor'
+  return 'Studio'
+}
+
 export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0, verificationIncomplete = false }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -84,7 +98,14 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <div className="wordmark">SWA Studio</div>
+        <div className="wordmark">
+          <img
+            className="wordmark-logo"
+            src="/images/SWA-logo-web-white-small_vSE-1.webp"
+            alt="Struggling With Addiction"
+          />
+          <span className="wordmark-label">{workspaceLabel(user?.role)}</span>
+        </div>
         <div className="top-nav-spacer" />
         <GlobalSearch nav={nav} role={user?.role} />
         <button
@@ -109,15 +130,7 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
           type="button"
           className="avatar-btn"
           title={user?.email}
-          onClick={() => navigate(
-            subscriptionLocked
-              ? '/client/billing'
-              : user?.role === 'client'
-                ? '/client/account'
-                : user?.role === 'admin'
-                  ? '/admin/settings?tab=account'
-                  : `/${user?.role}/profile`,
-          )}
+          onClick={() => navigate(accountPath(user, subscriptionLocked))}
         >
           {initials(user?.display_name, user?.email)}
         </button>
@@ -147,25 +160,35 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
               )
             })}
           </nav>
-          <div className="rail-divider" />
           <div className="rail-footer">
-            <Eyebrow className="rail-eyebrow">Account</Eyebrow>
-            <p className="rail-user-name">{user?.display_name || user?.email}</p>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm btn-block"
-              onClick={() => {
-                const isAdmin = user?.role === 'admin'
-                logout()
-                if (isAdmin) {
-                  navigate('/swa-login')
-                } else {
-                  window.location.assign(`${getPublicSiteUrl()}/portal`)
-                }
-              }}
-            >
-              Sign out
-            </button>
+            <div>
+              <Eyebrow className="rail-eyebrow">Account</Eyebrow>
+              <p className="rail-user-name">{user?.display_name || user?.email}</p>
+            </div>
+            <div className="rail-footer-actions">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-block"
+                onClick={() => navigate(accountPath(user, subscriptionLocked))}
+              >
+                Account
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm btn-block"
+                onClick={() => {
+                  const isAdmin = user?.role === 'admin'
+                  logout()
+                  if (isAdmin) {
+                    navigate('/swa-login')
+                  } else {
+                    window.location.assign(`${getPublicSiteUrl()}/portal`)
+                  }
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </aside>
         <div className="main-column">

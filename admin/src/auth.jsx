@@ -1,13 +1,16 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api } from './api'
+import { consumeAuthHandoff } from './lib/authHandoff'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
+  consumeAuthHandoff()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    consumeAuthHandoff()
     const token = localStorage.getItem('access_token')
     const role = localStorage.getItem('role')
     if (token && role) {

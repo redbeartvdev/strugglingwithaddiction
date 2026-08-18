@@ -815,8 +815,15 @@ def admin_update_upsell_order(
 
 
 @router.get("/api/admin/leads")
-def admin_list_leads(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
-    leads = db.query(CenterLead).order_by(CenterLead.created_at.desc()).limit(300).all()
+def admin_list_leads(
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    rehab_center_id: int | None = None,
+):
+    q = db.query(CenterLead)
+    if rehab_center_id:
+        q = q.filter(CenterLead.rehab_center_id == rehab_center_id)
+    leads = q.order_by(CenterLead.created_at.desc()).limit(300).all()
     return [
         {
             "id": lead.id,

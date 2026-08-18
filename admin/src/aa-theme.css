@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=PT+Sans:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Brand tokens aligned with main site landing page */
+/* Brand tokens aligned with the public site */
 :root {
-  --brand-blue: #98b8c4;
-  --brand-blue-mid: #6a9aaa;
+  --brand-blue: #5FBDF6;
+  --brand-blue-mid: #3aa7e8;
   --brand-red: #8c1126;
   --brand-red-dark: #6b0d1e;
   --dark: #1a1a2e;
@@ -12,6 +12,7 @@
   --light-gray: #f3f4f6;
   --off-white: #fafaf8;
   --white: #ffffff;
+  --navy: #191d38;
 
   --aa-graphite-00: #ffffff;
   --aa-graphite-05: #fafaf8;
@@ -23,9 +24,9 @@
   --aa-graphite-60: #4b5563;
   --aa-graphite-80: #2d2d44;
   --aa-graphite-90: #1a1a2e;
-  --aa-pulse-50: #eef3f5;
-  --aa-pulse-400: #98b8c4;
-  --aa-pulse-500: #6a9aaa;
+  --aa-pulse-50: #e8f6fd;
+  --aa-pulse-400: #5FBDF6;
+  --aa-pulse-500: #3aa7e8;
   --aa-success: #30c16a;
   --aa-warning: #ffb020;
   --aa-danger: #8c1126;
@@ -43,7 +44,11 @@
   --accent-hover: var(--brand-red);
   --accent-strong: var(--brand-red);
   --link: var(--brand-blue-mid);
-  --nav-bg: rgba(250, 250, 248, 0.82);
+  --nav-bg: #1a1a2e;
+  --rail-bg: #1a1a2e;
+  --rail-fg: rgba(255, 255, 255, 0.78);
+  --rail-fg-strong: #ffffff;
+  --rail-line: rgba(255, 255, 255, 0.08);
   --input-bg: var(--off-white);
   --input-focus-bg: var(--white);
   --ok-bg: #e8f8ee;
@@ -55,11 +60,12 @@
   --info-bg: #eef3f5;
   --info-fg: #4a6f7a;
   --overlay: rgba(26, 26, 46, 0.45);
-  --on-accent: #1a1a2e;
+  --on-accent: #ffffff;
   --on-accent-hover: #ffffff;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  --font-sans: 'Open Sans', Helvetica, Arial, sans-serif;
+  --font-display: 'Open Sans', Helvetica, Arial, sans-serif;
+  --font-label: 'PT Sans', 'Open Sans', Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --fs-micro: 10px;
@@ -69,14 +75,14 @@
   --fs-h3: 24px;
   --fs-h2: 32px;
 
-  --r-md: 6px;
-  --r-lg: 10px;
-  --r-xl: 12px;
+  --r-md: 4px;
+  --r-lg: 8px;
+  --r-xl: 10px;
   --r-pill: 999px;
   --control-height: 36px;
   --shadow-1: 0 1px 0 rgba(26, 26, 46, 0.04), 0 1px 2px rgba(26, 26, 46, 0.04);
   --shadow-2: 0 2px 4px rgba(26, 26, 46, 0.04), 0 8px 20px rgba(26, 26, 46, 0.08);
-  --ring-focus: 0 0 0 3px rgba(152, 184, 196, 0.4);
+  --ring-focus: 0 0 0 3px rgba(95, 189, 246, 0.4);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --t-fast: 120ms;
   --t-base: 220ms;
@@ -93,9 +99,9 @@
   --aa-graphite-60: #d1d5db;
   --aa-graphite-80: #12121f;
   --aa-graphite-90: #ffffff;
-  --aa-pulse-50: rgba(152, 184, 196, 0.16);
-  --aa-pulse-400: #98b8c4;
-  --aa-pulse-500: #b4cdd6;
+  --aa-pulse-50: rgba(95, 189, 246, 0.16);
+  --aa-pulse-400: #5FBDF6;
+  --aa-pulse-500: #7eccf8;
   --aa-danger: #c94a5e;
 
   --bg: #1a1a2e;
@@ -107,11 +113,15 @@
   --fg-1: #d1d5db;
   --fg-2: #9ca3af;
   --fg-3: #6b7280;
-  --accent: #98b8c4;
-  --accent-hover: #b4cdd6;
+  --accent: #5FBDF6;
+  --accent-hover: #8c1126;
   --accent-strong: #c94a5e;
-  --link: #b4cdd6;
-  --nav-bg: rgba(26, 26, 46, 0.82);
+  --link: #7eccf8;
+  --nav-bg: #1a1a2e;
+  --rail-bg: #16182b;
+  --rail-fg: rgba(255, 255, 255, 0.78);
+  --rail-fg-strong: #ffffff;
+  --rail-line: rgba(255, 255, 255, 0.1);
   --input-bg: #1a1a2e;
   --input-focus-bg: #2d2d44;
   --ok-bg: rgba(48, 193, 106, 0.16);
@@ -120,13 +130,13 @@
   --warn-fg: #ffc857;
   --err-bg: rgba(140, 17, 38, 0.28);
   --err-fg: #f0a0ab;
-  --info-bg: rgba(152, 184, 196, 0.16);
-  --info-fg: #b4cdd6;
+  --info-bg: rgba(95, 189, 246, 0.16);
+  --info-fg: #7eccf8;
   --overlay: rgba(10, 10, 18, 0.62);
-  --on-accent: #1a1a2e;
-  --on-accent-hover: #1a1a2e;
+  --on-accent: #ffffff;
+  --on-accent-hover: #ffffff;
 
   --shadow-1: 0 1px 0 rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.18);
   --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.35);
-  --ring-focus: 0 0 0 3px rgba(152, 184, 196, 0.35);
+  --ring-focus: 0 0 0 3px rgba(95, 189, 246, 0.35);
 }

@@ -15,6 +15,7 @@ export default defineConfig({
     host: true,
     port: 5317,
     strictPort: true,
+    allowedHosts: true,
     proxy: apiProxy,
   },
   preview: {

@@ -27,12 +27,16 @@
   align-items: center;
   text-decoration: none;
   flex-shrink: 0;
+  height: 42px;
+  overflow: hidden;
 }
 
 .logo-img {
   height: 42px;
   width: auto;
+  max-height: 42px;
   display: block;
+  object-fit: contain;
 }
 
 /* ── Nav ─────────────────────────────────── */

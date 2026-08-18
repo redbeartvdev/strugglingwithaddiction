@@ -50,6 +50,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/login/" element={<Login />} />
       <Route path="/swa-login" element={<Navigate to="/swa-login/" replace />} />
       <Route path="/swa-login/" element={<SwaLogin />} />
       <Route path="/register" element={<Register />} />

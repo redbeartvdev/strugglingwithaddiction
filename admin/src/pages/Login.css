@@ -1,6 +1,6 @@
 /* Provider login — aligned with main site brand */
 .provider-login {
-  --pl-brand-blue: #98b8c4;
+  --pl-brand-blue: #5FBDF6;
   --pl-brand-red: #8c1126;
   --pl-dark: #1a1a2e;
   --pl-dark-soft: #2d2d44;
@@ -69,7 +69,7 @@
       rgba(26, 26, 46, 0.72) 48%,
       rgba(140, 17, 38, 0.38) 100%
     ),
-    radial-gradient(ellipse at 70% 20%, rgba(152, 184, 196, 0.18), transparent 55%);
+    radial-gradient(ellipse at 70% 20%, rgba(95, 189, 246, 0.18), transparent 55%);
   pointer-events: none;
 }
 
@@ -80,7 +80,7 @@
   background: linear-gradient(
     115deg,
     transparent 35%,
-    rgba(152, 184, 196, 0.07) 48%,
+    rgba(95, 189, 246, 0.07) 48%,
     transparent 62%
   );
   background-size: 220% 100%;
@@ -228,7 +228,7 @@
 }
 
 .provider-login-status.ok {
-  background: rgba(152, 184, 196, 0.18);
+  background: rgba(95, 189, 246, 0.18);
   color: #2a4a56;
 }
 
@@ -302,7 +302,7 @@
   outline: none;
   border-color: var(--pl-brand-blue);
   background: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(152, 184, 196, 0.35);
+  box-shadow: 0 0 0 3px rgba(95, 189, 246, 0.35);
 }
 
 /* Keep autofilled fields light (browser dark-scheme paints navy otherwise) */
@@ -322,7 +322,7 @@
   border-color: var(--pl-brand-blue);
   box-shadow:
     0 0 0 1000px #ffffff inset,
-    0 0 0 3px rgba(152, 184, 196, 0.35) !important;
+    0 0 0 3px rgba(95, 189, 246, 0.35) !important;
 }
 
 .provider-login-actions {
