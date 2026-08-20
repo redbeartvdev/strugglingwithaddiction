@@ -39,6 +39,9 @@ export default function Header() {
           <NavLink to="/blog" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Blog
           </NavLink>
+          <NavLink to="/videos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
+            Videos
+          </NavLink>
           <NavLink to="/portal" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={close}>
             Portal
           </NavLink>

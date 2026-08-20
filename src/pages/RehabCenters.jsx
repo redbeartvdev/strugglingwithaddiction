@@ -812,6 +812,14 @@ export default function RehabCenters() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
+    if (searchParams.get('submit') !== '1') return
+    setSubmitOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('submit')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
     if (!apiEnabled()) return
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 2500)

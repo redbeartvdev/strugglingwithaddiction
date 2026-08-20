@@ -323,17 +323,19 @@ export default function Home() {
               </Suspense>
             </div>
           </div>
-          <div className="home-provider-upsell">
-            <div className="home-provider-upsell-inner">
-              <div>
-                <h2>Run a treatment facility?</h2>
-                <p>
-                  Your facility may already be listed. Claim your profile to update your information,
-                  add photos, and get seen by the people searching for care right now.
-                </p>
-              </div>
-              <Link to="/rehab-centers" className="btn btn-outline">Claim your listing</Link>
-            </div>
+        </div>
+      </section>
+
+      <section className="home-cta-section">
+        <div className="container home-cta-inner">
+          <div>
+            <h2>Is Your Facility Missing?</h2>
+            <p>We list accredited, high-quality treatment centers committed to ethical care.</p>
+          </div>
+          <div className="home-cta-btns">
+            <Link to="/rehab-centers?submit=1" className="btn btn-white">Submit Your Center</Link>
+            <Link to="/provider" className="btn btn-white">Provider Login</Link>
+            <a href="tel:18005551234" className="btn btn-white">Call Our Team</a>
           </div>
         </div>
       </section>

@@ -31,6 +31,7 @@ export default function Footer() {
               <li><Link to="/rehab-centers">Directory</Link></li>
               <li><Link to="/insurance-coverage">Insurance coverage</Link></li>
               <li><Link to="/blog">Blog</Link></li>
+              <li><Link to="/videos">Videos</Link></li>
               <li><Link to="/portal">Portal</Link></li>
               <li><Link to="/about">About</Link></li>
             </ul>
