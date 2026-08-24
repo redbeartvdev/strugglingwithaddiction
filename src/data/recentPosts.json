@@ -1,5 +1,25 @@
 [
   {
+    "id": 5707,
+    "slug": "bromazolam-the-new-designer-benzo-you-need-to-know",
+    "date": "2026-08-24T01:13:32",
+    "title": "Bromazolam: The New Designer Benzo You Need to Know",
+    "excerpt": "In March 2026, the DEA placed bromazolam under emergency Schedule I classification, giving it the same federal legal status as heroin. That action was years in the making. Bromazolam had quietly become the dominant designer benzodiazepine in the illicit drug supply, replacing earlier compounds after regulators banned them and turning up in counterfeit pills, fentanyl-laced …",
+    "featuredImage": "/images/blog/SWA_Bromazolam_2389446397.webp",
+    "categoryNames": [
+      {
+        "id": 3,
+        "name": "Drug Policy",
+        "slug": "drug-policy"
+      },
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      }
+    ]
+  },
+  {
     "id": 5699,
     "slug": "what-is-lean-drug-the-opioid-behind-purple-drank",
     "date": "2026-08-17T00:24:17",
@@ -31,26 +51,6 @@
         "id": 3,
         "name": "Drug Policy",
         "slug": "drug-policy"
-      },
-      {
-        "id": 5,
-        "name": "Health",
-        "slug": "health"
-      }
-    ]
-  },
-  {
-    "id": 5677,
-    "slug": "tranq-dope-the-xylazine-fentanyl-crisis-explained",
-    "date": "2026-06-15T23:14:43",
-    "title": "Tranq Dope: The Xylazine-Fentanyl Crisis Explained",
-    "excerpt": "If someone you love uses opioids, or if you have been following news about the fentanyl overdose crisis, you have likely encountered the term \"tranq dope.\" It refers to street drugs, usually fentanyl or heroin, that have been mixed with xylazine, a veterinary sedative that has no approved use in humans. Tranq dope is now …",
-    "featuredImage": "/images/blog/SWA_What-Is-Tranq-Dope_2698336699.webp",
-    "categoryNames": [
-      {
-        "id": 2,
-        "name": "Advice",
-        "slug": "drug-addiction-help"
       },
       {
         "id": 5,
