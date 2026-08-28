@@ -343,15 +343,17 @@
 
 .blog-load-more-btn {
   background: #fff;
-  border-color: rgba(140, 17, 38, 0.35);
+  border-color: var(--brand-red);
   color: var(--brand-red);
-  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+  transition: color var(--transition), border-color var(--transition), background-color var(--transition), transform var(--transition), opacity var(--transition);
 }
 
 .blog-load-more-btn:hover {
-  background: #f8f0f2;
-  border-color: rgba(140, 17, 38, 0.5);
-  color: var(--brand-red);
+  background: #fff;
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+  transform: none;
+  box-shadow: none;
 }
 
 .blog-load-more-btn.is-loading {

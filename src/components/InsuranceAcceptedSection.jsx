@@ -95,7 +95,7 @@ export default function InsuranceAcceptedSection() {
         </ul>
 
         <div className="text-center insurance-accepted-cta">
-          <Link to="/insurance-coverage" className="btn btn-outline">
+          <Link to="/insurance-coverage" className="btn">
             Insurance coverage hub
           </Link>
         </div>

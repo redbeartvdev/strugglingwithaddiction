@@ -67,7 +67,7 @@ export default function Videos() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              YouTube channel
+              Visit Our YouTube Channel
             </a>
           </div>
         </div>
@@ -114,6 +114,17 @@ export default function Videos() {
               </li>
             ))}
           </ul>
+
+          <div className="videos-more-cta">
+            <a
+              className="videos-more-link"
+              href={VIDEOS_CHANNEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              More Videos Here
+            </a>
+          </div>
         </div>
       </section>
 

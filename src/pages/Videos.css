@@ -213,6 +213,36 @@
   color: var(--videos-muted);
 }
 
+.videos-more-cta {
+  margin-top: 2.5rem;
+  text-align: center;
+}
+
+.videos-more-link {
+  display: inline-block;
+  padding: 0.85rem 2rem;
+  border: 2px solid var(--brand-red);
+  border-radius: 4px;
+  color: var(--brand-red);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.videos-more-link:hover {
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+
+.videos-more-link:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 3px;
+}
+
 .videos-lightbox {
   position: fixed;
   inset: 0;
