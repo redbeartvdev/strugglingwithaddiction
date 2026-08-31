@@ -58,6 +58,7 @@
 .rehab-list-section {
   padding: 4rem 0 6rem;
   background: #fafaf8;
+  scroll-margin-top: calc(var(--header-height) + 1rem);
 }
 
 .rehab-list {

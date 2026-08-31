@@ -3,6 +3,12 @@ import { usePageSeo } from '../hooks/usePageSeo'
 import { getInsuranceGuide, INSURANCE_GUIDES } from '../data/insuranceGuides'
 import './InsuranceCoverage.css'
 
+function guideHeading(title) {
+  const text = String(title || '').trim()
+  if (!text) return text
+  return text.endsWith('.') ? text : `${text}.`
+}
+
 export default function InsuranceGuidePage() {
   const { slug } = useParams()
   const guide = getInsuranceGuide(slug)
@@ -38,7 +44,7 @@ export default function InsuranceGuidePage() {
             <span aria-hidden="true"> / </span>
             <span>{guide.title}</span>
           </p>
-          <h1>{guide.title}</h1>
+          <h1>{guideHeading(guide.title)}</h1>
           <p>{guide.summary}</p>
           <div className="icov-hero-actions">
             <Link className="btn" to="/rehab-centers">Browse directory</Link>

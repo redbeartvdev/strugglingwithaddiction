@@ -39,7 +39,7 @@ export default function Footer() {
           <div className="footer-col">
             <h4>Site Support</h4>
             <ul>
-              <li><a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a></li>
+              <li><a href="mailto:info@strugglingwithaddiction.com">info@strugglingwithaddiction.com</a></li>
               <li><Link to="/rehab-centers">Browse Directory</Link></li>
             </ul>
           </div>

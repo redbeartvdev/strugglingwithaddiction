@@ -9,6 +9,12 @@ import {
 } from '../data/videos'
 import './Videos.css'
 
+const VIDEOS_H1 = 'Video Guides on Addiction & Recovery'
+const VIDEOS_META_DESCRIPTION =
+  'Plain-language videos on addiction, treatment, and recovery — warning signs, rehab, CBT, medication-assisted treatment, and more.'
+const VIDEOS_HERO_COPY =
+  'Whether you are searching for yourself or supporting someone you love, these short videos explain addiction, treatment, and recovery without the jargon. Learn how to spot warning signs, understand levels of care, and explore what rehab, therapy, and medication-assisted treatment involve — so you can make informed decisions about next steps.'
+
 function PlayIcon() {
   return (
     <svg className="videos-play-icon" viewBox="0 0 68 48" aria-hidden="true" focusable="false">
@@ -27,9 +33,8 @@ export default function Videos() {
   const titleId = useId()
 
   usePageSeo({
-    title: 'Videos',
-    description:
-      'Watch videos about addiction, rehab, warning signs, and recovery from Struggling With Addiction.',
+    title: VIDEOS_H1,
+    description: VIDEOS_META_DESCRIPTION,
   })
 
   useEffect(() => {
@@ -55,11 +60,8 @@ export default function Videos() {
       <section className="videos-hero">
         <div className="container videos-hero-inner">
           <span className="section-label">Video series</span>
-          <h1>Videos</h1>
-          <p>
-            Short explainers on addiction, treatment, and recovery — from denial and warning signs to
-            rehab, CBT, and medication-assisted treatment.
-          </p>
+          <h1>{VIDEOS_H1}</h1>
+          <p>{VIDEOS_HERO_COPY}</p>
           <div className="videos-hero-actions">
             <a
               className="btn"

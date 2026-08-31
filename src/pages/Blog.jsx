@@ -1,10 +1,14 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { usePosts, useCategories, useAuthors } from '../hooks/useBlogData'
+import { usePageSeo } from '../hooks/usePageSeo'
 import './Blog.css'
 
 const INITIAL_POSTS = 6
 const LOAD_MORE_POSTS = 6
+const BLOG_H1 = 'Articles & Guidance for Recovery'
+const BLOG_DESCRIPTION =
+  'Evidence-based articles, personal stories, and practical guidance for every step of the recovery journey.'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -20,6 +24,11 @@ export default function Blog() {
   const categories = useCategories()
   const authors = useAuthors()
   const navigate = useNavigate()
+
+  usePageSeo({
+    title: BLOG_H1,
+    description: BLOG_DESCRIPTION,
+  })
   const [visibleCount, setVisibleCount] = useState(INITIAL_POSTS)
   const [enteringFrom, setEnteringFrom] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -132,6 +141,14 @@ export default function Blog() {
   if (loading) {
     return (
       <main className="blog-page">
+        <section className="blog-hero">
+          <div className="blog-hero-overlay" />
+          <div className="container blog-hero-content">
+            <span className="section-label" style={{ color: '#5FBDF6' }}>Education &amp; Resources</span>
+            <h1>{BLOG_H1}</h1>
+            <p>{BLOG_DESCRIPTION}</p>
+          </div>
+        </section>
         <section className="blog-archive">
           <div className="container" style={{ padding: '4rem 0', textAlign: 'center' }}>
             Loading articles…
@@ -148,8 +165,8 @@ export default function Blog() {
         <div className="blog-hero-overlay" />
         <div className="container blog-hero-content">
           <span className="section-label" style={{ color: '#5FBDF6' }}>Education &amp; Resources</span>
-          <h1>The SWA Blog</h1>
-          <p>Evidence-based articles, personal stories, and practical guidance for every step of the recovery journey.</p>
+          <h1>{BLOG_H1}</h1>
+          <p>{BLOG_DESCRIPTION}</p>
           <div className="blog-search-wrap" ref={wrapRef}>
             <input
               type="search"

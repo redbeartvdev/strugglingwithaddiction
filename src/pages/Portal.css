@@ -251,35 +251,40 @@
 }
 
 .portal-cta {
-  background: var(--navy);
-  color: white;
-  padding: 4rem 0;
-  text-align: center;
+  padding: 0 0 5rem;
+  background: var(--off-white);
 }
 
 .portal-cta-inner {
-  max-width: 560px;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 12px 32px rgba(26, 26, 46, 0.08);
+  text-align: center;
 }
 
 .portal-cta h2 {
-  color: white;
+  color: var(--dark);
   margin: 0 0 0.75rem;
 }
 
 .portal-cta p {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--gray);
   line-height: 1.75;
   margin: 0 0 1.5rem;
 }
 
 .portal-cta p a {
-  color: var(--brand-blue);
+  color: var(--brand-red);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .portal-cta p a:hover {
-  color: white;
+  color: var(--brand-blue);
 }
 
 .portal-cta .btn {

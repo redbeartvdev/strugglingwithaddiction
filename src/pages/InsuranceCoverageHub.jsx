@@ -34,7 +34,7 @@ export default function InsuranceCoverageHub() {
       <section className="icov-hero">
         <div className="container icov-hero-inner">
           <span className="section-label">Insurance coverage</span>
-          <h1>Does your insurance cover rehab?</h1>
+          <h1>Does my insurance cover rehab?</h1>
           <p>
             Learn how major carriers typically cover addiction treatment, then browse facilities in our directory
             that attest to accepting that plan. Listings are self-reported — always confirm benefits with the center and your insurer.

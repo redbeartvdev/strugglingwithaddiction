@@ -5,6 +5,7 @@ import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
 import { centerMatchesService, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
 import { detectVisitorLocation, normalizeUsStateName } from '../lib/geo'
+import { isDocumentReloadOn } from '../lib/documentNav'
 import { rehabLandingPath } from '../lib/rehabLanding'
 import { resolveOutboundListingLink } from '../lib/outboundListingLink'
 import { US_STATES } from '../lib/usStates'
@@ -774,6 +775,19 @@ function rankCenters(centers, { city } = {}) {
 // POST /api/rehab-centers/{slug}/leads body: { full_name, email, phone?, message, source_url? }
 
 const PAGE_SIZE = 10
+const FILTER_PARAM_KEYS = ['q', 'state', 'city', 'service', 'insurance']
+
+function stripFilterParams(params) {
+  const next = new URLSearchParams(params)
+  let changed = false
+  FILTER_PARAM_KEYS.forEach((key) => {
+    if (next.has(key)) {
+      next.delete(key)
+      changed = true
+    }
+  })
+  return changed ? next : null
+}
 
 export default function RehabCenters() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -782,24 +796,36 @@ export default function RehabCenters() {
   const [submitResumeToken, setSubmitResumeToken] = useState(null)
   const [centers, setCenters] = useState(STATIC_CENTERS)
   const [loading, setLoading] = useState(apiEnabled())
-  const [query, setQuery] = useState(() => searchParams.get('q') || '')
-  const [stateFilter, setStateFilter] = useState(() => normalizeUsStateName(searchParams.get('state') || ''))
-  const [cityFilter, setCityFilter] = useState(() => searchParams.get('city') || '')
-  const [serviceFilter, setServiceFilter] = useState(() => searchParams.get('service') || '')
-  const [insuranceFilter, setInsuranceFilter] = useState(() => searchParams.get('insurance') || '')
+  const reloadResetRef = useRef(isDocumentReloadOn('/rehab-centers'))
+  const skipIpAfterReloadRef = useRef(reloadResetRef.current)
+  const [query, setQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
+  const [stateFilter, setStateFilter] = useState(() => (
+    reloadResetRef.current ? '' : normalizeUsStateName(searchParams.get('state') || '')
+  ))
+  const [cityFilter, setCityFilter] = useState(() => (reloadResetRef.current ? '' : searchParams.get('city') || ''))
+  const [serviceFilter, setServiceFilter] = useState(() => (reloadResetRef.current ? '' : searchParams.get('service') || ''))
+  const [insuranceFilter, setInsuranceFilter] = useState(() => (reloadResetRef.current ? '' : searchParams.get('insurance') || ''))
   const [insuranceOptions, setInsuranceOptions] = useState([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [geoLabel, setGeoLabel] = useState('')
-  const [strictCity, setStrictCity] = useState(() => Boolean(searchParams.get('city')))
+  const [strictCity, setStrictCity] = useState(() => (reloadResetRef.current ? false : Boolean(searchParams.get('city'))))
 
   useEffect(() => {
+    if (reloadResetRef.current) {
+      const stripped = stripFilterParams(searchParams)
+      reloadResetRef.current = false
+      if (stripped) {
+        setSearchParams(stripped, { replace: true })
+        return
+      }
+    }
     setQuery(searchParams.get('q') || '')
     setStateFilter(normalizeUsStateName(searchParams.get('state') || ''))
     setCityFilter(searchParams.get('city') || '')
     setServiceFilter(searchParams.get('service') || '')
     setInsuranceFilter(searchParams.get('insurance') || '')
     setStrictCity(Boolean(searchParams.get('city')))
-  }, [searchParams])
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const token = searchParams.get('submit_resume')
@@ -841,9 +867,10 @@ export default function RehabCenters() {
     }
   }, [])
 
-  // Default location from visitor IP when URL has no explicit state.
+  // First visit only: fill location from IP. A refresh clears filters and skips this.
   useEffect(() => {
     let cancelled = false
+    if (skipIpAfterReloadRef.current) return undefined
     if (searchParams.get('state')) return undefined
 
     detectVisitorLocation().then((geo) => {
@@ -862,10 +889,10 @@ export default function RehabCenters() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (!insuranceFilter) return
+    if (!stateFilter && !cityFilter && !serviceFilter && !insuranceFilter) return
     const list = document.getElementById('rehab-directory-results')
     if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [insuranceFilter])
+  }, [stateFilter, cityFilter, serviceFilter, insuranceFilter])
 
   const catalogNames = useMemo(
     () => insuranceOptions.map(item => item.name).filter(Boolean),

@@ -7,6 +7,7 @@ import Home from './pages/Home'
 import Portal from './pages/Portal'
 import NotFound from './pages/NotFound'
 import Videos from './pages/Videos'
+import './lib/documentNav'
 import './App.css'
 
 const Blog = lazy(() => import('./pages/Blog'))

@@ -36,7 +36,7 @@ const portalCards = [
     title: 'Support',
     body: 'Get help with your account, listings, or general questions about the portal.',
     linkLabel: 'Email support',
-    href: 'mailto:help@strugglingwithaddiction.com',
+    href: 'mailto:info@strugglingwithaddiction.com',
   },
 ]
 
@@ -262,7 +262,7 @@ export default function Portal() {
               Already claimed and verified? Sign in here to open your provider dashboard.
               Still finishing your claim?{' '}
               <Link to="/rehab-centers">Find your listing</Link> or email{' '}
-              <a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a>.
+              <a href="mailto:info@strugglingwithaddiction.com">info@strugglingwithaddiction.com</a>.
             </p>
           </aside>
 
@@ -299,7 +299,7 @@ export default function Portal() {
           <h2>Need Help Getting Started?</h2>
           <p>
             Questions about claiming a listing or accessing the portal? Reach out to{' '}
-            <a href="mailto:help@strugglingwithaddiction.com">help@strugglingwithaddiction.com</a>{' '}
+            <a href="mailto:info@strugglingwithaddiction.com">info@strugglingwithaddiction.com</a>{' '}
             and our team will point you in the right direction.
           </p>
           <Link to="/rehab-centers" className="btn">Browse Treatment Centers</Link>
