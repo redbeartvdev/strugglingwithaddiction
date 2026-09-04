@@ -1,5 +1,25 @@
 [
   {
+    "id": 5721,
+    "slug": "nitazenes-the-synthetic-opioids-stronger-than-fentanyl",
+    "date": "2026-09-04T13:21:22",
+    "title": "Nitazenes: The Synthetic Opioids Stronger Than Fentanyl",
+    "excerpt": "Most people have heard of fentanyl. Nitazenes are what comes after. A class of synthetic opioids developed in the late 1950s and never approved for medical use, nitazenes began appearing in the illicit drug supply in 2019 and have been proliferating since. Some analogs are estimated to be 500 to 1,000 times more potent than …",
+    "featuredImage": "/images/blog/SWA_Nitazenes_482556850.webp",
+    "categoryNames": [
+      {
+        "id": 3,
+        "name": "Drug Policy",
+        "slug": "drug-policy"
+      },
+      {
+        "id": 5,
+        "name": "Health",
+        "slug": "health"
+      }
+    ]
+  },
+  {
     "id": 5707,
     "slug": "bromazolam-the-new-designer-benzo-you-need-to-know",
     "date": "2026-08-24T01:13:32",
@@ -31,26 +51,6 @@
         "id": 2,
         "name": "Advice",
         "slug": "drug-addiction-help"
-      },
-      {
-        "id": 5,
-        "name": "Health",
-        "slug": "health"
-      }
-    ]
-  },
-  {
-    "id": 5688,
-    "slug": "online-buprenorphine-what-new-dea-telehealth-rules-mean",
-    "date": "2026-06-24T06:00:55",
-    "title": "Online Buprenorphine: What New DEA Telehealth Rules Mean",
-    "excerpt": "For years, getting a buprenorphine prescription required an in-person visit with a licensed prescriber before treatment could begin. For many people with opioid use disorder, that single requirement was an insurmountable barrier. Transportation, work schedules, childcare, geography, stigma, and fear of judgment all kept people away from a medication that the evidence shows reduces opioid …",
-    "featuredImage": "/images/blog/SWA_You-Can-Now-Get-Buprenorphine-Treatment-Online_2451838189.webp",
-    "categoryNames": [
-      {
-        "id": 3,
-        "name": "Drug Policy",
-        "slug": "drug-policy"
       },
       {
         "id": 5,
