@@ -23,9 +23,11 @@ from app.models.lead import CenterLead
 from app.models.upsell import UpsellOrder, UpsellProductType, UpsellFulfillment, UpsellOrderStatus
 from app.models.email_log import EmailLog
 from app.models.email_template import EmailTemplateOverride
+from app.models.email_list import EmailListContact, MailingList, MailingListMember
 from app.models.platform_settings import PlatformEmailSettings, PlatformStripeSettings
 from app.models.center_submission import CenterSubmission, CenterSubmissionStatus
 from app.models.insurance import InsuranceCatalog
+from app.models.service_code import ServiceCodeCatalog
 from app.models.analytics import CenterPageView, SitePageView
 
 __all__ = [
@@ -60,9 +62,13 @@ __all__ = [
     "UpsellOrderStatus",
     "EmailLog",
     "EmailTemplateOverride",
+    "EmailListContact",
+    "MailingList",
+    "MailingListMember",
     "PlatformEmailSettings",
     "PlatformStripeSettings",
     "InsuranceCatalog",
+    "ServiceCodeCatalog",
     "CenterPageView",
     "SitePageView",
     "CenterSubmission",

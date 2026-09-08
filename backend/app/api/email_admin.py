@@ -32,6 +32,7 @@ from app.services.email import (
     save_template_content,
     send_email,
 )
+from app.services.mailchimp import list_audiences, ping_audience, resolve_mailchimp
 from app.services.storage import get_public_url, upload_file
 
 router = APIRouter(tags=["email-admin"])
@@ -40,6 +41,7 @@ router = APIRouter(tags=["email-admin"])
 def _settings_out(db: Session) -> PlatformEmailSettingsOut:
     row = get_platform_email_settings(db)
     delivery = resolve_email_delivery(db)
+    mailchimp = resolve_mailchimp(db)
     return PlatformEmailSettingsOut(
         provider=delivery["provider"],
         email_from=delivery["email_from"],
@@ -60,6 +62,13 @@ def _settings_out(db: Session) -> PlatformEmailSettingsOut:
         effective_provider=delivery["effective_provider"],
         env_resend_configured=delivery["env_resend_configured"],
         env_smtp_configured=delivery["env_smtp_configured"],
+        mailchimp_enabled=mailchimp["enabled"],
+        mailchimp_api_key_set=bool(mailchimp["api_key"]),
+        mailchimp_audience_id=mailchimp["audience_id"] or None,
+        mailchimp_configured=mailchimp["configured"],
+        env_mailchimp_configured=mailchimp["env_configured"],
+        abandonment_emails_enabled=mailchimp["abandonment_emails_enabled"],
+        inquiry_forms_enabled=bool(getattr(row, "inquiry_forms_enabled", True)) if row else True,
     )
 
 
@@ -81,8 +90,10 @@ def update_email_settings(
     data = body.model_dump(exclude_unset=True)
     clear_resend = data.pop("clear_resend_api_key", False)
     clear_smtp = data.pop("clear_smtp_password", False)
+    clear_mailchimp = data.pop("clear_mailchimp_api_key", False)
     resend_key = data.pop("resend_api_key", None)
     smtp_password = data.pop("smtp_password", None)
+    mailchimp_key = data.pop("mailchimp_api_key", None)
 
     provider = data.get("provider")
     if provider == "gmail_smtp":
@@ -106,6 +117,11 @@ def update_email_settings(
         row.smtp_password = None
     elif smtp_password is not None and smtp_password.strip():
         row.smtp_password = smtp_password.strip()
+
+    if clear_mailchimp:
+        row.mailchimp_api_key = None
+    elif mailchimp_key is not None and mailchimp_key.strip():
+        row.mailchimp_api_key = mailchimp_key.strip()
 
     db.add(row)
     db.commit()
@@ -156,6 +172,22 @@ def send_test_email(
         "effective_provider": delivery["effective_provider"],
         "message": "Test email queued" if ok else "Test email failed or was skipped",
     }
+
+
+@router.post("/api/admin/email-settings/mailchimp/ping")
+def ping_mailchimp(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    try:
+        return ping_audience(db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)[:400]) from exc
+
+
+@router.get("/api/admin/email-settings/mailchimp/audiences")
+def mailchimp_audiences(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    try:
+        return {"items": list_audiences(db)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)[:400]) from exc
 
 
 @router.get("/api/admin/email-templates", response_model=list[EmailTemplateSummary])

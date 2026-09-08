@@ -7,22 +7,22 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 
-from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users, import_centers, claim_journey, leads_upsells, lifecycle, email_admin, insurance, analytics, center_submissions, geo
+from app.api import auth, blog, billing, client_portal, profiles, rehab, search, users, import_centers, claim_journey, leads_upsells, lifecycle, email_admin, email_list, insurance, analytics, center_submissions, geo, admin_overview, service_codes
 from app.static_site import mount_image_assets, register_static_site
 from app.bootstrap import bootstrap_admin, bootstrap_plans, seed_rehab_centers, seed_insurance_catalog, activate_claimed_providers
+from app.services.service_codes import seed_service_code_catalog
 from app.seed_import import import_blog_if_empty, import_users_if_missing
 from app.config import get_settings
+from app.core.rate_limit import limiter
 from app.db_migrate import run_migrations
 from app.database import SessionLocal, engine
 from app.models import Base
 
 settings = get_settings()
-limiter = Limiter(key_func=get_remote_address)
 logger = logging.getLogger("swa")
 
 
@@ -36,6 +36,7 @@ def _run_startup_tasks() -> None:
         ("bootstrap_plans", bootstrap_plans),
         ("seed_rehab_centers", seed_rehab_centers),
         ("seed_insurance_catalog", seed_insurance_catalog),
+        ("seed_service_code_catalog", seed_service_code_catalog),
         ("import_blog_if_empty", import_blog_if_empty),
         ("import_users_if_missing", import_users_if_missing),
         ("activate_claimed_providers", activate_claimed_providers),
@@ -118,8 +119,11 @@ app.include_router(client_portal.router)
 app.include_router(search.router)
 app.include_router(lifecycle.router)
 app.include_router(email_admin.router)
+app.include_router(email_list.router)
 app.include_router(insurance.router)
+app.include_router(service_codes.router)
 app.include_router(analytics.router)
+app.include_router(admin_overview.router)
 app.include_router(center_submissions.router)
 app.include_router(geo.router)
 

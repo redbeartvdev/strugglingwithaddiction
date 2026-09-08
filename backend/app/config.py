@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # Upsell Stripe price IDs (optional; human products can be request-only)
     stripe_price_verified_badge: str = ""
     stripe_price_featured_placement: str = ""
+    # Mailchimp Marketing API (optional; admin can also set these on Emails → Settings)
+    mailchimp_api_key: str = ""
+    mailchimp_audience_id: str = ""
     # Internal alerts for human-closed upsells
     upsell_alert_email: str = ""
     # Phone ownership callback (Twilio SMS). Without credentials codes are logged locally.

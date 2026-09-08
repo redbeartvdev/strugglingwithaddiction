@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { buildRehabDirectoryUrl } from '../lib/rehabServices'
-import { detectVisitorLocation } from '../lib/geo'
+import { detectVisitorLocation, shouldAutoApplyVisitorLocation } from '../lib/geo'
 import './InsuranceAcceptedSection.css'
 
 /** Featured commercial brands for the homepage logo strip (fallbacks when API is offline). */
@@ -60,10 +60,11 @@ export default function InsuranceAcceptedSection() {
       const query = next.toString()
       return query ? `/rehab-centers?${query}` : '/rehab-centers'
     }
+    const useGeo = shouldAutoApplyVisitorLocation()
     return buildRehabDirectoryUrl({
       insurance: insuranceName,
-      state: geo.state,
-      city: geo.city,
+      state: useGeo ? geo.state : '',
+      city: useGeo ? geo.city : '',
     })
   }
 

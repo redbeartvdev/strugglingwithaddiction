@@ -16,7 +16,7 @@ const NAV_BY_ROLE = {
     { to: '/admin/analytics', label: 'Analytics', Icon: IconChart },
     { to: '/admin/users', label: 'Users', Icon: IconUsers },
     { to: '/admin/posts', label: 'Posts', Icon: IconFile },
-    { to: '/admin/rehab', label: 'Rehab', Icon: IconBuilding },
+    { to: '/admin/rehab', label: 'Directory Rehab Centers', Icon: IconBuilding },
     { to: '/admin/claims', label: 'Claims', Icon: IconInbox, badgeKey: 'claims' },
     { to: '/admin/submissions', label: 'Submission Center', Icon: IconBuilding, badgeKey: 'submissions' },
     { to: '/admin/leads', label: 'Leads', Icon: IconInbox },
@@ -25,7 +25,9 @@ const NAV_BY_ROLE = {
     { to: '/admin/import', label: 'Import', Icon: IconImport },
     { to: '/admin/lifecycle', label: 'Lifecycle', Icon: IconSettings },
     { to: '/admin/emails', label: 'Emails', Icon: IconFile },
+    { to: '/admin/email-list', label: 'Email lists', Icon: IconInbox },
     { to: '/admin/insurances', label: 'Insurance', Icon: IconCard },
+    { to: '/admin/service-codes', label: 'Service codes', Icon: IconFile },
     { to: '/admin/settings', label: 'Settings', Icon: IconSettings },
   ],
   editor: [
@@ -36,7 +38,7 @@ const NAV_BY_ROLE = {
   client: [
     { to: '/client', label: 'Overview', end: true, Icon: IconHome },
     { to: '/client/profile', label: 'Profile Page Editor', Icon: IconBuilding },
-    { to: '/client/leads', label: 'Leads', Icon: IconInbox },
+    { to: '/client/leads', label: 'Inquiries', Icon: IconInbox },
     { to: '/client/upsells', label: 'Upgrades', Icon: IconFile },
     // Posts hidden for now — reinstate when client blogging ships
     // { to: '/client/posts', label: 'Posts', Icon: IconFile },
@@ -66,7 +68,7 @@ function workspaceLabel(role) {
   return 'Studio'
 }
 
-export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0, verificationIncomplete = false }) {
+export default function Shell({ children, pendingClaims = 0, pendingSubmissions = 0, verificationIncomplete = false, inquirySetupIncomplete = false }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [subscriptionLocked, setSubscriptionLocked] = useState(false)
@@ -91,6 +93,11 @@ export default function Shell({ children, pendingClaims = 0, pendingSubmissions 
   let nav = NAV_BY_ROLE[user?.role] || []
   if (subscriptionLocked && user?.role === 'client') {
     nav = NAV_BY_ROLE.client.filter(item => item.to === '/client/billing')
+  } else if (inquirySetupIncomplete && user?.role === 'client') {
+    nav = [
+      { to: '/client/setup', label: 'Setup', end: true, Icon: IconHome },
+      ...NAV_BY_ROLE.client.filter(item => ['/client/billing', '/client/account'].includes(item.to)),
+    ]
   } else if (verificationIncomplete && user?.role === 'client') {
     nav = NAV_BY_ROLE.client.filter(item => ['/client', '/client/billing', '/client/account'].includes(item.to))
   }

@@ -72,11 +72,63 @@ export async function api(path, options = {}) {
   return data
 }
 
-export async function apiUpload(path, file) {
+export function apiUploadWithProgress(path, file, { timeoutMs, onProgress } = {}) {
   const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`
   const form = new FormData()
   form.append('file', file)
   const token = getToken()
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    xhr.timeout = timeoutMs || 0
+
+    xhr.upload.onprogress = event => {
+      if (!event.lengthComputable) return
+      onProgress?.({
+        phase: 'uploading',
+        message: 'Uploading file…',
+        processed: event.loaded,
+        total: event.total,
+        percent: Math.round((event.loaded / event.total) * 100),
+      })
+    }
+
+    xhr.onload = () => {
+      let data = null
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : null
+      } catch {
+        reject(new Error('Invalid response from server'))
+        return
+      }
+      if (xhr.status === 401) {
+        const role = localStorage.getItem('role')
+        clearSession()
+        window.location.href = loginRedirectHref(role)
+        reject(new Error('Session expired — please sign in again'))
+        return
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(parseErrorDetail(data, xhr.statusText)))
+        return
+      }
+      resolve(data)
+    }
+    xhr.onerror = () => reject(new Error('Cannot reach the API — is the backend running on port 8317?'))
+    xhr.ontimeout = () => reject(new Error('Import timed out. Try again or split the file into smaller batches.'))
+    xhr.send(form)
+  })
+}
+
+export async function apiUpload(path, file, { timeoutMs } = {}) {
+  const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`
+  const form = new FormData()
+  form.append('file', file)
+  const token = getToken()
+  const controller = timeoutMs ? new AbortController() : null
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null
 
   let res
   try {
@@ -84,9 +136,15 @@ export async function apiUpload(path, file) {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
+      signal: controller?.signal,
     })
-  } catch {
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Import timed out. Try again or split the file into smaller batches.')
+    }
     throw new Error('Cannot reach the API — is the backend running on port 8317?')
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 
   if (!res.ok) {

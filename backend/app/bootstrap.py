@@ -70,6 +70,7 @@ REHAB_SEED = [
         ],
         "specialties": ["Inpatient Residential", "Medical Detox", "Dual Diagnosis", "Telehealth"],
         "levels_of_care": ["Detox", "Residential", "IOP", "Outpatient"],
+        "service_codes": ["SA", "SUMH", "RES", "OP", "PHP", "CBT", "DBT", "GT", "IPT", "TELE", "PI", "MC", "MD", "CASH", "TRMA", "PTSD", "ADLT", "YAD"],
         "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare"],
         "amenities": ["Private rooms", "Fitness center", "Family program"],
         "accreditations": ["Joint Commission", "CARF"],
@@ -107,6 +108,7 @@ REHAB_SEED = [
         ],
         "specialties": ["Medical Detox", "Inpatient", "Dual Diagnosis", "Executive Program"],
         "levels_of_care": ["Detox", "Residential", "PHP", "IOP"],
+        "service_codes": ["SA", "MH", "SUMH", "RES", "PHP", "OP", "CBT", "CFT", "GT", "IPT", "PI", "TRICARE", "CASH", "VET", "ADLT", "SEN"],
         "insurances": ["Aetna", "Blue Cross Blue Shield", "Cigna", "UnitedHealthcare", "Tricare"],
         "amenities": ["Executive track", "Medical staff onsite", "Family workshops"],
         "accreditations": ["Joint Commission"],
@@ -135,6 +137,7 @@ REHAB_SEED = [
         "website": "https://www.sierratucson.com",
         "image_key": "/images/rehab/sierra-tucson.webp",
         "specialties": ["Residential", "Trauma & PTSD", "Eating Disorders", "Equine Therapy"],
+        "service_codes": ["SA", "MH", "RES", "CBT", "EMDR", "TRMA", "PTSD", "PED", "PI", "CASH"],
         "description": "Ranked #1 in Newsweek's Best Addiction Treatment Centers in Arizona for 2025, Sierra Tucson sits on a stunning 160-acre campus.",
         "rating": 5.0,
         "claimed": False,
@@ -150,6 +153,7 @@ REHAB_SEED = [
         "website": "https://www.theranch.com",
         "image_key": "/images/rehab/the-ranch-tennessee.webp",
         "specialties": ["Substance Use", "Mental Health", "Equine Therapy", "Extended Care"],
+        "service_codes": ["SA", "MH", "RES", "OP", "AT", "CBT", "PEER", "HS", "PI", "CASH"],
         "description": "Located on peaceful grounds along the Piney River, The Ranch combines traditional and alternative therapies.",
         "rating": 4.0,
         "claimed": False,
@@ -165,6 +169,7 @@ REHAB_SEED = [
         "website": "https://www.mcleanhospital.org",
         "image_key": "/images/rehab/mclean-hospital.webp",
         "specialties": ["Harvard-Affiliated", "Medical Detox", "Inpatient & IOP", "Co-occurring Disorders"],
+        "service_codes": ["SA", "MH", "SUMH", "HI", "OP", "PSY", "CBT", "DBT", "ECT", "TMS", "MC", "MD", "PI"],
         "description": "The largest psychiatric teaching hospital of Harvard Medical School and ranked #1 by U.S. News & World Report.",
         "rating": 5.0,
         "claimed": False,
@@ -306,7 +311,7 @@ def seed_rehab_centers(db: Session) -> None:
             continue
         for field in (
             "address_line", "city", "state", "zip", "contact_email", "google_maps_url",
-            "google_reviews_url", "video_url", "levels_of_care", "insurances", "amenities",
+            "google_reviews_url", "video_url", "levels_of_care", "service_codes", "insurances", "amenities",
             "accreditations", "testimonials", "location_display", "phone", "website", "description",
             "gallery_keys",
         ):
@@ -318,7 +323,7 @@ def seed_rehab_centers(db: Session) -> None:
             if not current or (item.get("claimed") and field in {
                 "contact_email", "address_line", "city", "state", "zip",
                 "gallery_keys", "google_maps_url", "google_reviews_url",
-                "levels_of_care", "insurances", "amenities", "accreditations", "testimonials",
+                "levels_of_care", "service_codes", "insurances", "amenities", "accreditations", "testimonials",
             }):
                 setattr(center, field, value)
         # Keep claimed demo galleries aligned to this listing's own images only.

@@ -19,7 +19,9 @@ import AdminLifecycle from './pages/admin/Lifecycle'
 import AdminLeads from './pages/admin/Leads'
 import AdminUpsells from './pages/admin/Upsells'
 import AdminEmails from './pages/admin/Emails'
+import AdminEmailList from './pages/admin/EmailList'
 import AdminInsurances from './pages/admin/Insurances'
+import AdminServiceCodes from './pages/admin/ServiceCodes'
 import AdminSettings from './pages/admin/Settings'
 import AdminAnalytics from './pages/admin/Analytics'
 import AdminSubmissions from './pages/admin/Submissions'
@@ -29,6 +31,7 @@ import ClientDashboard from './pages/client/Dashboard'
 import ClientBilling from './pages/client/Billing'
 import ClientMyCenter from './pages/client/MyCenter'
 import ClientLeads from './pages/client/Leads'
+import ClientSetupWizard from './pages/client/SetupWizard'
 import ClientUpsells from './pages/client/Upsells'
 import PasswordRecovery from './pages/PasswordRecovery'
 import ConfirmEmail from './pages/ConfirmEmail'
@@ -75,7 +78,9 @@ export default function App() {
       <Route path="/admin/leads" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminLeads /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/upsells" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminUpsells /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/emails" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminEmails /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/email-list" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminEmailList /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/insurances" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminInsurances /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/service-codes" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminServiceCodes /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']} loginPath="/swa-login"><Navigate to="/admin/settings?tab=account" replace /></ProtectedRoute>} />
 
@@ -86,6 +91,7 @@ export default function App() {
       <Route path="/editor/profile" element={<ProtectedRoute roles={['editor', 'admin']}><EditorLayout><ProfilePage /></EditorLayout></ProtectedRoute>} />
 
       <Route path="/client" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
+      <Route path="/client/setup" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientSetupWizard /></ClientLayout></ProtectedRoute>} />
       <Route path="/client/billing" element={<ProtectedRoute roles={['client', 'admin']}><ClientLayout><ClientBilling /></ClientLayout></ProtectedRoute>} />
       <Route path="/client/landing" element={<Navigate to="/client/profile" replace />} />
       <Route path="/client/posts" element={<Navigate to="/client" replace />} />

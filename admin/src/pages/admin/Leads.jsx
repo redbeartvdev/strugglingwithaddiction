@@ -4,50 +4,30 @@ import Badge from '../../components/ui/Badge'
 import Card from '../../components/ui/Card'
 
 function tagLabel(lead) {
-  if (lead.tag !== 'abandonment') return null
   if (lead.source_kind === 'claim_abandonment') return 'Abandonment · Claim'
   if (lead.source_kind === 'submit_abandonment') return 'Abandonment · Submit'
-  return 'Abandonment'
+  if (lead.tag === 'abandonment') return 'Abandonment'
+  return null
 }
 
 export default function AdminLeads() {
   const [leads, setLeads] = useState([])
   const [err, setErr] = useState('')
-  const [filter, setFilter] = useState('all')
 
   useEffect(() => {
     api('/api/admin/leads').then(setLeads).catch(e => setErr(e.message))
   }, [])
 
-  const filtered = leads.filter(lead => {
-    if (filter === 'abandonment') return lead.tag === 'abandonment'
-    if (filter === 'inquiry') return lead.tag !== 'abandonment'
-    return true
-  })
-
   return (
     <div className="page-stack">
       <header className="page-header">
         <h1 className="page-title">Leads.</h1>
-        <p className="page-sub">Visitor inquiries and abandoned claim/submit journeys.</p>
+        <p className="page-sub">
+          Abandoned claim and submit journeys only. Listing inquiries are emailed to each
+          center and are not stored or visible here.
+        </p>
       </header>
       {err && <p className="error">{err}</p>}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {[
-          ['all', 'All'],
-          ['inquiry', 'Inquiries'],
-          ['abandonment', 'Abandonment'],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={`tab-btn${filter === id ? ' active' : ''}`}
-            onClick={() => setFilter(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
       <Card className="card-pad-0">
         <div className="table-wrap">
           <table>
@@ -64,18 +44,14 @@ export default function AdminLeads() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="muted" style={{ padding: 24 }}>No leads yet.</td></tr>
-              ) : filtered.map(lead => {
+              {leads.length === 0 ? (
+                <tr><td colSpan={8} className="muted" style={{ padding: 24 }}>No abandonment leads yet.</td></tr>
+              ) : leads.map(lead => {
                 const abandon = tagLabel(lead)
                 return (
                   <tr key={lead.id}>
                     <td>{lead.center_name || '—'}</td>
-                    <td>
-                      {abandon
-                        ? <Badge tone="warn">{abandon}</Badge>
-                        : <Badge tone="neutral">Inquiry</Badge>}
-                    </td>
+                    <td>{abandon ? <Badge tone="warn">{abandon}</Badge> : <Badge tone="neutral">Other</Badge>}</td>
                     <td><strong>{lead.full_name}</strong></td>
                     <td>{lead.email}</td>
                     <td>{lead.phone || '—'}</td>

@@ -17,6 +17,8 @@ from app.database import get_db
 from app.models.center_submission import CenterSubmission, CenterSubmissionStatus
 from app.models.rehab import CenterSource, ListingStatus, RehabCenter
 from app.services.email import resolve_email_delivery, send_email
+from app.services.mailchimp import sync_contact
+from app.services.listing_media import LISTING_PLACEHOLDER_IMAGE
 from app.services.samhsa_import import _slugify, _unique_slug
 
 router = APIRouter(tags=["center-submissions"])
@@ -184,6 +186,14 @@ def _notify_submission_received(db: Session, row: CenterSubmission) -> None:
         to_email=row.email,
         template_key="center_submission_received",
         context=context,
+    )
+    sync_contact(
+        db,
+        email=row.email,
+        source="new_center",
+        name=row.full_name,
+        phone=row.phone or "",
+        center_name=row.center_name,
     )
 
 
@@ -392,6 +402,8 @@ def admin_review_submission(
             source=CenterSource.manual,
             claimed=False,
             contact_visible=False,
+            image_key=LISTING_PLACEHOLDER_IMAGE,
+            gallery_keys=[],
         )
         db.add(center)
         db.flush()

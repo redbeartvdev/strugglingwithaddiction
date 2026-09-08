@@ -9,6 +9,7 @@ import InsuranceMultiSelect, {
   insurancePayload as buildInsurancePayload,
   namesFromCenter,
 } from '../../../components/InsuranceMultiSelect'
+import ServiceCodePicker from '../../../components/ServiceCodePicker'
 import { toDatetimeLocal, fromDatetimeLocal, getPublicSiteUrl } from '../../../lib/publicSite'
 import '../../client/MyCenter.css'
 
@@ -40,6 +41,7 @@ function formatDate(iso) {
 
 const TABS = [
   ['listing', 'Listing'],
+  ['services', 'Services'],
   ['insurance', 'Insurance'],
   ['media', 'Media'],
   ['inquiries', 'Inquiries'],
@@ -56,6 +58,10 @@ const empty = {
   state: '',
   zip: '',
   phone: '',
+  intake1: '',
+  intake2: '',
+  intake1a: '',
+  intake2a: '',
   website: '',
   verification_url: '',
   contact_email: '',
@@ -71,6 +77,7 @@ const empty = {
   testimonials: '',
   claimed: false,
   contact_visible: false,
+  inquiry_form_enabled: true,
   verified_badge: false,
   listing_status: 'draft',
   published_at: '',
@@ -87,6 +94,10 @@ function formFromCenter(c) {
     state: c.state || '',
     zip: c.zip || '',
     phone: c.phone || '',
+    intake1: c.intake1 || '',
+    intake2: c.intake2 || '',
+    intake1a: c.intake1a || '',
+    intake2a: c.intake2a || '',
     website: c.website || '',
     verification_url: c.verification_url || '',
     contact_email: c.contact_email || '',
@@ -102,6 +113,7 @@ function formFromCenter(c) {
     testimonials: (c.testimonials || []).map(t => (typeof t === 'string' ? t : t.quote || t.text || '')).filter(Boolean).join('\n'),
     claimed: Boolean(c.claimed),
     contact_visible: Boolean(c.contact_visible),
+    inquiry_form_enabled: c.inquiry_form_enabled !== false,
     verified_badge: Boolean(c.verified_badge),
     listing_status: c.listing_status || 'draft',
     published_at: toDatetimeLocal(c.published_at),
@@ -118,17 +130,23 @@ export default function RehabEditor() {
   const [form, setForm] = useState(empty)
   const [center, setCenter] = useState(null)
   const [catalog, setCatalog] = useState([])
+  const [serviceCatalog, setServiceCatalog] = useState([])
+  const [selectedServiceCodes, setSelectedServiceCodes] = useState([])
   const [selectedInsurance, setSelectedInsurance] = useState([])
   const [customInsuranceDraft, setCustomInsuranceDraft] = useState('')
-  const [leads, setLeads] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [uploadingHero, setUploadingHero] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
+  const [globalInquiryFormsEnabled, setGlobalInquiryFormsEnabled] = useState(true)
 
   useEffect(() => {
     api('/api/insurances').then(setCatalog).catch(() => setCatalog([]))
+    api('/api/service-codes').then(setServiceCatalog).catch(() => setServiceCatalog([]))
+    api('/api/admin/email-settings')
+      .then(s => setGlobalInquiryFormsEnabled(s.inquiry_forms_enabled !== false))
+      .catch(() => setGlobalInquiryFormsEnabled(true))
   }, [])
 
   useEffect(() => {
@@ -137,15 +155,16 @@ export default function RehabEditor() {
     Promise.all([
       api(`/api/admin/rehab-centers/${id}`),
       api('/api/insurances').catch(() => []),
-      api(`/api/admin/leads?rehab_center_id=${id}`).catch(() => []),
+      api('/api/service-codes').catch(() => []),
       api(`/api/admin/center-submissions?rehab_center_id=${id}`).catch(() => []),
     ])
-      .then(([c, ins, leadRows, subRows]) => {
+      .then(([c, ins, codes, subRows]) => {
         setCenter(c)
         setForm(formFromCenter(c))
         setCatalog(ins || [])
+        setServiceCatalog(codes || [])
+        setSelectedServiceCodes(c.service_codes || [])
         setSelectedInsurance(namesFromCenter(c.insurances || [], ins || []))
-        setLeads(leadRows || [])
         setSubmissions(subRows || [])
       })
       .catch(e => setErr(e.message))
@@ -186,6 +205,10 @@ export default function RehabEditor() {
       state: form.state || null,
       zip: form.zip || null,
       phone: form.phone || null,
+      intake1: form.intake1 || null,
+      intake2: form.intake2 || null,
+      intake1a: form.intake1a || null,
+      intake2a: form.intake2a || null,
       website: form.website || null,
       verification_url: form.verification_url || null,
       contact_email: form.contact_email || null,
@@ -196,12 +219,14 @@ export default function RehabEditor() {
       rating: Number(form.rating),
       specialties: textToList(form.specialties),
       levels_of_care: textToList(form.levels_of_care),
+      service_codes: selectedServiceCodes,
       insurances: insuranceNames,
       amenities: textToList(form.amenities),
       accreditations: textToList(form.accreditations),
       testimonials: textToList(form.testimonials).map(quote => ({ quote })),
       claimed: form.claimed,
       contact_visible: form.contact_visible,
+      inquiry_form_enabled: form.inquiry_form_enabled !== false,
       verified_badge: form.verified_badge,
       listing_status: form.listing_status,
       published_at: fromDatetimeLocal(form.published_at),
@@ -358,15 +383,15 @@ export default function RehabEditor() {
             key={idTab}
             type="button"
             className={`tab-btn${tab === idTab ? ' active' : ''}`}
-            disabled={!isEdit && idTab !== 'listing'}
+            disabled={!isEdit && idTab !== 'listing' && idTab !== 'services'}
             onClick={() => setTab(idTab)}
           >
             {label}
+            {idTab === 'services' && selectedServiceCodes.length > 0 && (
+              <span className="tab-count">{selectedServiceCodes.length}</span>
+            )}
             {idTab === 'insurance' && insuranceNames.length > 0 && (
               <span className="tab-count">{insuranceNames.length}</span>
-            )}
-            {idTab === 'inquiries' && leads.length > 0 && (
-              <span className="tab-count">{leads.length}</span>
             )}
             {idTab === 'submissions' && submissions.length > 0 && (
               <span className="tab-count">{submissions.length}</span>
@@ -375,7 +400,7 @@ export default function RehabEditor() {
         ))}
       </div>
       {!isEdit && (
-        <p className="muted">Save the listing first to edit insurance, media, inquiries, and submissions.</p>
+        <p className="muted">Save the listing first to edit insurance, media, inquiries, and submissions. Service codes can be selected now.</p>
       )}
 
       {tab === 'listing' && (
@@ -415,6 +440,10 @@ export default function RehabEditor() {
               ['state', 'State', 'text'],
               ['zip', 'ZIP', 'text'],
               ['phone', 'Phone', 'text'],
+              ['intake1', 'Intake 1', 'text'],
+              ['intake2', 'Intake 2', 'text'],
+              ['intake1a', 'Intake 1a', 'text'],
+              ['intake2a', 'Intake 2a', 'text'],
               ['website', 'Website', 'text'],
               ['verification_url', 'Insurance / benefits verification page URL', 'text'],
               ['google_maps_url', 'Google Map link', 'text'],
@@ -489,6 +518,30 @@ export default function RehabEditor() {
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</Button>
           </div>
         </form>
+      )}
+
+      {tab === 'services' && (
+        <div className="card card-flat mc-insurance">
+          <div className="mc-insurance-head">
+            <div>
+              <p className="eyebrow">SAMHSA service codes</p>
+              <p className="page-sub" style={{ margin: 0 }}>
+                Select every code that applies to this center. These appear on the public listing and power directory filters.
+              </p>
+            </div>
+            <p className="muted">{selectedServiceCodes.length} selected</p>
+          </div>
+          <ServiceCodePicker
+            catalog={serviceCatalog}
+            value={selectedServiceCodes}
+            onChange={setSelectedServiceCodes}
+          />
+          <div className="form-actions">
+            <Button type="button" disabled={saving} onClick={handleSubmit}>
+              {saving ? 'Saving…' : 'Save services'}
+            </Button>
+          </div>
+        </div>
       )}
 
       {tab === 'insurance' && (
@@ -594,9 +647,34 @@ export default function RehabEditor() {
       {tab === 'inquiries' && (
         <div className="page-stack">
           <Card>
+            <p className="eyebrow">Inquiry form on this listing</p>
+            <p className="page-sub">
+              Turn the public “Send a private inquiry” form on or off for this center’s page only.
+            </p>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={form.inquiry_form_enabled !== false}
+                onChange={e => setForm(f => ({ ...f, inquiry_form_enabled: e.target.checked }))}
+              />
+              Show inquiry form on this listing
+            </label>
+            {!globalInquiryFormsEnabled && (
+              <p className="muted" style={{ marginTop: 8 }}>
+                All inquiry forms are currently hidden in Settings → Site. This listing will stay hidden until the global switch is turned back on.
+              </p>
+            )}
+            <div className="form-actions">
+              <Button type="button" disabled={saving} onClick={handleSubmit}>
+                {saving ? 'Saving…' : 'Save form visibility'}
+              </Button>
+            </div>
+          </Card>
+          <Card>
             <p className="eyebrow">Where inquiries are sent</p>
             <p className="page-sub">
-              Listing form submissions (leads) email this address. Public contact uses the same inbox unless a backup outreach email is set.
+              Listing inquiries are emailed only to this address and are not stored in our database.
+              Admins cannot view submissions. Public contact uses the same inbox unless a backup outreach email is set.
             </p>
             <div className="form-grid-2">
               <label className="field">
@@ -628,39 +706,12 @@ export default function RehabEditor() {
             </div>
           </Card>
 
-          <Card className="card-pad-0">
-            <div className="panel-head">
-              <p className="section-title">Listing inquiries</p>
-              <Link className="btn btn-ghost btn-sm" to="/admin/leads">All leads</Link>
-            </div>
-            {leads.length === 0 ? (
-              <p className="muted" style={{ padding: 16 }}>No inquiries for this listing yet.</p>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Phone</th>
-                      <th>Message</th>
-                      <th>When</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leads.map(lead => (
-                      <tr key={lead.id}>
-                        <td><strong>{lead.full_name}</strong></td>
-                        <td>{lead.email || '—'}</td>
-                        <td>{lead.phone || '—'}</td>
-                        <td>{lead.message || '—'}</td>
-                        <td>{formatDate(lead.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <Card>
+            <p className="section-title">Listing inquiries</p>
+            <p className="muted" style={{ marginTop: 8 }}>
+              Visitor inquiries are emailed to the assigned address above and are not recorded
+              in our database. They cannot be reviewed from this dashboard.
+            </p>
           </Card>
         </div>
       )}

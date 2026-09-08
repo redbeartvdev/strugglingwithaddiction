@@ -53,7 +53,7 @@ def run_migrations(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN gallery_keys JSONB DEFAULT '[]'::jsonb"))
             if "testimonials" not in cols:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN testimonials JSONB DEFAULT '[]'::jsonb"))
-            for col in ("insurances", "levels_of_care", "amenities", "accreditations"):
+            for col in ("insurances", "levels_of_care", "amenities", "accreditations", "service_codes"):
                 if col not in cols:
                     conn.execute(text(f"ALTER TABLE rehab_centers ADD COLUMN {col} VARCHAR[] DEFAULT '{{}}'"))
             if "cert_verified_at" not in cols:
@@ -62,6 +62,11 @@ def run_migrations(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN verified_badge BOOLEAN NOT NULL DEFAULT FALSE"))
             if "featured_until" not in cols:
                 conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN featured_until TIMESTAMPTZ"))
+            if "inquiry_form_enabled" not in cols:
+                conn.execute(text("ALTER TABLE rehab_centers ADD COLUMN inquiry_form_enabled BOOLEAN NOT NULL DEFAULT TRUE"))
+            for col in ("intake1", "intake2", "intake1a", "intake2a"):
+                if col not in cols:
+                    conn.execute(text(f"ALTER TABLE rehab_centers ADD COLUMN {col} VARCHAR(80)"))
             try:
                 conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_rehab_centers_samhsa_id ON rehab_centers (samhsa_id)"))
             except Exception:
@@ -99,6 +104,27 @@ def run_migrations(engine: Engine) -> None:
         ))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_page_views_center ON center_page_views (rehab_center_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_page_views_visited ON center_page_views (visited_at)"))
+
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS service_code_catalog (
+                id SERIAL PRIMARY KEY,
+                category_code VARCHAR(16) NOT NULL,
+                category_name VARCHAR(120) NOT NULL,
+                service_code VARCHAR(40) NOT NULL UNIQUE,
+                service_name VARCHAR(255) NOT NULL,
+                service_description TEXT NOT NULL DEFAULT '',
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_service_code_catalog_category ON service_code_catalog (category_code)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_service_code_catalog_enabled ON service_code_catalog (enabled)"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_service_code_catalog_code ON service_code_catalog (service_code)"))
 
     # Coverage-hub editorial columns on insurance_catalog
     insp = inspect(engine)
@@ -311,3 +337,84 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_billing_invoices_center ON billing_invoices (rehab_center_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_billing_invoices_status ON billing_invoices (status)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_billing_invoices_paid_at ON billing_invoices (paid_at)"))
+
+    insp = inspect(engine)
+    if "platform_email_settings" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("platform_email_settings")}
+        with engine.begin() as conn:
+            for col, ddl in [
+                ("mailchimp_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("mailchimp_api_key", "TEXT"),
+                ("mailchimp_audience_id", "VARCHAR(64)"),
+                ("abandonment_emails_enabled", "BOOLEAN NOT NULL DEFAULT TRUE"),
+                ("inquiry_forms_enabled", "BOOLEAN NOT NULL DEFAULT TRUE"),
+            ]:
+                if col not in cols:
+                    conn.execute(text(f"ALTER TABLE platform_email_settings ADD COLUMN {col} {ddl}"))
+
+    insp = inspect(engine)
+    if "email_list_contacts" not in insp.get_table_names():
+        with engine.begin() as conn:
+            conn.execute(text(
+                """
+                CREATE TABLE email_list_contacts (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    name VARCHAR(255) NOT NULL DEFAULT '',
+                    phone VARCHAR(50),
+                    center_name VARCHAR(255),
+                    continue_url VARCHAR(512),
+                    source VARCHAR(64) NOT NULL DEFAULT '',
+                    tags VARCHAR[] NOT NULL DEFAULT '{}',
+                    status VARCHAR(32) NOT NULL DEFAULT 'subscribed',
+                    notes TEXT,
+                    mailchimp_synced_at TIMESTAMPTZ,
+                    last_event_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            ))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_list_contacts_email ON email_list_contacts (email)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_list_contacts_source ON email_list_contacts (source)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_list_contacts_status ON email_list_contacts (status)"))
+
+    insp = inspect(engine)
+    if "mailing_lists" not in insp.get_table_names():
+        with engine.begin() as conn:
+            conn.execute(text(
+                """
+                CREATE TABLE mailing_lists (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    slug VARCHAR(80) NOT NULL UNIQUE,
+                    description TEXT NOT NULL DEFAULT '',
+                    auto_sources VARCHAR[] NOT NULL DEFAULT '{}',
+                    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+                    mailchimp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                    mailchimp_audience_id VARCHAR(64),
+                    mailchimp_tag VARCHAR(100),
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            ))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_mailing_lists_slug ON mailing_lists (slug)"))
+    insp = inspect(engine)
+    if "mailing_list_members" not in insp.get_table_names():
+        with engine.begin() as conn:
+            conn.execute(text(
+                """
+                CREATE TABLE mailing_list_members (
+                    id SERIAL PRIMARY KEY,
+                    list_id INTEGER NOT NULL REFERENCES mailing_lists(id) ON DELETE CASCADE,
+                    contact_id INTEGER NOT NULL REFERENCES email_list_contacts(id) ON DELETE CASCADE,
+                    mailchimp_synced_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    CONSTRAINT uq_mailing_list_member UNIQUE (list_id, contact_id)
+                )
+                """
+            ))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_mailing_list_members_list ON mailing_list_members (list_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_mailing_list_members_contact ON mailing_list_members (contact_id)"))

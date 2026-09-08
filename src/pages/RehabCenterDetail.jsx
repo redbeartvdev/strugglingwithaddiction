@@ -6,9 +6,11 @@ import { apiEnabled, fetchApi } from '../lib/api'
 import { analyticsSessionKey, detectDevice, guessVisitorState } from '../lib/analytics'
 import { STATIC_CENTERS } from './RehabCenters'
 import { rehabLandingPath } from '../lib/rehabLanding'
-import { formatCareLabel } from '../lib/rehabServices'
+import { formatCareLabel, groupServiceDetails } from '../lib/rehabServices'
 import { resolveOutboundListingLink, withDirectoryAttribution } from '../lib/outboundListingLink'
+import { isPlaceholderListingImage, listingImageSrc } from '../lib/listingMedia'
 import ReviewsCarousel from '../components/ReviewsCarousel'
+import LegalPopup, { openLegalDocument } from '../components/LegalPopup'
 import './RehabCenterDetail.css'
 
 function Stars({ rating = 5 }) {
@@ -33,10 +35,22 @@ function InquiryForm({ center }) {
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', message: '' })
+  const [legalDoc, setLegalDoc] = useState(null)
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    message: '',
+    hp_website: '',
+    accepted_policies: false,
+  })
 
   async function onSubmit(e) {
     e.preventDefault()
+    if (!form.accepted_policies) {
+      setError('Please confirm you have read the Privacy Policy and Terms of Use.')
+      return
+    }
     setError('')
     setBusy(true)
     try {
@@ -60,7 +74,7 @@ function InquiryForm({ center }) {
       <div className="rpd-form-success">
         <FaCheckCircle aria-hidden="true" />
         <h3>Inquiry sent</h3>
-        <p>Thanks — {center.name} will follow up soon.</p>
+        <p>Thanks — {center.name} will follow up soon. Your inquiry was emailed to the center and was not saved in our database.</p>
       </div>
     )
   }
@@ -69,11 +83,20 @@ function InquiryForm({ center }) {
     <form className="rpd-form" onSubmit={onSubmit}>
       <p className="rpd-form-eyebrow">Ask about treatment</p>
       <h2>Send a private inquiry</h2>
-      <p className="rpd-form-copy">Four quick fields. The center replies privately to this listing.</p>
+      <p className="rpd-form-copy">Four quick fields. The center replies privately by email.</p>
       {error && <p className="rpd-form-error">{error}</p>}
+      <label className="rpd-hp" aria-hidden="true">
+        Website
+        <input
+          tabIndex={-1}
+          autoComplete="off"
+          value={form.hp_website}
+          onChange={e => setForm(f => ({ ...f, hp_website: e.target.value }))}
+        />
+      </label>
       <label>
         Full name
-        <input required value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
+        <input required maxLength={120} value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
       </label>
       <label>
         Email
@@ -81,13 +104,30 @@ function InquiryForm({ center }) {
       </label>
       <label>
         Phone
-        <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+        <input type="tel" maxLength={40} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
       </label>
       <label>
         Message
-        <textarea rows={4} required value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="What kind of help are you looking for?" />
+        <textarea rows={4} required maxLength={4000} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="What kind of help are you looking for?" />
       </label>
-      <button type="submit" className="btn rpd-form-submit" disabled={busy}>
+      <p className="rpd-form-legal">
+        This inquiry is emailed to the treatment center and is not recorded in our database.
+      </p>
+      <label className="rpd-form-consent">
+        <input
+          type="checkbox"
+          required
+          checked={form.accepted_policies}
+          onChange={e => setForm(f => ({ ...f, accepted_policies: e.target.checked }))}
+        />
+        <span>
+          I have read the{' '}
+          <a href="/privacy" onClick={e => openLegalDocument(e, () => setLegalDoc('privacy'))}>Privacy Policy</a>
+          {' '}and{' '}
+          <a href="/terms" onClick={e => openLegalDocument(e, () => setLegalDoc('terms'))}>Terms of Use</a>.
+        </span>
+      </label>
+      <button type="submit" className="btn rpd-form-submit" disabled={busy || !form.accepted_policies}>
         {busy ? 'Sending…' : 'Send inquiry'}
       </button>
       {center.phone && (
@@ -95,6 +135,7 @@ function InquiryForm({ center }) {
           <FaPhone aria-hidden="true" /> Call {center.phone}
         </a>
       )}
+      <LegalPopup doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </form>
   )
 }
@@ -105,6 +146,28 @@ function ChipList({ items }) {
     <ul className="rpd-care-list">
       {items.map(item => <li key={item}>{formatCareLabel(item)}</li>)}
     </ul>
+  )
+}
+
+function ServiceCodeGroups({ details }) {
+  const groups = groupServiceDetails(details)
+  if (!groups.length) return null
+  return (
+    <div className="rpd-service-groups">
+      {groups.map(group => (
+        <div key={group.category_code} className="rpd-service-group">
+          <h3>{group.category_name}</h3>
+          <ul className="rpd-care-list">
+            {group.codes.map(item => (
+              <li key={item.service_code} title={item.service_description || undefined}>
+                {item.service_name}
+                <span className="rpd-service-code">{item.service_code}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -237,7 +300,7 @@ export default function RehabCenterDetail() {
   }, [center?.slug])
 
   useEffect(() => {
-    if (!center) return
+    if (!center || center.inquiry_form_enabled === false) return
     const form = document.getElementById('inquiry')
     const bar = document.querySelector('.rpd-mobile-bar')
     if (!form || !bar) return
@@ -270,18 +333,23 @@ export default function RehabCenterDetail() {
   const address = center.address_line
     ? `${center.address_line}, ${center.city || ''}, ${center.state || ''} ${center.zip || ''}`.replace(/\s+/g, ' ').trim()
     : center.location
-  const gallery = [center.image, ...(center.gallery_urls || [])].filter(Boolean)
-    .filter((url, index, all) => all.indexOf(url) === index)
+  const heroImage = listingImageSrc(center)
+  const usingPlaceholder = isPlaceholderListingImage(center)
+  const gallery = usingPlaceholder
+    ? []
+    : [center.image, ...(center.gallery_urls || [])].filter(Boolean)
+      .filter((url, index, all) => all.indexOf(url) === index)
   const embedUrl = mapsEmbedUrl(center.google_maps_url, address)
   const outbound = resolveOutboundListingLink(center)
   const coverageHref = outbound?.kind === 'url' ? outbound.href : null
   const websiteHref = center.website ? withDirectoryAttribution(center.website) : null
   const coverageLabel = 'Visit Website'
+  const showInquiry = center.inquiry_form_enabled !== false
 
   return (
     <main className="rpd-page">
       <div className="rpd-hero">
-        <div className="rpd-hero-media" style={center.image ? { backgroundImage: `url(${center.image})` } : undefined} />
+        <div className="rpd-hero-media" style={{ backgroundImage: `url(${heroImage})` }} />
         <div className="rpd-hero-shade" />
         <div className="container rpd-hero-inner">
           <Link to="/rehab-centers" className="rpd-back">← Back to Directory</Link>
@@ -327,7 +395,7 @@ export default function RehabCenterDetail() {
                   <FaPhone aria-hidden="true" /> {outbound.label}
                 </a>
               )}
-              <a className="btn rpd-secondary-btn" href="#inquiry">Ask a question</a>
+              {showInquiry && <a className="btn rpd-secondary-btn" href="#inquiry">Ask a question</a>}
             </div>
           </div>
         </div>
@@ -376,11 +444,23 @@ export default function RehabCenterDetail() {
             </div>
           </section>
 
+          {center.service_details?.length > 0 && (
+            <section id="service-codes" className="rpd-section">
+              <h2>Programs and services</h2>
+              <p className="rpd-muted">Standard treatment codes published for this facility.</p>
+              <ServiceCodeGroups details={center.service_details} />
+            </section>
+          )}
+
           <section id="insurance" className="rpd-section">
             <h2>Insurance providers</h2>
             <InsuranceList details={center.insurance_details} names={center.insurances} />
             {!center.insurances?.length && !center.insurance_details?.length && (
-              <p className="rpd-muted">Ask the center about accepted plans using the inquiry form.</p>
+              <p className="rpd-muted">
+                {showInquiry
+                  ? 'Ask the center about accepted plans using the inquiry form.'
+                  : 'Call the center to ask about accepted plans.'}
+              </p>
             )}
             {center.phone && (
               <p className="rpd-help-banner">
@@ -410,10 +490,14 @@ export default function RehabCenterDetail() {
           <section className="rpd-section rpd-contact-band">
             <div>
               <h2>Ready to take the next step?</h2>
-              <p>Send a private inquiry or call the admissions team directly.</p>
+              <p>
+                {showInquiry
+                  ? 'Send a private inquiry or call the admissions team directly.'
+                  : 'Call the admissions team directly.'}
+              </p>
             </div>
             <div className="rpd-contact-band-actions">
-              <a className="btn rpd-call-btn" href="#inquiry">Send inquiry</a>
+              {showInquiry && <a className="btn rpd-call-btn" href="#inquiry">Send inquiry</a>}
               {center.phone && <a className="btn rpd-secondary-btn" href={`tel:${center.phone.replace(/\D/g, '')}`}>{center.phone}</a>}
             </div>
           </section>
@@ -421,7 +505,7 @@ export default function RehabCenterDetail() {
 
         <aside className="rpd-sidebar" id="inquiry">
           <div className="rpd-sticky">
-            <InquiryForm center={center} />
+            {showInquiry && <InquiryForm center={center} />}
             <div className="rpd-side-card">
               <p className="rpd-form-eyebrow">Need a faster answer?</p>
               {center.phone ? (
@@ -452,7 +536,11 @@ export default function RehabCenterDetail() {
             <FaPhone aria-hidden="true" /> Call
           </a>
         )}
-        <a className="rpd-mobile-cta" href="#inquiry">Send inquiry</a>
+        {showInquiry ? (
+          <a className="rpd-mobile-cta" href="#inquiry">Send inquiry</a>
+        ) : center.phone ? (
+          <a className="rpd-mobile-cta" href={`tel:${center.phone.replace(/\D/g, '')}`}>Call now</a>
+        ) : null}
       </div>
     </main>
   )

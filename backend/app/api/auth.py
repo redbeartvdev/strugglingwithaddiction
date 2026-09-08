@@ -27,6 +27,7 @@ from app.schemas.auth import (
 )
 from app.config import get_settings
 from app.services.email import send_email
+from app.services.mailchimp import sync_contact
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
@@ -212,5 +213,11 @@ def register_client(body: RegisterClientRequest, db: Annotated[Session, Depends(
             "claim_for": "",
         },
         user_id=user.id,
+    )
+    sync_contact(
+        db,
+        email=user.email,
+        source="registration",
+        name=body.display_name,
     )
     return {"user_id": user.id, "message": "Registered. Complete checkout to activate."}

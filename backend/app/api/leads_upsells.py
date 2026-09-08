@@ -6,21 +6,24 @@ import io
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.core.deps import ActiveSubscriber, AdminUser, ClientUser
+from app.core.rate_limit import limiter
 from app.database import get_db
 from app.models.billing import Subscription
-from app.models.lead import CenterLead
+from app.models.lead import CenterLead, is_visitor_inquiry
 from app.models.rehab import ClaimStatus, ListingStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellFulfillment, UpsellOrder, UpsellOrderStatus, UpsellProductType
 from app.models.user import User, UserRole
 from app.schemas.rehab import RehabCenterAdmin
+from app.api.rehab_helpers import center_inquiry_form_visible
 from app.services.email import send_email
+from app.services.service_codes import sanitize_center_service_codes
 from app.services.storage import get_public_url, resolve_image_url, upload_image_as_avif
 
 router = APIRouter(tags=["leads-upsells"])
@@ -183,11 +186,36 @@ UPSELL_CATALOG = [
 
 
 class LeadCreate(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    phone: str | None = None
-    message: str = ""
-    source_url: str | None = None
+    phone: str | None = Field(default=None, max_length=40)
+    message: str = Field(min_length=1, max_length=4000)
+    source_url: str | None = Field(default=None, max_length=512)
+    hp_website: str | None = Field(default=None, max_length=200)
+    accepted_policies: bool = False
+
+    @field_validator("full_name", "phone", "message", "source_url", "hp_website", mode="before")
+    @classmethod
+    def strip_optional_text(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            text = value.strip()
+            return text or None
+        return value
+
+    @field_validator("accepted_policies")
+    @classmethod
+    def require_policy_acceptance(cls, value: Any) -> bool:
+        if value is not True:
+            raise ValueError("Please confirm you have read the Privacy Policy and Terms of Use.")
+        return True
+
+
+class InquirySubmitOut(BaseModel):
+    ok: bool = True
+    message: str = (
+        "Inquiry emailed to the treatment center. "
+        "This inquiry is not recorded in our database."
+    )
 
 
 class LeadReply(BaseModel):
@@ -225,6 +253,7 @@ class ClientCenterUpdate(BaseModel):
     specialties: list[str] | None = None
     insurances: list[str] | None = None
     levels_of_care: list[str] | None = None
+    service_codes: list[str] | None = None
     amenities: list[str] | None = None
     accreditations: list[str] | None = None
     testimonials: list[Any] | None = None
@@ -314,6 +343,19 @@ def _require_active_client_center(db: Session, user: User) -> RehabCenter:
     return center
 
 
+def _inquiry_notify_email(db: Session, center: RehabCenter) -> str | None:
+    """Use the inquiry inbox configured on the listing, then outreach, then the owner account."""
+    for candidate in (center.contact_email, center.outreach_email):
+        email = (candidate or "").strip()
+        if email:
+            return email
+    if center.owner_user_id:
+        owner = db.query(User).filter(User.id == center.owner_user_id).first()
+        if owner and owner.email:
+            return owner.email.strip()
+    return None
+
+
 def _completeness(center: RehabCenter) -> dict:
     checks = [
         bool(center.name),
@@ -325,6 +367,7 @@ def _completeness(center: RehabCenter) -> dict:
         bool(center.specialties),
         bool(center.insurances),
         bool(center.levels_of_care),
+        bool(center.service_codes),
         bool(center.amenities),
         bool(center.accreditations),
         bool(center.gallery_keys),
@@ -336,8 +379,18 @@ def _completeness(center: RehabCenter) -> dict:
     return {"filled": filled, "total": len(checks), "percent": int(round(100 * filled / len(checks)))}
 
 
-@router.post("/api/rehab-centers/{slug}/leads", response_model=LeadOut)
-def submit_lead(slug: str, body: LeadCreate, db: Annotated[Session, Depends(get_db)]):
+@router.post("/api/rehab-centers/{slug}/leads", response_model=InquirySubmitOut)
+@limiter.limit("8/hour")
+def submit_lead(request: Request, slug: str, body: LeadCreate, db: Annotated[Session, Depends(get_db)]):
+    # Honeypot: bots that fill hidden fields get a success response and no email.
+    if body.hp_website:
+        return InquirySubmitOut()
+    if body.accepted_policies is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Please confirm you have read the Privacy Policy and Terms of Use.",
+        )
+
     center = db.query(RehabCenter).filter(
         RehabCenter.slug == slug,
         RehabCenter.listing_status == ListingStatus.published,
@@ -345,82 +398,43 @@ def submit_lead(slug: str, body: LeadCreate, db: Annotated[Session, Depends(get_
     ).first()
     if not center:
         raise HTTPException(status_code=404, detail="Center not found")
-    lead = CenterLead(
-        rehab_center_id=center.id,
-        full_name=body.full_name,
-        email=body.email.lower(),
-        phone=body.phone,
-        message=body.message or "",
-        source_url=body.source_url,
-    )
-    db.add(lead)
-    db.commit()
-    db.refresh(lead)
+    if not center_inquiry_form_visible(db, center):
+        raise HTTPException(status_code=403, detail="This listing is not accepting online inquiries right now.")
 
-    notify = center.contact_email or center.outreach_email
-    if center.owner_user_id:
-        owner = db.query(User).filter(User.id == center.owner_user_id).first()
-        if owner:
-            notify = owner.email
-    if notify:
-        send_email(
-            db,
-            to_email=notify,
-            template_key="new_lead_alert",
-            context={
-                "center_name": center.name,
-                "lead_name": lead.full_name,
-                "lead_email": lead.email,
-                "lead_phone": lead.phone or "",
-                "lead_message": lead.message,
-                "source_url": lead.source_url or "",
-                "inbox_url": f"{settings.admin_site_url}/client/leads",
-            },
-            user_id=center.owner_user_id,
-            rehab_center_id=center.id,
+    notify = _inquiry_notify_email(db, center)
+    if not notify:
+        raise HTTPException(
+            status_code=503,
+            detail="This listing is not accepting online inquiries right now.",
         )
 
-    return LeadOut(
-        id=lead.id,
-        full_name=lead.full_name,
-        email=lead.email,
-        phone=lead.phone,
-        message=lead.message,
-        source_url=lead.source_url,
-        read_at=lead.read_at,
-        created_at=lead.created_at,
-        center_name=center.name,
+    sent = send_email(
+        db,
+        to_email=notify,
+        template_key="new_lead_alert",
+        context={
+            "center_name": center.name,
+            "lead_name": body.full_name,
+            "lead_email": str(body.email).lower(),
+            "lead_phone": body.phone or "",
+            "lead_message": body.message or "",
+            "source_url": body.source_url or "",
+        },
+        user_id=center.owner_user_id,
+        rehab_center_id=center.id,
+        respect_preferences=False,
+        reply_to=str(body.email).lower(),
+        meta={"redacted": True, "center_name": center.name, "reason": "inquiry_not_stored"},
     )
+    if not sent:
+        raise HTTPException(status_code=502, detail="Could not deliver this inquiry. Please try again or call the center.")
+
+    return InquirySubmitOut()
 
 
 @router.get("/api/client/leads", response_model=list[LeadOut])
-def list_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(get_db)]):
-    center = _client_center(db, user)
-    if not center:
-        return []
-    leads = (
-        db.query(CenterLead)
-        .filter(
-            CenterLead.rehab_center_id == center.id,
-            (CenterLead.tag.is_(None)) | (CenterLead.tag != "abandonment"),
-        )
-        .order_by(CenterLead.created_at.desc())
-        .all()
-    )
-    return [
-        LeadOut(
-            id=l.id,
-            full_name=l.full_name,
-            email=l.email,
-            phone=l.phone,
-            message=l.message,
-            source_url=l.source_url,
-            read_at=l.read_at,
-            created_at=l.created_at,
-            center_name=center.name,
-        )
-        for l in leads
-    ]
+def list_client_leads(_: ActiveSubscriber, db: Annotated[Session, Depends(get_db)]):
+    return []
 
 
 @router.patch("/api/client/leads/{lead_id}/read", response_model=LeadOut)
@@ -429,7 +443,7 @@ def mark_lead_read(lead_id: int, user: ActiveSubscriber, db: Annotated[Session, 
     if not center:
         raise HTTPException(status_code=404, detail="No center")
     lead = db.query(CenterLead).filter(CenterLead.id == lead_id, CenterLead.rehab_center_id == center.id).first()
-    if not lead:
+    if not lead or is_visitor_inquiry(lead):
         raise HTTPException(status_code=404, detail="Lead not found")
     lead.read_at = datetime.now(timezone.utc)
     db.commit()
@@ -456,7 +470,7 @@ def reply_to_lead(
 ):
     center = _require_active_client_center(db, user)
     lead = db.query(CenterLead).filter(CenterLead.id == lead_id, CenterLead.rehab_center_id == center.id).first()
-    if not lead:
+    if not lead or is_visitor_inquiry(lead):
         raise HTTPException(status_code=404, detail="Lead not found")
     send_email(
         db,
@@ -478,7 +492,7 @@ def export_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(g
         db.query(CenterLead)
         .filter(
             CenterLead.rehab_center_id == center.id,
-            (CenterLead.tag.is_(None)) | (CenterLead.tag != "abandonment"),
+            CenterLead.tag == "abandonment",
         )
         .order_by(CenterLead.created_at.desc())
         .all()
@@ -499,6 +513,8 @@ def export_client_leads(user: ActiveSubscriber, db: Annotated[Session, Depends(g
 def update_my_center(body: ClientCenterUpdate, user: ClientUser, db: Annotated[Session, Depends(get_db)]):
     center = _require_active_client_center(db, user)
     data = body.model_dump(exclude_unset=True)
+    if "service_codes" in data:
+        data["service_codes"] = sanitize_center_service_codes(db, data.get("service_codes"))
     for k, v in data.items():
         setattr(center, k, v)
     if any(k in data for k in ("city", "state", "address_line")):
@@ -604,6 +620,7 @@ def get_my_center_enriched(user: ClientUser, db: Annotated[Session, Depends(get_
     out["verified_badge"] = bool(center.verified_badge)
     out["featured_active"] = _featured_active(center)
     out["featured_until"] = center.featured_until.isoformat() if center.featured_until else None
+    out["needs_inquiry_setup"] = bool(center.claimed) and not (center.contact_email or "").strip()
     return out
 
 
@@ -820,7 +837,10 @@ def admin_list_leads(
     db: Annotated[Session, Depends(get_db)],
     rehab_center_id: int | None = None,
 ):
-    q = db.query(CenterLead)
+    q = db.query(CenterLead).filter(
+        (CenterLead.tag == "abandonment")
+        | (CenterLead.source_kind.in_(("claim_abandonment", "submit_abandonment")))
+    )
     if rehab_center_id:
         q = q.filter(CenterLead.rehab_center_id == rehab_center_id)
     leads = q.order_by(CenterLead.created_at.desc()).limit(300).all()
@@ -840,6 +860,7 @@ def admin_list_leads(
             "center_name": lead.center_name or (lead.center.name if lead.center else None),
         }
         for lead in leads
+        if not is_visitor_inquiry(lead)
     ]
 
 

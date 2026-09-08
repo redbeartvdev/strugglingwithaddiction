@@ -1,0 +1,48 @@
+.import-progress {
+  margin-top: 14px;
+}
+
+.import-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+.import-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-blue-mid), var(--brand-blue));
+  transition: width 0.25s ease-out;
+}
+
+.import-progress.is-error .import-progress-fill {
+  background: var(--brand-red);
+}
+
+.import-progress.is-done .import-progress-fill {
+  background: var(--aa-success);
+}
+
+.import-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.import-progress-label {
+  color: var(--fg-1);
+}
+
+.import-progress-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.import-progress-counts {
+  margin-top: 6px;
+}

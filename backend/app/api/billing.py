@@ -19,6 +19,7 @@ from app.models.profile import UserProfile
 from app.models.rehab import ClaimStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellOrder, UpsellOrderStatus
 from app.models.user import User, UserRole
+from app.services.mailchimp import sync_contact
 from app.schemas.billing import (
     BillingInvoiceOut,
     CheckoutRequest,
@@ -304,6 +305,12 @@ def register_and_checkout(body: RegisterBillingRequest, db: Annotated[Session, D
     sub_row.plan_id = plan.id if plan else None
     sub_row.interval = interval
     db.commit()
+    sync_contact(
+        db,
+        email=email,
+        source="registration",
+        name=body.display_name,
+    )
     return {"checkout_url": session.url, "user_id": user.id}
 
 

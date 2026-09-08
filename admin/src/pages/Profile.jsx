@@ -173,7 +173,7 @@ export default function ProfilePage() {
         <p className="eyebrow">Notifications</p>
         <div className="form-stack" style={{ gap: 8 }}>
           {[
-            ['lead_alerts', 'New lead alerts'],
+            ['lead_alerts', 'Marketing lead alerts (listing inquiries are always emailed and cannot be turned off)'],
             ['billing_alerts', 'Billing, dunning, and cancellation alerts'],
             ['renewal_reminders', 'Renewal reminders'],
             ['product_updates', 'Directory product updates'],

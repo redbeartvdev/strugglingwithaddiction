@@ -6,6 +6,18 @@ This document is **copy only** for review. Placeholders use `{variable}` syntax 
 
 HTML wrapping (logo header, social footer) is shared across all templates and is not listed here.
 
+## Voice & style
+
+Apply to every template:
+
+- Sound like a person, not a system. Contractions are fine ("you're," "we've," "don't"). Short sentences. No corporate throat-clearing.
+- Warm, not cutesy. Skip exclamation points, emojis, and forced enthusiasm.
+- Say the useful thing first. Lead with what happened or what's needed, not a greeting-then-preamble.
+- Consumer emails (auth, claim intros, leads) can be the warmest — plain, human, a little reassuring.
+- Provider/billing emails stay warm but more direct.
+- Internal admin alerts stay functional — scannable, no personality overhead, but not robotic.
+- Every functional detail (links, codes, expiry windows, amounts, dates) is preserved exactly.
+
 ---
 
 ## Auth
@@ -17,7 +29,7 @@ Welcome a new client account and point them to next steps.
 **Subject**
 
 ```
-Your Struggling With Addiction account is ready
+You're in — let's get {name} set up
 ```
 
 **Body**
@@ -25,11 +37,14 @@ Your Struggling With Addiction account is ready
 ```
 Hi {name},
 
-Your account ({email}) is set up{claim_for}.
+Your account ({email}) is ready to go{claim_for}.
 
 Sign in here: {login_url}
 
-If you started a listing claim, continue verification from your claim status page.
+If you started a listing claim, pick up right where you left off from your claim status page.
+
+Glad you're here.
+— Struggling With Addiction
 ```
 
 **Placeholders:** `{name}`, `{email}`, `{claim_for}`, `{login_url}`
@@ -43,7 +58,7 @@ Confirm a new or changed account email address.
 **Subject**
 
 ```
-Confirm your email address
+Quick thing — confirm your email
 ```
 
 **Body**
@@ -51,10 +66,10 @@ Confirm your email address
 ```
 Hi {name},
 
-Confirm your email address to secure your account:
+One quick step to lock in your account. Confirm your email here:
 {confirmation_url}
 
-This link expires in one hour.
+Heads up: this link is only good for one hour.
 ```
 
 **Placeholders:** `{name}`, `{confirmation_url}`
@@ -68,7 +83,7 @@ Secure link to set a new account password.
 **Subject**
 
 ```
-Reset your password
+Let's get you a new password
 ```
 
 **Body**
@@ -76,10 +91,10 @@ Reset your password
 ```
 Hi {name},
 
-Use this secure link to set a new password:
+Here's your secure link to set a new password:
 {reset_url}
 
-If you did not request this, ignore this email.
+Didn't request this? No action needed — just ignore this email.
 ```
 
 **Placeholders:** `{name}`, `{reset_url}`
@@ -93,7 +108,7 @@ Security notice after a successful password change.
 **Subject**
 
 ```
-Your password was changed
+Your password was just changed
 ```
 
 **Body**
@@ -101,11 +116,12 @@ Your password was changed
 ```
 Hi {name},
 
-Your Struggling With Addiction password was just updated.
+Just confirming — your Struggling With Addiction password was updated a moment ago.
 
-If this was you, no further action is needed.
-If you did not change your password, reset it immediately: {reset_url}
-Support: {support_email}
+If that was you, you're all set, nothing else to do.
+
+If it wasn't, reset it right away here: {reset_url}
+Or reach us directly: {support_email}
 ```
 
 **Placeholders:** `{name}`, `{reset_url}`, `{support_email}`
@@ -119,7 +135,7 @@ Invite a new platform administrator to set a password.
 **Subject**
 
 ```
-You have been invited as a Struggling With Addiction superadmin
+You've been invited to help run Struggling With Addiction
 ```
 
 **Body**
@@ -127,15 +143,15 @@ You have been invited as a Struggling With Addiction superadmin
 ```
 Hi {name},
 
-{invited_by} invited you to administer the Struggling With Addiction platform.
+{invited_by} just invited you on as a superadmin for Struggling With Addiction.
 
-Set your password using this secure link:
+Set your password here to get started:
 {reset_url}
 
-After setting your password, sign in here:
+Once that's done, sign in here:
 {login_url}
 
-This invitation link expires in 24 hours. If you were not expecting this invitation, ignore this email.
+This invite link is active for 24 hours. If this wasn't meant for you, feel free to ignore it.
 ```
 
 **Placeholders:** `{name}`, `{invited_by}`, `{reset_url}`, `{login_url}`
@@ -151,7 +167,7 @@ Invite an unclaimed center to claim their directory listing.
 **Subject**
 
 ```
-Your center is listed on Struggling With Addiction — claim it today
+Your facility is already listed — come claim it
 ```
 
 **Body**
@@ -159,14 +175,15 @@ Your center is listed on Struggling With Addiction — claim it today
 ```
 Hi,
 
-Your facility appears in our directory at {listing_url}.
+Your facility already has a page on our directory: {listing_url}
 
-Claim your listing to manage your profile and receive visitor inquiries:
+Claim it and you'll be able to manage your profile directly and hear from people reaching out to you:
 {claim_url}
 
 — {site_name}
 {postal_address}
-Unsubscribe: {unsubscribe_url}
+
+Don't want these emails? Unsubscribe here: {unsubscribe_url}
 ```
 
 **Placeholders:** `{listing_url}`, `{claim_url}`, `{site_name}`, `{postal_address}`, `{unsubscribe_url}`
@@ -186,7 +203,7 @@ New claim started — {center_name}
 **Body**
 
 ```
-A new listing claim was started.
+New listing claim just came in.
 
 Center: {center_name}
 Ticket: {ticket}
@@ -215,7 +232,7 @@ New center submission — {center_name}
 **Body**
 
 ```
-A facility asked to be added to the directory.
+Someone asked to add a facility to the directory.
 
 Submission #{submission_id}
 Center: {center_name}
@@ -243,7 +260,7 @@ Confirm to the submitter that we received their facility.
 **Subject**
 
 ```
-We received your facility submission
+Got it — thanks for adding {center_name}
 ```
 
 **Body**
@@ -251,7 +268,7 @@ We received your facility submission
 ```
 Hi {name},
 
-Thanks for submitting {center_name}. Our team will review the details and follow up if we need anything else.
+Thanks for submitting {center_name}. Our team's going to take a look, and we'll follow up if we need anything more from you.
 
 — {site_name}
 ```
@@ -267,7 +284,7 @@ Notify the submitter that their facility was accepted.
 **Subject**
 
 ```
-Your facility submission was accepted — {center_name}
+Good news — {center_name} is officially listed
 ```
 
 **Body**
@@ -275,11 +292,11 @@ Your facility submission was accepted — {center_name}
 ```
 Hi {name},
 
-Good news — we accepted your submission for {center_name}.
+We reviewed your submission and {center_name} is officially on the directory.
 
 {admin_notes}
 
-Provider login: {login_url}
+You can log in and start managing the listing here: {login_url}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{admin_notes}`, `{login_url}`
@@ -293,7 +310,7 @@ Notify the submitter that their facility was not accepted.
 **Subject**
 
 ```
-Update on your facility submission — {center_name}
+Update on your submission for {center_name}
 ```
 
 **Body**
@@ -301,11 +318,11 @@ Update on your facility submission — {center_name}
 ```
 Hi {name},
 
-We were unable to accept the submission for {center_name} at this time.
+We weren't able to accept {center_name} to the directory at this time.
 
 {admin_notes}
 
-Questions? Contact {support_email}
+Questions about this? Reach us at {support_email} — happy to walk through it.
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{admin_notes}`, `{support_email}`
@@ -319,7 +336,7 @@ Ask a claimant to upload rehab certification.
 **Subject**
 
 ```
-Subscribe, then upload certification for {center_name}
+One more step to verify {center_name}
 ```
 
 **Body**
@@ -327,12 +344,12 @@ Subscribe, then upload certification for {center_name}
 ```
 Hi {name},
 
-We received your claim for {center_name} (ticket {ticket}).
+We've got your claim for {center_name} (ticket {ticket}) — here's what's left:
 
-1. Choose a monthly or yearly plan at: {claim_url}
+1. Choose a monthly or yearly plan: {claim_url}
 2. After payment, upload your state license or accreditation certificate.
 
-Your listing unlocks after admin verification.
+Once an admin reviews it, your listing unlocks.
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{ticket}`, `{claim_url}`
@@ -346,7 +363,7 @@ Confirm to the claimant that their claim and certification were received.
 **Subject**
 
 ```
-Your claim for {center_name} is pending admin verification
+We've got your paperwork for {center_name}
 ```
 
 **Body**
@@ -354,14 +371,12 @@ Your claim for {center_name} is pending admin verification
 ```
 Hi {name},
 
-We received your proof for {center_name} (ticket {ticket}).
+Your certification for {center_name} (ticket {ticket}) is in and waiting on an admin to verify it. Your claim is already submitted — there's nothing more to do on your end right now.
 
-Your claim is already submitted and is waiting for an admin to verify your certification. Please wait — you cannot finish claiming the listing until verification is complete.
-
-Track your claim status here:
+Track where things stand here:
 {claim_url}
 
-We will email you again once an admin verifies (or rejects) your claim.
+We'll email you as soon as it's reviewed.
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{ticket}`, `{claim_url}`
@@ -381,7 +396,7 @@ Certification uploaded — review claim {ticket}
 **Body**
 
 ```
-Certification was uploaded for review.
+A certification just came in for review.
 
 Center: {center_name}
 Ticket: {ticket}
@@ -401,7 +416,7 @@ Tell the claimant they are verified and can subscribe.
 **Subject**
 
 ```
-You're verified — subscribe to claim {center_name}
+You're verified — let's finish claiming {center_name}
 ```
 
 **Body**
@@ -409,9 +424,9 @@ You're verified — subscribe to claim {center_name}
 ```
 Hi {name},
 
-Your certification for {center_name} is verified (ticket {ticket}).
+Good news — your certification for {center_name} checked out (ticket {ticket}).
 
-Choose a plan to finish claiming your listing:
+Pick a plan to finish claiming your listing:
 {billing_url}
 
 Claim status: {claim_url}
@@ -436,11 +451,11 @@ Update on your claim for {center_name}
 ```
 Hi {name},
 
-Your claim for {center_name} (ticket {ticket}) was not approved.
+Your claim for {center_name} (ticket {ticket}) wasn't approved.
 
 {admin_notes}
 
-Questions? Contact support: {support_email}
+If you have questions, our team's here: {support_email}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{ticket}`, `{admin_notes}`, `{support_email}`
@@ -454,7 +469,7 @@ Day 1 or day 2 nudge with a link to continue an unfinished claim.
 **Subject**
 
 ```
-Finish claiming {center_name}
+You're almost done claiming {center_name}
 ```
 
 **Body**
@@ -462,9 +477,9 @@ Finish claiming {center_name}
 ```
 Hi {name},
 
-You started a claim for {center_name} but did not finish (reminder day {day} of 2).
+You started claiming {center_name} but didn't quite finish (reminder {day} of 2).
 
-Return and continue here:
+Pick it back up here:
 {continue_url}
 ```
 
@@ -479,7 +494,7 @@ Day 1 or day 2 nudge with a link to continue an unfinished center submission.
 **Subject**
 
 ```
-Finish adding {center_name}
+Still want to add {center_name}?
 ```
 
 **Body**
@@ -487,9 +502,9 @@ Finish adding {center_name}
 ```
 Hi {name},
 
-You started adding {center_name} to our directory but did not finish (reminder day {day} of 2).
+You started adding {center_name} to our directory but didn't get to finish (reminder {day} of 2).
 
-Return and continue here:
+Jump back in here:
 {continue_url}
 ```
 
@@ -504,7 +519,7 @@ Email backup of the facility phone ownership code.
 **Subject**
 
 ```
-Your facility phone verification code
+Your verification code for {center_name}
 ```
 
 **Body**
@@ -512,11 +527,11 @@ Your facility phone verification code
 ```
 Hi {name},
 
-Your verification code for claiming {center_name} is:
+Here's your verification code for claiming {center_name}:
 
 {otp_code}
 
-This code expires in 15 minutes. Enter it on your claim status page:
+It's good for 15 minutes. Enter it on your claim status page:
 {claim_url}
 ```
 
@@ -533,7 +548,7 @@ Sent after a listing is claimed and payment succeeds.
 **Subject**
 
 ```
-Welcome — your listing is claimed
+Welcome aboard — {center_name} is officially yours
 ```
 
 **Body**
@@ -541,14 +556,15 @@ Welcome — your listing is claimed
 ```
 Hi {name},
 
-Payment received. Your listing {center_name} is now claimed.
+Payment's through and {center_name} is now officially claimed. Welcome to Struggling With Addiction.
 
 One-click login: {login_url}
-Getting started checklist: complete your profile, add media, services, insurances, and levels of care.
+
+A few things worth doing first: fill out your profile, add photos, and list your services, insurances, and levels of care. It's the fastest way to show up well to people searching.
 
 Billing portal: {billing_url}
 Receipt: {receipt_url}
-Support: {support_email}
+Need anything? {support_email}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{login_url}`, `{billing_url}`, `{receipt_url}`, `{support_email}`
@@ -562,7 +578,7 @@ Receipt after a successful Stripe subscription payment.
 **Subject**
 
 ```
-Receipt for your Struggling With Addiction subscription
+Your receipt from Struggling With Addiction
 ```
 
 **Body**
@@ -570,7 +586,7 @@ Receipt for your Struggling With Addiction subscription
 ```
 Hi {name},
 
-Thanks for your payment of {amount} for {center_name}.
+Thanks — we received your payment of {amount} for {center_name}.
 
 View receipt: {receipt_url}
 Manage billing: {billing_url}
@@ -587,7 +603,7 @@ Confirm a successful recurring renewal charge.
 **Subject**
 
 ```
-Your subscription renewed successfully
+You're all set — {center_name} renewed
 ```
 
 **Body**
@@ -595,7 +611,7 @@ Your subscription renewed successfully
 ```
 Hi {name},
 
-We successfully renewed your subscription for {center_name}.
+Your subscription for {center_name} renewed without a hitch.
 
 Amount: {amount}
 Next renewal: {renewal_date}
@@ -614,7 +630,7 @@ Remind a subscriber that their card will be charged soon.
 **Subject**
 
 ```
-Your subscription renews in {days_left} day(s)
+Heads up — {center_name} renews in {days_left} day(s)
 ```
 
 **Body**
@@ -622,7 +638,7 @@ Your subscription renews in {days_left} day(s)
 ```
 Hi {name},
 
-Your subscription for {center_name} renews on {renewal_date} (about {days_left} day(s) from now).
+Just a heads up: your subscription for {center_name} renews on {renewal_date}, about {days_left} day(s) from now.
 
 Manage billing: {billing_url}
 ```
@@ -638,7 +654,7 @@ Ask the subscriber to update their card after a failed renewal.
 **Subject**
 
 ```
-Update payment before your listing downgrades
+We couldn't process your payment for {center_name}
 ```
 
 **Body**
@@ -646,9 +662,10 @@ Update payment before your listing downgrades
 ```
 Hi {name},
 
-We could not renew your subscription for {center_name}.
+We ran into a problem renewing your subscription for {center_name} — the charge didn't go through.
 
-Update your card here before access ends: {billing_url}
+Update your card here before your listing loses access to paid features:
+{billing_url}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{billing_url}`
@@ -662,7 +679,7 @@ Confirm subscription cancellation and access end date.
 **Subject**
 
 ```
-Your subscription cancellation is confirmed
+Your cancellation for {center_name} is confirmed
 ```
 
 **Body**
@@ -670,10 +687,11 @@ Your subscription cancellation is confirmed
 ```
 Hi {name},
 
-Your subscription for {center_name} will end on {access_end}.
+Confirming your subscription for {center_name} is set to end on {access_end}.
 
-Until then you keep full access. After that the listing reverts to the basic view.
-Resubscribe anytime: {billing_url}
+You'll keep full access until then. After that, the listing goes back to the basic view.
+
+Change your mind? You can resubscribe anytime: {billing_url}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{access_end}`, `{billing_url}`
@@ -687,7 +705,7 @@ Confirm that paid listing access has ended.
 **Subject**
 
 ```
-Your paid listing access has ended
+Paid access for {center_name} has ended
 ```
 
 **Body**
@@ -695,10 +713,9 @@ Your paid listing access has ended
 ```
 Hi {name},
 
-Paid access for {center_name} has ended and the listing is back on the basic view.
+Your paid access for {center_name} has wrapped up, and the listing is back on the basic view for now.
 
-Resubscribe anytime to restore your full profile and dashboard:
-{billing_url}
+Whenever you're ready, resubscribing restores your full profile and dashboard: {billing_url}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{billing_url}`
@@ -712,7 +729,7 @@ Invite a downgraded center to resubscribe.
 **Subject**
 
 ```
-Resubscribe — everything restores instantly
+{center_name}'s full listing is one click away
 ```
 
 **Body**
@@ -720,9 +737,9 @@ Resubscribe — everything restores instantly
 ```
 Hi {name},
 
-Your listing {center_name} is back on the basic view.
+{center_name} is currently on the basic view. Resubscribe and everything comes back instantly — full profile, dashboard, the works.
 
-Resubscribe to restore your full profile and dashboard: {billing_url}
+{billing_url}
 ```
 
 **Placeholders:** `{name}`, `{center_name}`, `{billing_url}`
@@ -733,18 +750,18 @@ Resubscribe to restore your full profile and dashboard: {billing_url}
 
 ### `new_lead_alert` — New lead alert
 
-Notify a provider when a visitor submits an inquiry.
+Email a listing inquiry to the center’s assigned address. Inquiries are not stored in our database.
 
 **Subject**
 
 ```
-New inquiry for {center_name}
+Someone reached out about {center_name}
 ```
 
 **Body**
 
 ```
-You have a new lead.
+You've got a new inquiry. Reply directly to this email to reach the visitor.
 
 Name: {lead_name}
 Email: {lead_email}
@@ -752,11 +769,12 @@ Phone: {lead_phone}
 Message:
 {lead_message}
 
-Source: {source_url}
-Open inbox: {inbox_url}
+Listing: {source_url}
+
+This inquiry was emailed to you and is not stored in the Struggling With Addiction database.
 ```
 
-**Placeholders:** `{center_name}`, `{lead_name}`, `{lead_email}`, `{lead_phone}`, `{lead_message}`, `{source_url}`, `{inbox_url}`
+**Placeholders:** `{center_name}`, `{lead_name}`, `{lead_email}`, `{lead_phone}`, `{lead_message}`, `{source_url}`
 
 ---
 
@@ -767,7 +785,7 @@ Forward a provider reply to the visitor who inquired.
 **Subject**
 
 ```
-{center_name} replied to your inquiry
+{center_name} just replied to you
 ```
 
 **Body**
@@ -791,7 +809,7 @@ Confirm that listing updates are live on the public site.
 **Subject**
 
 ```
-Your listing changes are live
+Your updates for {center_name} are live
 ```
 
 **Body**
@@ -799,7 +817,7 @@ Your listing changes are live
 ```
 Hi {name},
 
-Updates to {center_name} are now published:
+Good news — your changes to {center_name} are published and visible now:
 {listing_url}
 ```
 
@@ -824,10 +842,10 @@ Receipt — {product_label}
 ```
 Hi {name},
 
-Thanks for purchasing {product_label} for {center_name}.
+Thanks for picking up {product_label} for {center_name}.
 
 Amount: {amount}
-Order id: {order_id}
+Order ID: {order_id}
 
 Manage your listing: {login_url}
 Billing: {billing_url}
@@ -844,7 +862,7 @@ Notify the client that a human-fulfilled upsell is complete.
 **Subject**
 
 ```
-Your {product_label} is ready
+{product_label} is ready for {center_name}
 ```
 
 **Body**
@@ -852,7 +870,7 @@ Your {product_label} is ready
 ```
 Hi {name},
 
-Great news — {product_label} for {center_name} is complete.
+Good news — {product_label} for {center_name} is done and live.
 
 View your listing: {listing_url}
 Dashboard: {login_url}
@@ -869,15 +887,15 @@ Internal alert when a human-closed upsell interest is captured.
 **Subject**
 
 ```
-Hot content upsell lead — {product_label}
+Hot upsell lead — {product_label}
 ```
 
 **Body**
 
 ```
 Internal alert: {name} ({email}) purchased interest in {product_label} for {center_name}.
-Order id: {order_id}
-Route to senior / PJ to close.
+Order ID: {order_id}
+Route to senior team / PJ to close.
 ```
 
 **Placeholders:** `{name}`, `{email}`, `{product_label}`, `{center_name}`, `{order_id}`
@@ -893,7 +911,7 @@ Occasional directory product and feature updates.
 **Subject**
 
 ```
-What's new in the directory
+What's new around here
 ```
 
 **Body**
@@ -901,11 +919,11 @@ What's new in the directory
 ```
 Hi {name},
 
-Here's a quick update from {site_name}.
+A quick update from {site_name}.
 
 {product_update_body}
 
-Explore your dashboard: {login_url}
+See it in your dashboard: {login_url}
 ```
 
 **Placeholders:** `{name}`, `{site_name}`, `{product_update_body}`, `{login_url}`

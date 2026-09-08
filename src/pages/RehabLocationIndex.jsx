@@ -10,7 +10,10 @@ export default function RehabLocationIndex() {
   useEffect(() => {
     if (!apiEnabled()) return
     const query = new URLSearchParams({ state, ...(city ? { city } : {}) })
-    fetchApi(`/api/rehab-centers?${query}`).then(setCenters).catch(() => setCenters([]))
+    query.set('per_page', '100')
+    fetchApi(`/api/rehab-centers?${query}`)
+      .then((data) => setCenters(Array.isArray(data) ? data : (data?.items || [])))
+      .catch(() => setCenters([]))
   }, [state, city])
   return <main className="container" style={{ maxWidth: 960, padding: '3rem 1rem' }}>
     <p><Link to="/rehab-centers">All rehab centers</Link></p>

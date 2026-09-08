@@ -27,6 +27,11 @@ class PlatformEmailSettings(Base, TimestampMixin):
     social_youtube: Mapped[str | None] = mapped_column(String(512), nullable=True)
     social_instagram: Mapped[str | None] = mapped_column(String(512), nullable=True)
     social_linkedin: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    mailchimp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    mailchimp_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mailchimp_audience_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    abandonment_emails_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    inquiry_forms_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class PlatformStripeSettings(Base, TimestampMixin):

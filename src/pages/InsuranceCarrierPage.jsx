@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { fetchApi, apiEnabled } from '../lib/api'
 import { usePageSeo } from '../hooks/usePageSeo'
 import { buildRehabDirectoryUrl } from '../lib/rehabServices'
-import { detectVisitorLocation } from '../lib/geo'
+import { detectVisitorLocation, shouldAutoApplyVisitorLocation } from '../lib/geo'
 import { INSURANCE_GUIDES } from '../data/insuranceGuides'
 import {
   getInsuranceCarrierContent,
@@ -126,7 +126,7 @@ export default function InsuranceCarrierPage() {
         </section>
         <section className="icov-section icov-section--directory">
           <div className="container">
-            <CarrierFacilitiesModule insuranceName={catalog.name} state={geo.state} />
+            <CarrierFacilitiesModule insuranceName={catalog.name} state={shouldAutoApplyVisitorLocation() ? geo.state : ''} />
           </div>
         </section>
       </main>
@@ -135,7 +135,7 @@ export default function InsuranceCarrierPage() {
 
   const directoryUrl = buildRehabDirectoryUrl({
     insurance: content.directoryName,
-    state: geo.state || undefined,
+    state: shouldAutoApplyVisitorLocation() ? (geo.state || undefined) : undefined,
   })
   const logoUrl = catalog?.logo_url || content.logoUrl
   const commonFaqs = [
@@ -346,7 +346,7 @@ export default function InsuranceCarrierPage() {
 
       <section className="icov-section icov-section--directory">
         <div className="container">
-          <CarrierFacilitiesModule insuranceName={content.directoryName} state={geo.state} />
+          <CarrierFacilitiesModule insuranceName={content.directoryName} state={shouldAutoApplyVisitorLocation() ? geo.state : ''} />
         </div>
       </section>
 

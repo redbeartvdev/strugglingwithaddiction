@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.deps import ActiveSubscriber, AdminUser
 from app.database import get_db
 from app.models.analytics import CenterPageView, SitePageView
-from app.models.lead import CenterLead
+from app.models.lead import CenterLead, is_visitor_inquiry
 from app.models.rehab import ListingStatus, RehabCenter
 
 router = APIRouter(tags=["analytics"])
@@ -175,7 +175,7 @@ def _query_center_views_leads(
         .order_by(CenterLead.created_at.asc())
         .all()
     )
-    return views, leads
+    return views, [lead for lead in leads if not is_visitor_inquiry(lead)]
 
 
 def _analytics_payload_for_center(
@@ -340,12 +340,16 @@ def admin_analytics(
         .order_by(CenterPageView.visited_at.asc())
         .all()
     )
-    leads = (
-        db.query(CenterLead)
-        .filter(CenterLead.created_at >= start, CenterLead.created_at <= end)
-        .order_by(CenterLead.created_at.asc())
-        .all()
-    )
+    leads = [
+        lead
+        for lead in (
+            db.query(CenterLead)
+            .filter(CenterLead.created_at >= start, CenterLead.created_at <= end)
+            .order_by(CenterLead.created_at.asc())
+            .all()
+        )
+        if not is_visitor_inquiry(lead)
+    ]
 
     unique_sessions = len({v.session_key for v in site_views if v.session_key})
     state_counts = Counter((v.visitor_state or "Unknown") for v in site_views)

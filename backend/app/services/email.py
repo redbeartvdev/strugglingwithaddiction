@@ -118,12 +118,12 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
     },
     "claim_abandon_reminder": {
         "label": "Claim abandon reminder",
-        "description": "Day 1 or day 2 nudge with a link to continue an unfinished claim.",
+        "description": "Day 1 or day 2 nudge with a link to continue an unfinished claim. Can be disabled and routed to Mailchimp.",
         "category": "claim",
     },
     "submit_abandon_reminder": {
         "label": "Submit-center abandon reminder",
-        "description": "Day 1 or day 2 nudge with a link to continue an unfinished center submission.",
+        "description": "Day 1 or day 2 nudge with a link to continue an unfinished center submission. Can be disabled and routed to Mailchimp.",
         "category": "claim",
     },
     "phone_callback_code": {
@@ -173,7 +173,7 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
     },
     "new_lead_alert": {
         "label": "New lead alert",
-        "description": "Notify a provider when a visitor submits an inquiry.",
+        "description": "Email a listing inquiry to the center. Inquiries are not stored in our database.",
         "category": "leads",
     },
     "lead_reply": {
@@ -210,50 +210,54 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
 
 DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
     "account_created": (
-        "Your Struggling With Addiction account is ready",
-        "Hi {name},\n\nYour account ({email}) is set up{claim_for}.\n\n"
+        "You're in — let's get {name} set up",
+        "Hi {name},\n\nYour account ({email}) is ready to go{claim_for}.\n\n"
         "Sign in here: {login_url}\n\n"
-        "If you started a listing claim, continue verification from your claim status page.\n",
+        "If you started a listing claim, pick up right where you left off from your claim status page.\n\n"
+        "Glad you're here.\n— Struggling With Addiction\n",
     ),
     "email_confirmation": (
-        "Confirm your email address",
-        "Hi {name},\n\nConfirm your email address to secure your account:\n{confirmation_url}\n\n"
-        "This link expires in one hour.\n",
+        "Quick thing — confirm your email",
+        "Hi {name},\n\nOne quick step to lock in your account. Confirm your email here:\n"
+        "{confirmation_url}\n\n"
+        "Heads up: this link is only good for one hour.\n",
     ),
     "password_reset": (
-        "Reset your password",
-        "Hi {name},\n\nUse this secure link to set a new password:\n{reset_url}\n\n"
-        "If you did not request this, ignore this email.\n",
+        "Let's get you a new password",
+        "Hi {name},\n\nHere's your secure link to set a new password:\n{reset_url}\n\n"
+        "Didn't request this? No action needed — just ignore this email.\n",
     ),
     "password_changed": (
-        "Your password was changed",
-        "Hi {name},\n\nYour Struggling With Addiction password was just updated.\n\n"
-        "If this was you, no further action is needed.\n"
-        "If you did not change your password, reset it immediately: {reset_url}\n"
-        "Support: {support_email}\n",
+        "Your password was just changed",
+        "Hi {name},\n\nJust confirming — your Struggling With Addiction password was updated a moment ago.\n\n"
+        "If that was you, you're all set, nothing else to do.\n\n"
+        "If it wasn't, reset it right away here: {reset_url}\n"
+        "Or reach us directly: {support_email}\n",
     ),
     "admin_invite": (
-        "You have been invited as a Struggling With Addiction superadmin",
-        "Hi {name},\n\n{invited_by} invited you to administer the Struggling With Addiction platform.\n\n"
-        "Set your password using this secure link:\n{reset_url}\n\n"
-        "After setting your password, sign in here:\n{login_url}\n\n"
-        "This invitation link expires in 24 hours. If you were not expecting this invitation, ignore this email.\n",
+        "You've been invited to help run Struggling With Addiction",
+        "Hi {name},\n\n{invited_by} just invited you on as a superadmin for Struggling With Addiction.\n\n"
+        "Set your password here to get started:\n{reset_url}\n\n"
+        "Once that's done, sign in here:\n{login_url}\n\n"
+        "This invite link is active for 24 hours. If this wasn't meant for you, feel free to ignore it.\n",
     ),
     "outreach_invite": (
-        "Your center is listed on Struggling With Addiction — claim it today",
-        "Hi,\n\nYour facility appears in our directory at {listing_url}.\n\n"
-        "Claim your listing to manage your profile and receive visitor inquiries:\n{claim_url}\n\n"
-        "— {site_name}\n{postal_address}\nUnsubscribe: {unsubscribe_url}\n",
+        "Your facility is already listed — come claim it",
+        "Hi,\n\nYour facility already has a page on our directory: {listing_url}\n\n"
+        "Claim it and you'll be able to manage your profile directly and hear from people reaching out to you:\n"
+        "{claim_url}\n\n"
+        "— {site_name}\n{postal_address}\n\n"
+        "Don't want these emails? Unsubscribe here: {unsubscribe_url}\n",
     ),
     "admin_new_claim": (
         "New claim started — {center_name}",
-        "A new listing claim was started.\n\n"
+        "New listing claim just came in.\n\n"
         "Center: {center_name}\nTicket: {ticket}\nClaimant: {name}\nEmail: {email}\nPhone: {lead_phone}\n\n"
         "Review claims: {admin_claims_url}\nClaim status: {claim_url}\n",
     ),
     "admin_new_center_submission": (
         "New center submission — {center_name}",
-        "A facility asked to be added to the directory.\n\n"
+        "Someone asked to add a facility to the directory.\n\n"
         "Submission #{submission_id}\n"
         "Center: {center_name}\n"
         "Contact: {name}\nEmail: {email}\nPhone: {lead_phone}\n"
@@ -264,150 +268,158 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "Open Submission Center: {admin_submissions_url}\n",
     ),
     "center_submission_received": (
-        "We received your facility submission",
-        "Hi {name},\n\nThanks for submitting {center_name}. Our team will review the details and follow up if we need anything else.\n\n"
+        "Got it — thanks for adding {center_name}",
+        "Hi {name},\n\nThanks for submitting {center_name}. Our team's going to take a look, "
+        "and we'll follow up if we need anything more from you.\n\n"
         "— {site_name}\n",
     ),
     "center_submission_approved": (
-        "Your facility submission was accepted — {center_name}",
-        "Hi {name},\n\nGood news — we accepted your submission for {center_name}.\n\n"
+        "Good news — {center_name} is officially listed",
+        "Hi {name},\n\nWe reviewed your submission and {center_name} is officially on the directory.\n\n"
         "{admin_notes}\n\n"
-        "Provider login: {login_url}\n",
+        "You can log in and start managing the listing here: {login_url}\n",
     ),
     "center_submission_rejected": (
-        "Update on your facility submission — {center_name}",
-        "Hi {name},\n\nWe were unable to accept the submission for {center_name} at this time.\n\n"
+        "Update on your submission for {center_name}",
+        "Hi {name},\n\nWe weren't able to accept {center_name} to the directory at this time.\n\n"
         "{admin_notes}\n\n"
-        "Questions? Contact {support_email}\n",
+        "Questions about this? Reach us at {support_email} — happy to walk through it.\n",
     ),
     "verification": (
-        "Subscribe, then upload certification for {center_name}",
-        "Hi {name},\n\nWe received your claim for {center_name} (ticket {ticket}).\n\n"
-        "1. Choose a monthly or yearly plan at: {claim_url}\n"
+        "One more step to verify {center_name}",
+        "Hi {name},\n\nWe've got your claim for {center_name} (ticket {ticket}) — here's what's left:\n\n"
+        "1. Choose a monthly or yearly plan: {claim_url}\n"
         "2. After payment, upload your state license or accreditation certificate.\n\n"
-        "Your listing unlocks after admin verification.\n",
+        "Once an admin reviews it, your listing unlocks.\n",
     ),
     "claim_submitted": (
-        "Your claim for {center_name} is pending admin verification",
-        "Hi {name},\n\nWe received your proof for {center_name} (ticket {ticket}).\n\n"
-        "Your claim is already submitted and is waiting for an admin to verify your certification. "
-        "Please wait — you cannot finish claiming the listing until verification is complete.\n\n"
-        "Track your claim status here:\n{claim_url}\n\n"
-        "We will email you again once an admin verifies (or rejects) your claim.\n",
+        "We've got your paperwork for {center_name}",
+        "Hi {name},\n\nYour certification for {center_name} (ticket {ticket}) is in and waiting on an admin "
+        "to verify it. Your claim is already submitted — there's nothing more to do on your end right now.\n\n"
+        "Track where things stand here:\n{claim_url}\n\n"
+        "We'll email you as soon as it's reviewed.\n",
     ),
     "claim_under_review_admin": (
         "Certification uploaded — review claim {ticket}",
-        "Certification was uploaded for review.\n\n"
+        "A certification just came in for review.\n\n"
         "Center: {center_name}\nTicket: {ticket}\nClaimant: {name} ({email})\n\n"
         "Open claims queue: {admin_claims_url}\n",
     ),
     "claim_certified": (
-        "You're verified — subscribe to claim {center_name}",
-        "Hi {name},\n\nYour certification for {center_name} is verified (ticket {ticket}).\n\n"
-        "Choose a plan to finish claiming your listing:\n{billing_url}\n\n"
+        "You're verified — let's finish claiming {center_name}",
+        "Hi {name},\n\nGood news — your certification for {center_name} checked out (ticket {ticket}).\n\n"
+        "Pick a plan to finish claiming your listing:\n{billing_url}\n\n"
         "Claim status: {claim_url}\n",
     ),
     "claim_rejected": (
         "Update on your claim for {center_name}",
-        "Hi {name},\n\nYour claim for {center_name} (ticket {ticket}) was not approved.\n\n"
+        "Hi {name},\n\nYour claim for {center_name} (ticket {ticket}) wasn't approved.\n\n"
         "{admin_notes}\n\n"
-        "Questions? Contact support: {support_email}\n",
+        "If you have questions, our team's here: {support_email}\n",
     ),
     "claim_abandon_reminder": (
-        "Finish claiming {center_name}",
-        "Hi {name},\n\nYou started a claim for {center_name} but did not finish "
-        "(reminder day {day} of 2).\n\n"
-        "Return and continue here:\n{continue_url}\n",
+        "You're almost done claiming {center_name}",
+        "Hi {name},\n\nYou started claiming {center_name} but didn't quite finish "
+        "(reminder {day} of 2).\n\n"
+        "Pick it back up here:\n{continue_url}\n",
     ),
     "submit_abandon_reminder": (
-        "Finish adding {center_name}",
-        "Hi {name},\n\nYou started adding {center_name} to our directory but did not finish "
-        "(reminder day {day} of 2).\n\n"
-        "Return and continue here:\n{continue_url}\n",
+        "Still want to add {center_name}?",
+        "Hi {name},\n\nYou started adding {center_name} to our directory but didn't get to finish "
+        "(reminder {day} of 2).\n\n"
+        "Jump back in here:\n{continue_url}\n",
     ),
     "phone_callback_code": (
-        "Your facility phone verification code",
-        "Hi {name},\n\nYour verification code for claiming {center_name} is:\n\n{otp_code}\n\n"
-        "This code expires in 15 minutes. Enter it on your claim status page:\n{claim_url}\n",
+        "Your verification code for {center_name}",
+        "Hi {name},\n\nHere's your verification code for claiming {center_name}:\n\n{otp_code}\n\n"
+        "It's good for 15 minutes. Enter it on your claim status page:\n{claim_url}\n",
     ),
     "welcome": (
-        "Welcome — your listing is claimed",
-        "Hi {name},\n\nPayment received. Your listing {center_name} is now claimed.\n\n"
-        "One-click login: {login_url}\nGetting started checklist: complete your profile, add media, "
-        "services, insurances, and levels of care.\n\n"
-        "Billing portal: {billing_url}\nReceipt: {receipt_url}\nSupport: {support_email}\n",
+        "Welcome aboard — {center_name} is officially yours",
+        "Hi {name},\n\nPayment's through and {center_name} is now officially claimed. "
+        "Welcome to Struggling With Addiction.\n\n"
+        "One-click login: {login_url}\n\n"
+        "A few things worth doing first: fill out your profile, add photos, and list your services, "
+        "insurances, and levels of care. It's the fastest way to show up well to people searching.\n\n"
+        "Billing portal: {billing_url}\nReceipt: {receipt_url}\nNeed anything? {support_email}\n",
     ),
     "payment_receipt": (
-        "Receipt for your Struggling With Addiction subscription",
-        "Hi {name},\n\nThanks for your payment of {amount} for {center_name}.\n\n"
+        "Your receipt from Struggling With Addiction",
+        "Hi {name},\n\nThanks — we received your payment of {amount} for {center_name}.\n\n"
         "View receipt: {receipt_url}\nManage billing: {billing_url}\n",
     ),
     "subscription_renewed": (
-        "Your subscription renewed successfully",
-        "Hi {name},\n\nWe successfully renewed your subscription for {center_name}.\n\n"
+        "You're all set — {center_name} renewed",
+        "Hi {name},\n\nYour subscription for {center_name} renewed without a hitch.\n\n"
         "Amount: {amount}\nNext renewal: {renewal_date}\n\n"
         "Manage billing: {billing_url}\n",
     ),
     "renewal_reminder": (
-        "Your subscription renews in {days_left} day(s)",
-        "Hi {name},\n\nYour subscription for {center_name} renews on {renewal_date} "
-        "(about {days_left} day(s) from now).\n\n"
+        "Heads up — {center_name} renews in {days_left} day(s)",
+        "Hi {name},\n\nJust a heads up: your subscription for {center_name} renews on {renewal_date}, "
+        "about {days_left} day(s) from now.\n\n"
         "Manage billing: {billing_url}\n",
     ),
     "dunning": (
-        "Update payment before your listing downgrades",
-        "Hi {name},\n\nWe could not renew your subscription for {center_name}.\n\n"
-        "Update your card here before access ends: {billing_url}\n",
+        "We couldn't process your payment for {center_name}",
+        "Hi {name},\n\nWe ran into a problem renewing your subscription for {center_name} — "
+        "the charge didn't go through.\n\n"
+        "Update your card here before your listing loses access to paid features:\n{billing_url}\n",
     ),
     "cancellation": (
-        "Your subscription cancellation is confirmed",
-        "Hi {name},\n\nYour subscription for {center_name} will end on {access_end}.\n\n"
-        "Until then you keep full access. After that the listing reverts to the basic view.\n"
-        "Resubscribe anytime: {billing_url}\n",
+        "Your cancellation for {center_name} is confirmed",
+        "Hi {name},\n\nConfirming your subscription for {center_name} is set to end on {access_end}.\n\n"
+        "You'll keep full access until then. After that, the listing goes back to the basic view.\n\n"
+        "Change your mind? You can resubscribe anytime: {billing_url}\n",
     ),
     "subscription_expired": (
-        "Your paid listing access has ended",
-        "Hi {name},\n\nPaid access for {center_name} has ended and the listing is back on the basic view.\n\n"
-        "Resubscribe anytime to restore your full profile and dashboard:\n{billing_url}\n",
+        "Paid access for {center_name} has ended",
+        "Hi {name},\n\nYour paid access for {center_name} has wrapped up, "
+        "and the listing is back on the basic view for now.\n\n"
+        "Whenever you're ready, resubscribing restores your full profile and dashboard: {billing_url}\n",
     ),
     "win_back": (
-        "Resubscribe — everything restores instantly",
-        "Hi {name},\n\nYour listing {center_name} is back on the basic view.\n\n"
-        "Resubscribe to restore your full profile and dashboard: {billing_url}\n",
+        "{center_name}'s full listing is one click away",
+        "Hi {name},\n\n{center_name} is currently on the basic view. Resubscribe and everything comes back "
+        "instantly — full profile, dashboard, the works.\n\n"
+        "{billing_url}\n",
     ),
     "new_lead_alert": (
-        "New inquiry for {center_name}",
-        "You have a new lead.\n\nName: {lead_name}\nEmail: {lead_email}\nPhone: {lead_phone}\n"
-        "Message:\n{lead_message}\n\nSource: {source_url}\nOpen inbox: {inbox_url}\n",
+        "Someone reached out about {center_name}",
+        "You've got a new inquiry. Reply directly to this email to reach the visitor.\n\n"
+        "Name: {lead_name}\nEmail: {lead_email}\nPhone: {lead_phone}\n"
+        "Message:\n{lead_message}\n\nListing: {source_url}\n\n"
+        "This inquiry was emailed to you and is not stored in the Struggling With Addiction database.\n",
     ),
     "lead_reply": (
-        "{center_name} replied to your inquiry",
+        "{center_name} just replied to you",
         "Hi {lead_name},\n\n{reply_message}\n\n— {center_name}\n",
     ),
     "profile_published": (
-        "Your listing changes are live",
-        "Hi {name},\n\nUpdates to {center_name} are now published:\n{listing_url}\n",
+        "Your updates for {center_name} are live",
+        "Hi {name},\n\nGood news — your changes to {center_name} are published and visible now:\n"
+        "{listing_url}\n",
     ),
     "upsell_receipt": (
         "Receipt — {product_label}",
-        "Hi {name},\n\nThanks for purchasing {product_label} for {center_name}.\n\n"
-        "Amount: {amount}\nOrder id: {order_id}\n\n"
+        "Hi {name},\n\nThanks for picking up {product_label} for {center_name}.\n\n"
+        "Amount: {amount}\nOrder ID: {order_id}\n\n"
         "Manage your listing: {login_url}\nBilling: {billing_url}\n",
     ),
     "upsell_fulfilled": (
-        "Your {product_label} is ready",
-        "Hi {name},\n\nGreat news — {product_label} for {center_name} is complete.\n\n"
+        "{product_label} is ready for {center_name}",
+        "Hi {name},\n\nGood news — {product_label} for {center_name} is done and live.\n\n"
         "View your listing: {listing_url}\nDashboard: {login_url}\n",
     ),
     "upsell_human_lead": (
-        "Hot content upsell lead — {product_label}",
+        "Hot upsell lead — {product_label}",
         "Internal alert: {name} ({email}) purchased interest in {product_label} for {center_name}.\n"
-        "Order id: {order_id}\nRoute to senior / PJ to close.\n",
+        "Order ID: {order_id}\nRoute to senior team / PJ to close.\n",
     ),
     "product_updates": (
-        "What's new in the directory",
-        "Hi {name},\n\nHere's a quick update from {site_name}.\n\n{product_update_body}\n\n"
-        "Explore your dashboard: {login_url}\n",
+        "What's new around here",
+        "Hi {name},\n\nA quick update from {site_name}.\n\n{product_update_body}\n\n"
+        "See it in your dashboard: {login_url}\n",
     ),
 }
 
@@ -428,7 +440,13 @@ PREFERENCE_BY_TEMPLATE = {
 }
 
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
+_URL_ONLY_RE = re.compile(r"^https?://[^\s<]+$")
+_LABEL_URL_RE = re.compile(r"^(?P<label>.+?):\s*(?P<url>https?://[^\s<]+)\s*$")
+_TRAILING_URL_RE = re.compile(r"^(?P<label>.+?)(?::\s*|\s+)(?P<url>https?://[^\s<]+)\s*$")
 _FORMATTER = Formatter()
+
+BRAND_BLUE = "#5FBDF6"
+BRAND_RED = "#8c1126"
 
 
 class _SafeFormat(dict):
@@ -630,12 +648,122 @@ def reset_template_content(db: Session, template_key: str) -> dict[str, Any]:
     return get_template_content(template_key, db)
 
 
-def _linkify_plain(text: str) -> str:
+def _is_quiet_link(label: str, href: str) -> bool:
+    blob = f"{label} {href}".lower()
+    return "unsubscribe" in blob
+
+
+def _cta_label(prompt: str, href: str) -> str:
+    text = re.sub(r"[:.\s]+$", "", (prompt or "").strip())
+    text = re.sub(r"\bhere$", "", text, flags=re.I).strip()
+    text = re.sub(r"^\d+\.\s*", "", text)
+    if _is_quiet_link(text, href):
+        return "Unsubscribe"
+    if text and len(text) <= 42:
+        return text
+    path = href.lower()
+    if "unsubscribe" in path:
+        return "Unsubscribe"
+    if "/billing" in path:
+        return "Manage billing"
+    if "/login" in path or "/swa-login" in path:
+        return "Sign in"
+    if "/inbox" in path:
+        return "Open inbox"
+    if "/claim" in path:
+        return "Continue claim"
+    if "/listing" in path or "/rehab" in path:
+        return "View listing"
+    return "Continue"
+
+
+def _quiet_link_html(href: str, label: str) -> str:
+    return (
+        f'<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#64748b;">'
+        f'<a href="{html.escape(href)}" style="color:#64748b;text-decoration:underline;">'
+        f"{html.escape(label)}</a></p>"
+    )
+
+
+def _cta_button_html(href: str, label: str) -> str:
+    if _is_quiet_link(label, href):
+        return _quiet_link_html(href, label)
+    safe_href = html.escape(href)
+    safe_label = html.escape(label)
+    return (
+        '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 16px;">'
+        "<tr>"
+        f'<td class="email-btn-td" bgcolor="{BRAND_BLUE}" '
+        f'style="background-color:{BRAND_BLUE};border-radius:4px;">'
+        f'<a class="email-btn" href="{safe_href}" target="_blank" '
+        f'style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,'
+        f"'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;line-height:1.2;"
+        f"letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;color:#ffffff;"
+        f'background-color:{BRAND_BLUE};border:2px solid {BRAND_BLUE};border-radius:4px;">'
+        f"{safe_label}</a>"
+        "</td></tr></table>"
+    )
+
+
+def _text_paragraph_html(text: str) -> str:
     escaped = html.escape(text)
-    return _URL_RE.sub(
-        lambda m: f'<a href="{m.group(1)}" style="color:#1a5f7a;text-decoration:underline;">{m.group(1)}</a>',
+    linked = _URL_RE.sub(
+        lambda m: (
+            f'<a href="{html.escape(m.group(1))}" style="color:{BRAND_BLUE};text-decoration:underline;">'
+            f"{html.escape(m.group(1))}</a>"
+        ),
         escaped,
     )
+    return (
+        f'<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2933;">{linked}</p>'
+    )
+
+
+def _lines_to_html(lines: list[str]) -> list[str]:
+    parts: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        if not line:
+            i += 1
+            continue
+
+        if not _URL_ONLY_RE.match(line) and nxt and _URL_ONLY_RE.match(nxt):
+            if len(line) > 42 or line.endswith("."):
+                parts.append(_text_paragraph_html(re.sub(r":\s*$", "", line)))
+            parts.append(_cta_button_html(nxt, _cta_label(line, nxt)))
+            i += 2
+            continue
+
+        labeled = _LABEL_URL_RE.match(line)
+        if labeled:
+            label = labeled.group("label").strip()
+            href = labeled.group("url")
+            if len(label) > 42 or label.endswith("."):
+                parts.append(_text_paragraph_html(label))
+            parts.append(_cta_button_html(href, _cta_label(label, href)))
+            i += 1
+            continue
+
+        if _URL_ONLY_RE.match(line):
+            parts.append(_cta_button_html(line, _cta_label("", line)))
+            i += 1
+            continue
+
+        trailing = _TRAILING_URL_RE.match(line)
+        if trailing and "://" in line:
+            label = trailing.group("label").strip()
+            href = trailing.group("url")
+            if len(label) > 42 or label.endswith("."):
+                parts.append(_text_paragraph_html(re.sub(r"[:\s]+$", "", label)))
+            parts.append(_cta_button_html(href, _cta_label(label, href)))
+            i += 1
+            continue
+
+        parts.append(_text_paragraph_html(line))
+        i += 1
+    return parts
 
 
 def _body_to_html_paragraphs(body: str) -> str:
@@ -644,10 +772,7 @@ def _body_to_html_paragraphs(body: str) -> str:
         return ""
     parts: list[str] = []
     for chunk in chunks:
-        lines = "<br>\n".join(_linkify_plain(line) for line in chunk.split("\n"))
-        parts.append(
-            f'<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2933;">{lines}</p>'
-        )
+        parts.extend(_lines_to_html(chunk.split("\n")))
     return "\n".join(parts)
 
 
@@ -704,6 +829,17 @@ def render_email_html(
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{html.escape(brand)}</title>
+  <style>
+    a.email-btn:hover {{
+      background-color: {BRAND_RED} !important;
+      border-color: {BRAND_RED} !important;
+      color: #ffffff !important;
+      box-shadow: 0 6px 20px rgba(140, 17, 38, 0.28) !important;
+    }}
+    td.email-btn-td:hover {{
+      background-color: {BRAND_RED} !important;
+    }}
+  </style>
 </head>
 <body style="margin:0;padding:0;background:#eef2f5;font-family:Georgia,'Times New Roman',serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2f5;padding:24px 12px;">
@@ -743,6 +879,11 @@ def render_email_html(
 def list_template_catalog(db: Session | None = None) -> list[dict[str, Any]]:
     sample = default_template_context(db=db)
     catalog: list[dict[str, Any]] = []
+    mailchimp_abandon = False
+    if db is not None:
+        from app.services.mailchimp import abandonment_uses_mailchimp
+
+        mailchimp_abandon = abandonment_uses_mailchimp(db)
     for key in DEFAULT_TEMPLATES:
         meta = TEMPLATE_META.get(key, {})
         content = get_template_content(key, db)
@@ -761,6 +902,10 @@ def list_template_catalog(db: Session | None = None) -> list[dict[str, Any]]:
                 "default_body": content["default_body"],
                 "is_custom": content["is_custom"],
                 "variables": variables,
+                "routed_to_mailchimp": bool(
+                    key in ("claim_abandon_reminder", "submit_abandon_reminder")
+                    and mailchimp_abandon
+                ),
             }
         )
     return catalog
@@ -795,11 +940,14 @@ def _send_smtp(
     text_body: str,
     html_body: str,
     delivery: dict[str, Any],
+    reply_to: str | None = None,
 ) -> None:
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = delivery["email_from"]
     msg["To"] = to_email
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype="html")
     with smtplib.SMTP(delivery["smtp_host"], delivery["smtp_port"], timeout=20) as smtp:
@@ -816,16 +964,18 @@ def _send_resend(
     text_body: str,
     html_body: str,
     delivery: dict[str, Any],
+    reply_to: str | None = None,
 ) -> None:
-    payload = json.dumps(
-        {
-            "from": delivery["email_from"],
-            "to": [to_email],
-            "subject": subject,
-            "text": text_body,
-            "html": html_body,
-        }
-    ).encode("utf-8")
+    payload_body: dict[str, Any] = {
+        "from": delivery["email_from"],
+        "to": [to_email],
+        "subject": subject,
+        "text": text_body,
+        "html": html_body,
+    }
+    if reply_to:
+        payload_body["reply_to"] = reply_to
+    payload = json.dumps(payload_body).encode("utf-8")
     req = request.Request(
         "https://api.resend.com/emails",
         data=payload,
@@ -854,6 +1004,7 @@ def send_email(
     rehab_center_id: int | None = None,
     respect_preferences: bool = True,
     meta: dict[str, Any] | None = None,
+    reply_to: str | None = None,
 ) -> bool:
     context = context or {}
     delivery = resolve_email_delivery(db)
@@ -863,6 +1014,55 @@ def send_email(
     if template_key not in DEFAULT_TEMPLATES:
         logger.warning("Unknown email template %s", template_key)
         return False
+
+    if template_key in ("claim_abandon_reminder", "submit_abandon_reminder") and db is not None:
+        from app.services.mailchimp import (
+            TEMPLATE_SOURCE,
+            resolve_mailchimp,
+            sync_contact,
+        )
+
+        cfg = resolve_mailchimp(db)
+        if not cfg["abandonment_emails_enabled"]:
+            source = TEMPLATE_SOURCE.get(template_key, "abandonment_claim")
+            synced = False
+            if cfg["configured"]:
+                synced = sync_contact(
+                    db,
+                    email=to_email,
+                    source=source,
+                    name=str(defaults.get("name") or ""),
+                    phone=str(defaults.get("lead_phone") or defaults.get("phone") or ""),
+                    center_name=str(defaults.get("center_name") or ""),
+                    continue_url=str(defaults.get("continue_url") or defaults.get("claim_url") or ""),
+                    extra_tags=[f"swa-abandon-day-{defaults.get('day') or '1'}"],
+                )
+            subject_line = get_template_content(template_key, db)["subject"]
+            db.add(
+                EmailLog(
+                    to_email=to_email,
+                    template_key=template_key,
+                    subject=subject_line,
+                    status="skipped",
+                    error=(
+                        "Routed to Mailchimp"
+                        if synced
+                        else "Built-in abandonment email disabled"
+                    ),
+                    user_id=user_id,
+                    rehab_center_id=rehab_center_id,
+                    meta_json=json.dumps(
+                        {**(meta or {}), "mailchimp": synced, "source": source},
+                        default=str,
+                    )[:4000],
+                )
+            )
+            try:
+                db.commit()
+            except Exception:  # noqa: BLE001
+                db.rollback()
+                logger.exception("Failed to persist Mailchimp abandonment log")
+            return True
 
     preference = PREFERENCE_BY_TEMPLATE.get(template_key) if respect_preferences else None
     if preference and db is not None and user_id:
@@ -893,9 +1093,9 @@ def send_email(
     err_text = None
     try:
         if delivery["effective_provider"] == "resend":
-            _send_resend(to_email, subject, body, html_body, delivery)
+            _send_resend(to_email, subject, body, html_body, delivery, reply_to=reply_to)
         elif delivery["effective_provider"] == "smtp":
-            _send_smtp(to_email, subject, body, html_body, delivery)
+            _send_smtp(to_email, subject, body, html_body, delivery, reply_to=reply_to)
         else:
             status = "skipped"
             logger.info("EMAIL[%s] to=%s subject=%s\n%s", template_key, to_email, subject, body)
@@ -905,7 +1105,12 @@ def send_email(
         logger.exception("Failed sending email %s to %s", template_key, to_email)
 
     if db is not None:
-        log_meta = meta if meta is not None else defaults
+        if meta is not None:
+            log_meta = meta
+        elif template_key == "new_lead_alert":
+            log_meta = {"redacted": True, "center_name": defaults.get("center_name")}
+        else:
+            log_meta = defaults
         db.add(
             EmailLog(
                 to_email=to_email,

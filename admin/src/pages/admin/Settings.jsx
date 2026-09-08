@@ -11,6 +11,7 @@ const TABS = [
   { id: 'users', label: 'Users' },
   { id: 'site', label: 'Site' },
   { id: 'email', label: 'Email' },
+  { id: 'mailchimp', label: 'Mailchimp' },
   { id: 'stripe', label: 'Stripe' },
   { id: 'rehab', label: 'Rehab centers' },
 ]
@@ -41,6 +42,12 @@ const emptyEmailForm = {
   social_youtube: '',
   social_instagram: '',
   social_linkedin: '',
+  mailchimp_enabled: false,
+  mailchimp_api_key: '',
+  clear_mailchimp_api_key: false,
+  mailchimp_audience_id: '',
+  abandonment_emails_enabled: true,
+  inquiry_forms_enabled: true,
 }
 
 function applyEmailSettings(s) {
@@ -63,6 +70,12 @@ function applyEmailSettings(s) {
     social_youtube: s.social_youtube || '',
     social_instagram: s.social_instagram || '',
     social_linkedin: s.social_linkedin || '',
+    mailchimp_enabled: !!s.mailchimp_enabled,
+    mailchimp_api_key: '',
+    clear_mailchimp_api_key: false,
+    mailchimp_audience_id: s.mailchimp_audience_id || '',
+    abandonment_emails_enabled: s.abandonment_emails_enabled !== false,
+    inquiry_forms_enabled: s.inquiry_forms_enabled !== false,
   }
 }
 
@@ -77,6 +90,7 @@ export default function AdminSettings() {
   const [emailMeta, setEmailMeta] = useState(null)
   const [emailForm, setEmailForm] = useState(emptyEmailForm)
   const [testTo, setTestTo] = useState('')
+  const [mailchimpPing, setMailchimpPing] = useState('')
 
   const [stripe, setStripe] = useState(null)
   const [stripeForm, setStripeForm] = useState({
@@ -101,7 +115,7 @@ export default function AdminSettings() {
   }
 
   useEffect(() => {
-    if (tab !== 'site' && tab !== 'email') return
+    if (tab !== 'site' && tab !== 'email' && tab !== 'mailchimp') return
     let cancelled = false
     api('/api/admin/email-settings')
       .then(s => {
@@ -173,6 +187,7 @@ export default function AdminSettings() {
           social_youtube: emailForm.social_youtube || null,
           social_instagram: emailForm.social_instagram || null,
           social_linkedin: emailForm.social_linkedin || null,
+          inquiry_forms_enabled: emailForm.inquiry_forms_enabled !== false,
         }),
       })
       setEmailMeta(updated)
@@ -200,15 +215,21 @@ export default function AdminSettings() {
         smtp_user: emailForm.smtp_user || null,
         clear_smtp_password: emailForm.clear_smtp_password,
         smtp_use_tls: emailForm.smtp_use_tls,
+        mailchimp_enabled: !!emailForm.mailchimp_enabled,
+        mailchimp_audience_id: emailForm.mailchimp_audience_id || null,
+        abandonment_emails_enabled: emailForm.abandonment_emails_enabled !== false,
+        clear_mailchimp_api_key: emailForm.clear_mailchimp_api_key,
       }
       if (emailForm.resend_api_key.trim()) body.resend_api_key = emailForm.resend_api_key.trim()
       if (emailForm.smtp_password.trim()) body.smtp_password = emailForm.smtp_password.trim()
+      if (emailForm.mailchimp_api_key.trim()) body.mailchimp_api_key = emailForm.mailchimp_api_key.trim()
       const updated = await api('/api/admin/email-settings', {
         method: 'PATCH',
         body: JSON.stringify(body),
       })
       setEmailMeta(updated)
       setEmailForm(applyEmailSettings(updated))
+      setMailchimpPing('')
       setMsg('Email settings saved.')
     } catch (error) {
       setErr(error.message)
@@ -226,6 +247,48 @@ export default function AdminSettings() {
       setEmailMeta(updated)
       setEmailForm(f => ({ ...f, logo_url: updated.logo_url || '' }))
       setMsg('Logo uploaded.')
+    } catch (error) {
+      setErr(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveMailchimp(e) {
+    e.preventDefault()
+    setBusy(true)
+    setErr('')
+    setMsg('')
+    try {
+      const body = {
+        mailchimp_enabled: !!emailForm.mailchimp_enabled,
+        mailchimp_audience_id: emailForm.mailchimp_audience_id || null,
+        abandonment_emails_enabled: emailForm.abandonment_emails_enabled !== false,
+        clear_mailchimp_api_key: emailForm.clear_mailchimp_api_key,
+      }
+      if (emailForm.mailchimp_api_key.trim()) body.mailchimp_api_key = emailForm.mailchimp_api_key.trim()
+      const updated = await api('/api/admin/email-settings', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+      setEmailMeta(updated)
+      setEmailForm(applyEmailSettings(updated))
+      setMailchimpPing('')
+      setMsg('Mailchimp settings saved.')
+    } catch (error) {
+      setErr(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function pingMailchimp() {
+    setBusy(true)
+    setErr('')
+    setMailchimpPing('')
+    try {
+      const res = await api('/api/admin/email-settings/mailchimp/ping', { method: 'POST' })
+      setMailchimpPing(`Connected: ${res.list_name || res.list_id}${res.member_count != null ? ` · ${res.member_count} members` : ''}`)
     } catch (error) {
       setErr(error.message)
     } finally {
@@ -313,11 +376,84 @@ export default function AdminSettings() {
   const subtitle = useMemo(() => ({
     account: 'Your administrator profile and password.',
     users: 'Create, invite, update, and remove platform users.',
-    site: 'Public brand name, logo, postal address, and social links.',
+    site: 'Public brand name, logo, postal address, social links, and listing inquiry forms.',
     email: 'Delivery provider, SMTP / Resend credentials, and test sends.',
+    mailchimp: 'Audience sync for registrations, claims, new centers, and abandonment routing.',
     stripe: 'Billing keys, webhook secret, and subscription price IDs.',
     rehab: 'Manage rehab centers and trash retention for deleted content.',
   }[tab]), [tab])
+
+  const mailchimpFields = (
+    <>
+      <p className="eyebrow" style={{ marginTop: tab === 'email' ? 16 : 0 }}>Mailchimp</p>
+      <p className="muted" style={{ marginBottom: 8 }}>
+        Syncs new registrations, listing claims, and new rehab-center submissions into one audience.
+        Status: {emailMeta?.mailchimp_configured ? 'ready' : 'not configured'}
+        {emailMeta?.env_mailchimp_configured ? ' · env key set' : ''}
+        {' · '}
+        <Link to="/admin/email-list">Manage named lists and Mailchimp audiences</Link>
+      </p>
+      <label style={{ display: 'block', marginBottom: 8 }}>
+        <input
+          type="checkbox"
+          checked={!!emailForm.mailchimp_enabled}
+          onChange={e => setEmailForm(f => ({ ...f, mailchimp_enabled: e.target.checked }))}
+        />{' '}
+        Enable Mailchimp audience sync
+      </label>
+      <label>
+        API key{emailMeta?.mailchimp_api_key_set ? ' (saved — leave blank to keep)' : ''}
+      </label>
+      <input
+        type="password"
+        autoComplete="off"
+        value={emailForm.mailchimp_api_key}
+        onChange={e => setEmailForm(f => ({ ...f, mailchimp_api_key: e.target.value, clear_mailchimp_api_key: false }))}
+        placeholder={emailMeta?.mailchimp_api_key_set ? '••••••••' : 'abcd…-us21'}
+      />
+      {emailMeta?.mailchimp_api_key_set && (
+        <label style={{ display: 'block', marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={emailForm.clear_mailchimp_api_key}
+            onChange={e => setEmailForm(f => ({ ...f, clear_mailchimp_api_key: e.target.checked }))}
+          />{' '}
+          Clear saved Mailchimp API key
+        </label>
+      )}
+      <label style={{ marginTop: 8 }}>Audience / list ID</label>
+      <input
+        value={emailForm.mailchimp_audience_id}
+        onChange={e => setEmailForm(f => ({ ...f, mailchimp_audience_id: e.target.value }))}
+        placeholder="e.g. a1b2c3d4e5"
+      />
+      <label style={{ display: 'block', marginTop: 12 }}>
+        <input
+          type="checkbox"
+          checked={emailForm.abandonment_emails_enabled === false}
+          onChange={e => setEmailForm(f => ({ ...f, abandonment_emails_enabled: !e.target.checked }))}
+        />{' '}
+        Disable built-in abandonment emails and send those contacts to Mailchimp
+      </label>
+      {emailForm.abandonment_emails_enabled === false && !emailForm.mailchimp_enabled && (
+        <p className="muted" style={{ marginTop: 6 }}>
+          Built-in abandonment emails will stop. Enable Mailchimp above so those contacts still land in your audience.
+        </p>
+      )}
+      <p className="muted" style={{ marginTop: 6 }}>
+        Tags applied: <code>swa-registration</code>, <code>swa-claim</code>, <code>swa-new-center</code>,
+        {' '}<code>swa-abandonment-claim</code>, <code>swa-abandonment-submit</code>.
+        Merge fields: FNAME, LNAME, PHONE, CENTER, SOURCE, CONTURL.
+        Save settings, then test the connection.
+      </p>
+      <div className="form-actions" style={{ marginTop: 8 }}>
+        <Button type="button" variant="ghost" onClick={pingMailchimp} disabled={busy}>
+          Test Mailchimp connection
+        </Button>
+        {mailchimpPing && <span className="success">{mailchimpPing}</span>}
+      </div>
+    </>
+  )
 
   return (
     <div className="page-stack">
@@ -402,6 +538,23 @@ export default function AdminSettings() {
               </div>
             ))}
           </div>
+          <p className="eyebrow" style={{ marginTop: 16 }}>Listing inquiry forms</p>
+          <p className="muted" style={{ marginBottom: 8 }}>
+            Hide the “Send a private inquiry” form on every rehab listing, or keep it on and control each page from Rehab → Inquiries.
+          </p>
+          <label className="checkbox-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={emailForm.inquiry_forms_enabled === false}
+              onChange={e => setEmailForm(f => ({ ...f, inquiry_forms_enabled: !e.target.checked }))}
+            />
+            Hide all listing inquiry forms
+          </label>
+          {emailForm.inquiry_forms_enabled === false && (
+            <p className="muted" style={{ marginTop: 6 }}>
+              No listing page will show the inquiry form until this is turned off. Individual listings can still be enabled or disabled after you restore the global form.
+            </p>
+          )}
           <div className="form-actions">
             <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save site settings'}</Button>
           </div>
@@ -415,8 +568,11 @@ export default function AdminSettings() {
             Effective provider: <code>{emailMeta?.effective_provider || '—'}</code>
             {emailMeta?.env_resend_configured ? ' · env Resend set' : ''}
             {emailMeta?.env_smtp_configured ? ' · env SMTP set' : ''}
+            {emailMeta?.mailchimp_configured ? ' · Mailchimp ready' : ''}
             {' · '}
-            <Link to="/admin/emails">Open full Emails page</Link>
+            <Link to="/admin/emails">Templates &amp; activity</Link>
+            {' · '}
+            <Link to="/admin/settings?tab=mailchimp">Mailchimp settings</Link>
           </p>
 
           <label>Provider</label>
@@ -534,6 +690,8 @@ export default function AdminSettings() {
             </>
           )}
 
+          {mailchimpFields}
+
           <div className="form-actions">
             <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save email settings'}</Button>
             <input
@@ -546,6 +704,16 @@ export default function AdminSettings() {
             <Button type="button" variant="ghost" onClick={sendTest} disabled={busy || !testTo.trim()}>
               Send test email
             </Button>
+          </div>
+        </form>
+      )}
+
+      {tab === 'mailchimp' && (
+        <form className="card card-flat" onSubmit={saveMailchimp}>
+          {mailchimpFields}
+          <div className="form-actions">
+            <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save Mailchimp settings'}</Button>
+            <Link to="/admin/emails">Open email templates</Link>
           </div>
         </form>
       )}
@@ -651,9 +819,10 @@ export default function AdminSettings() {
             <div className="form-actions">
               <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save trash settings'}</Button>
               <Link className="btn btn-ghost" to="/admin/rehab">Open Rehab page</Link>
+              <Link className="btn btn-ghost" to="/admin/service-codes">Service codes</Link>
             </div>
           </form>
-          <RehabList />
+          <RehabList embedded />
         </>
       )}
     </div>

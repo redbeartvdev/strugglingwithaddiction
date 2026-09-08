@@ -2,7 +2,25 @@ import { fetchApi, apiEnabled } from './api'
 import { US_STATE_ABBREVS, US_STATES } from './usStates'
 
 const CACHE_KEY = 'swa_visitor_geo_v1'
+const AUTO_LOCATION_KEY = 'swa_directory_auto_location_v1'
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6
+
+/** IP location is a first-visit default only. Reset/refresh opts out for this tab. */
+export function shouldAutoApplyVisitorLocation() {
+  try {
+    return sessionStorage.getItem(AUTO_LOCATION_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+export function disableAutoVisitorLocation() {
+  try {
+    sessionStorage.setItem(AUTO_LOCATION_KEY, 'off')
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function readCache() {
   try {

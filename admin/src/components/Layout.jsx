@@ -26,6 +26,7 @@ export function ClientLayout({ children }) {
   const { user } = useAuth()
   const location = useLocation()
   const [subscription, setSubscription] = useState(null)
+  const [center, setCenter] = useState(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -33,9 +34,14 @@ export function ClientLayout({ children }) {
       setLoaded(true)
       return
     }
-    api('/api/billing/subscription')
-      .then(setSubscription)
-      .catch(() => setSubscription({ status: 'unknown' }))
+    Promise.all([
+      api('/api/billing/subscription').catch(() => ({ status: 'unknown' })),
+      api('/api/client/my-center').catch(() => null),
+    ])
+      .then(([sub, listing]) => {
+        setSubscription(sub)
+        setCenter(listing)
+      })
       .finally(() => setLoaded(true))
   }, [user?.role, location.pathname])
 
@@ -52,7 +58,18 @@ export function ClientLayout({ children }) {
     && !subscription.listing_claimed
     && !subscription.verification_complete
 
+  const inquirySetupIncomplete = paymentOk
+    && !verificationIncomplete
+    && Boolean(center?.claimed)
+    && !(center?.contact_email || '').trim()
+    && !location.state?.inquirySetupComplete
+
   const allowedWhileVerifying = ['/client', '/client/billing', '/client/account']
+  const allowedDuringSetup = ['/client/setup', '/client/billing', '/client/account']
+
+  if (user?.role === 'client' && !loaded) {
+    return <Shell><p className="muted" style={{ padding: 24 }}>Loading…</p></Shell>
+  }
   if (inactive && location.pathname !== '/client/billing') {
     return <Navigate to="/client/billing" replace />
   }
@@ -62,6 +79,18 @@ export function ClientLayout({ children }) {
   ) {
     return <Navigate to="/client" replace />
   }
+  if (inquirySetupIncomplete && location.pathname !== '/client/setup') {
+    if (!allowedDuringSetup.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+      return <Navigate to="/client/setup" replace />
+    }
+  }
+  if (!inquirySetupIncomplete && location.pathname === '/client/setup') {
+    return <Navigate to="/client" replace />
+  }
 
-  return <Shell verificationIncomplete={verificationIncomplete}>{children}</Shell>
+  return (
+    <Shell verificationIncomplete={verificationIncomplete} inquirySetupIncomplete={inquirySetupIncomplete}>
+      {children}
+    </Shell>
+  )
 }

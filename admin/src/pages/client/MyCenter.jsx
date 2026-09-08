@@ -8,6 +8,7 @@ import InsuranceMultiSelect, {
   insurancePayload as buildInsurancePayload,
   namesFromCenter,
 } from '../../components/InsuranceMultiSelect'
+import ServiceCodePicker from '../../components/ServiceCodePicker'
 import './MyCenter.css'
 
 function listToText(arr) {
@@ -34,6 +35,7 @@ const RANGE_OPTIONS = [
 const TABS = [
   ['overview', 'Overview'],
   ['listing', 'Listing'],
+  ['services', 'Services'],
   ['insurance', 'Insurance'],
   ['media', 'Media'],
   ['analytics', 'Analytics'],
@@ -120,8 +122,8 @@ function AnalyticsPanel({ locked }) {
         <>
           <div className="mc-stat-grid">
             <StatCard label="Profile visits" value={data.summary.page_views} hint={`${data.summary.unique_sessions} unique sessions`} />
-            <StatCard label="Leads" value={data.summary.leads} hint={`${data.summary.unread_leads} unread`} />
-            <StatCard label="Conversion" value={`${data.summary.conversion_rate}%`} hint="Leads ÷ visits" />
+            <StatCard label="Inquiries" value="Email only" hint="Not stored in our database" />
+            <StatCard label="Conversion" value={`${data.summary.conversion_rate}%`} hint="Tracked visits only — inquiries are emailed, not counted" />
           </div>
 
           <div className="mc-analytics-grid">
@@ -170,17 +172,12 @@ function AnalyticsPanel({ locked }) {
             </Card>
 
             <Card>
-              <p className="eyebrow">Recent leads</p>
-              {(data.recent_leads || []).length === 0 && <p className="muted">No leads in this range.</p>}
-              <ul className="mc-rank-list">
-                {(data.recent_leads || []).map(lead => (
-                  <li key={lead.id}>
-                    <span>{lead.full_name}</span>
-                    <strong>{lead.read_at ? 'Read' : 'New'}</strong>
-                  </li>
-                ))}
-              </ul>
-              <Link className="btn btn-ghost btn-sm" to="/client/leads" style={{ marginTop: 12 }}>Open leads inbox</Link>
+              <p className="eyebrow">Listing inquiries</p>
+              <p className="muted">
+                Visitor inquiries are emailed to your assigned inquiry address and are not stored
+                in our database, so they do not appear here.
+              </p>
+              <Link className="btn btn-ghost btn-sm" to="/client/leads" style={{ marginTop: 12 }}>Inquiry email</Link>
             </Card>
           </div>
         </>
@@ -196,6 +193,8 @@ export default function ClientMyCenter() {
   const [center, setCenter] = useState(null)
   const [form, setForm] = useState(null)
   const [catalog, setCatalog] = useState([])
+  const [serviceCatalog, setServiceCatalog] = useState([])
+  const [selectedServiceCodes, setSelectedServiceCodes] = useState([])
   const [selectedInsurance, setSelectedInsurance] = useState([])
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
@@ -220,9 +219,11 @@ export default function ClientMyCenter() {
     Promise.all([
       api('/api/client/my-center'),
       api('/api/insurances').catch(() => []),
-    ]).then(([c, ins]) => {
+      api('/api/service-codes').catch(() => []),
+    ]).then(([c, ins, codes]) => {
       setCenter(c)
       setCatalog(ins || [])
+      setServiceCatalog(codes || [])
       if (c) {
         setForm({
           name: c.name || '',
@@ -243,6 +244,7 @@ export default function ClientMyCenter() {
           accreditations: listToText(c.accreditations),
           testimonials: (c.testimonials || []).map(t => (typeof t === 'string' ? t : t?.quote || '')).join('\n'),
         })
+        setSelectedServiceCodes(c.service_codes || [])
         setSelectedInsurance(namesFromCenter(c.insurances || [], ins || []))
       }
     }).catch(() => setCenter(null))
@@ -292,6 +294,7 @@ export default function ClientMyCenter() {
         specialties: textToList(form.specialties),
         insurances: insurancePayload,
         levels_of_care: textToList(form.levels_of_care),
+        service_codes: selectedServiceCodes,
         amenities: textToList(form.amenities),
         accreditations: textToList(form.accreditations),
         testimonials: textToList(form.testimonials).map(quote => ({ quote })),
@@ -414,8 +417,10 @@ export default function ClientMyCenter() {
 
   const pct = center.completeness?.percent ?? 0
   const onboarding = [
+    ['Assign an inquiry email', Boolean(form.contact_email?.trim())],
     ['Write your description', Boolean(form.description?.trim())],
     ['Add services and levels of care', Boolean(form.specialties?.trim() && form.levels_of_care?.trim())],
+    ['Select service codes', selectedServiceCodes.length > 0],
     ['Select accepted insurance', insurancePayload.length > 0],
     ['Add a hero or gallery image', Boolean(center.image_url || center.gallery_keys?.length)],
   ]
@@ -496,6 +501,7 @@ export default function ClientMyCenter() {
             </ul>
             <div className="mc-quick-links">
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('listing')}>Edit listing</button>
+              <button type="button" className="btn btn-ghost" onClick={() => selectTab('services')}>Choose services</button>
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('insurance')}>Choose insurance</button>
               <button type="button" className="btn btn-ghost" onClick={() => selectTab('analytics')}>View analytics</button>
               <Link className="btn btn-ghost" to="/client/upsells">Upgrade visibility</Link>
@@ -504,6 +510,7 @@ export default function ClientMyCenter() {
           <Card>
             <p className="eyebrow">Snapshot</p>
             <ul className="mc-rank-list">
+              <li><span>Selected service codes</span><strong>{selectedServiceCodes.length}</strong></li>
               <li><span>Selected insurance plans</span><strong>{insurancePayload.length}</strong></li>
               <li><span>Gallery images</span><strong>{(center.gallery_urls || []).length}</strong></li>
               <li><span>Contact phone</span><strong>{form.phone || '—'}</strong></li>
@@ -535,7 +542,7 @@ export default function ClientMyCenter() {
               ['phone', 'Phone', 'text'],
               ['website', 'Website', 'text'],
               ['verification_url', 'Insurance / benefits verification page URL', 'text'],
-              ['contact_email', 'Contact email', 'email'],
+              ['contact_email', 'Inquiry email', 'email'],
               ['google_maps_url', 'Google Map link', 'text'],
             ].map(([key, label, type]) => (
               <label key={key} className={`field${key === 'verification_url' ? ' form-span-2' : ''}`}>
@@ -544,6 +551,9 @@ export default function ClientMyCenter() {
               </label>
             ))}
           </div>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Listing inquiries are emailed to the inquiry email above and are not recorded in our database.
+          </p>
 
           <label className="field">
             <span className="field-label">Google reviews / Maps place link</span>
@@ -582,6 +592,31 @@ export default function ClientMyCenter() {
             <Button type="submit" disabled={saving || locked}>{saving ? 'Saving…' : 'Save & publish'}</Button>
           </div>
         </form>
+      )}
+
+      {tab === 'services' && (
+        <div className="card card-flat mc-insurance">
+          <div className="mc-insurance-head">
+            <div>
+              <p className="eyebrow">Service codes</p>
+              <p className="page-sub" style={{ margin: 0 }}>
+                Mark every SAMHSA service this facility offers. These appear on your public listing.
+              </p>
+            </div>
+            <p className="muted">{selectedServiceCodes.length} selected</p>
+          </div>
+          <ServiceCodePicker
+            catalog={serviceCatalog}
+            value={selectedServiceCodes}
+            onChange={setSelectedServiceCodes}
+            disabled={locked}
+          />
+          <div className="form-actions">
+            <Button type="button" disabled={saving || locked} onClick={save}>
+              {saving ? 'Saving…' : 'Save services'}
+            </Button>
+          </div>
+        </div>
       )}
 
       {tab === 'insurance' && (

@@ -23,6 +23,13 @@ class PlatformEmailSettingsOut(BaseModel):
     effective_provider: str
     env_resend_configured: bool
     env_smtp_configured: bool
+    mailchimp_enabled: bool = False
+    mailchimp_api_key_set: bool = False
+    mailchimp_audience_id: str | None = None
+    mailchimp_configured: bool = False
+    env_mailchimp_configured: bool = False
+    abandonment_emails_enabled: bool = True
+    inquiry_forms_enabled: bool = True
 
 
 class PlatformEmailSettingsUpdate(BaseModel):
@@ -44,6 +51,12 @@ class PlatformEmailSettingsUpdate(BaseModel):
     social_youtube: str | None = None
     social_instagram: str | None = None
     social_linkedin: str | None = None
+    mailchimp_enabled: bool | None = None
+    mailchimp_api_key: str | None = None
+    clear_mailchimp_api_key: bool = False
+    mailchimp_audience_id: str | None = None
+    abandonment_emails_enabled: bool | None = None
+    inquiry_forms_enabled: bool | None = None
 
 
 class EmailTemplateSummary(BaseModel):
@@ -59,6 +72,7 @@ class EmailTemplateSummary(BaseModel):
     default_body: str
     is_custom: bool = False
     variables: list[str]
+    routed_to_mailchimp: bool = False
 
 
 class EmailTemplateUpdate(BaseModel):

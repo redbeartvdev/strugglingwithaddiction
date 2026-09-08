@@ -26,12 +26,12 @@ export default function CarrierFacilitiesModule({
     }
     let cancelled = false
     setLoading(true)
-    const params = new URLSearchParams({ insurance: insuranceName })
+    const params = new URLSearchParams({ insurance: insuranceName, per_page: String(limit) })
     if (state) params.set('state', state)
     fetchApi(`/api/rehab-centers?${params}`)
       .then((rows) => {
         if (cancelled) return
-        const list = Array.isArray(rows) ? rows : []
+        const list = Array.isArray(rows) ? rows : (rows?.items || [])
         setCenters(list.slice(0, limit))
       })
       .catch(() => {

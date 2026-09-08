@@ -19,6 +19,7 @@ from app.models.rehab import ClaimStatus, FacilityRole, RehabCenter, RehabCenter
 from app.models.user import User, UserRole
 from app.schemas.rehab import ClaimOut, ClaimStatusPublic
 from app.services.email import resolve_email_delivery, send_email
+from app.services.mailchimp import sync_contact
 from app.services.phone import send_callback_code
 from app.services.storage import get_public_url, upload_file
 from app.services.tickets import generate_claim_ticket
@@ -180,6 +181,16 @@ def start_claim(body: ClaimStartRequest, db: Annotated[Session, Depends(get_db)]
         },
         user_id=user.id,
         rehab_center_id=center.id,
+    )
+    sync_contact(
+        db,
+        email=email,
+        source="claim",
+        name=body.full_name,
+        phone=body.phone or "",
+        center_name=center.name,
+        continue_url=claim_url,
+        extra_tags=["swa-registration"],
     )
 
     return ClaimStartOut(

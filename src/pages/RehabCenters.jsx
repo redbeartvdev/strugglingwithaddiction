@@ -4,10 +4,16 @@ import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch, FaLock } from 'r
 import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
 import { centerMatchesService, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
-import { detectVisitorLocation, normalizeUsStateName } from '../lib/geo'
+import {
+  detectVisitorLocation,
+  disableAutoVisitorLocation,
+  normalizeUsStateName,
+  shouldAutoApplyVisitorLocation,
+} from '../lib/geo'
 import { isDocumentReloadOn } from '../lib/documentNav'
 import { rehabLandingPath } from '../lib/rehabLanding'
 import { resolveOutboundListingLink } from '../lib/outboundListingLink'
+import { listingImageSrc } from '../lib/listingMedia'
 import { US_STATES } from '../lib/usStates'
 import RehabSearch from '../components/RehabSearch'
 import InsuranceAcceptedSection from '../components/InsuranceAcceptedSection'
@@ -721,7 +727,7 @@ function filterCenters(centers, { query, state, city, service, insurance, catalo
       const centerCity = getCenterCity(center)
       if (!centerCity || !normalizeText(centerCity).includes(cityNeedle)) return false
     }
-    if (service && !centerMatchesService(center.specialties, service, center.levels_of_care)) return false
+    if (service && !centerMatchesService(center.specialties, service, center.levels_of_care, center.service_codes)) return false
     if (insuranceNeedle) {
       const names = [
         ...(center.insurances || []),
@@ -771,11 +777,17 @@ function rankCenters(centers, { city } = {}) {
   })
 }
 
-// NOTE: Backend endpoint used for leads:
-// POST /api/rehab-centers/{slug}/leads body: { full_name, email, phone?, message, source_url? }
+// NOTE: Backend endpoint used for listing inquiries (emailed to the center, not stored):
+// POST /api/rehab-centers/{slug}/leads body: { full_name, email, phone?, message, source_url?, hp_website?, accepted_policies }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
+const SEARCH_DEBOUNCE_MS = 300
 const FILTER_PARAM_KEYS = ['q', 'state', 'city', 'service', 'insurance']
+
+function directoryItems(data) {
+  if (Array.isArray(data)) return data
+  return Array.isArray(data?.items) ? data.items : []
+}
 
 function stripFilterParams(params) {
   const next = new URLSearchParams(params)
@@ -794,11 +806,18 @@ export default function RehabCenters() {
   const [claimCenter, setClaimCenter] = useState(null)
   const [submitOpen, setSubmitOpen] = useState(false)
   const [submitResumeToken, setSubmitResumeToken] = useState(null)
-  const [centers, setCenters] = useState(STATIC_CENTERS)
+  const [centers, setCenters] = useState(apiEnabled() ? [] : STATIC_CENTERS)
   const [loading, setLoading] = useState(apiEnabled())
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [matchTotal, setMatchTotal] = useState(apiEnabled() ? 0 : STATIC_CENTERS.length)
+  const [catalogTotal, setCatalogTotal] = useState(apiEnabled() ? 0 : STATIC_CENTERS.length)
+  const [cityApplied, setCityApplied] = useState(false)
   const reloadResetRef = useRef(isDocumentReloadOn('/rehab-centers'))
-  const skipIpAfterReloadRef = useRef(reloadResetRef.current)
+  const skipIpLocationRef = useRef(reloadResetRef.current || !shouldAutoApplyVisitorLocation())
   const [query, setQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
+  const [debouncedQuery, setDebouncedQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
   const [stateFilter, setStateFilter] = useState(() => (
     reloadResetRef.current ? '' : normalizeUsStateName(searchParams.get('state') || '')
   ))
@@ -806,8 +825,6 @@ export default function RehabCenters() {
   const [serviceFilter, setServiceFilter] = useState(() => (reloadResetRef.current ? '' : searchParams.get('service') || ''))
   const [insuranceFilter, setInsuranceFilter] = useState(() => (reloadResetRef.current ? '' : searchParams.get('insurance') || ''))
   const [insuranceOptions, setInsuranceOptions] = useState([])
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [geoLabel, setGeoLabel] = useState('')
   const [strictCity, setStrictCity] = useState(() => (reloadResetRef.current ? false : Boolean(searchParams.get('city'))))
 
   useEffect(() => {
@@ -846,36 +863,67 @@ export default function RehabCenters() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (!apiEnabled()) return
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2500)
-    fetchApi('/api/rehab-centers', { signal: controller.signal })
-      .then(data => {
-        if (data?.length) setCenters(data)
-      })
-      .catch(() => {})
-      .finally(() => {
-        clearTimeout(timeout)
-        setLoading(false)
-      })
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  useEffect(() => {
     fetchApi('/api/insurances').then(data => {
       if (Array.isArray(data)) setInsuranceOptions(data)
     }).catch(() => {})
-    return () => {
-      clearTimeout(timeout)
-      controller.abort()
-    }
   }, [])
 
-  // First visit only: fill location from IP. A refresh clears filters and skips this.
+  useEffect(() => {
+    if (!apiEnabled()) {
+      setCenters(STATIC_CENTERS)
+      setMatchTotal(STATIC_CENTERS.length)
+      setCatalogTotal(STATIC_CENTERS.length)
+      setLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    const params = new URLSearchParams({
+      page: '1',
+      per_page: String(PAGE_SIZE),
+    })
+    if (debouncedQuery) params.set('q', debouncedQuery)
+    if (stateFilter) params.set('state', stateFilter)
+    if (strictCity && cityFilter) params.set('city', cityFilter)
+    if (serviceFilter) params.set('service', serviceFilter)
+    if (insuranceFilter) params.set('insurance', insuranceFilter)
+    setLoading(true)
+    fetchApi(`/api/rehab-centers?${params}`, { signal: controller.signal })
+      .then(data => {
+        const items = directoryItems(data)
+        setCenters(items)
+        setMatchTotal(data?.total ?? items.length)
+        setCatalogTotal(data?.catalog_total ?? data?.total ?? items.length)
+        setCityApplied(Boolean(data?.city_applied))
+        setPage(data?.page || 1)
+        setPages(data?.pages || 1)
+      })
+      .catch(() => {
+        setCenters([])
+        setMatchTotal(0)
+        setPages(1)
+        setPage(1)
+      })
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [debouncedQuery, stateFilter, cityFilter, strictCity, serviceFilter, insuranceFilter])
+
+  // First visit only: fill location from IP. Reset, All states, and refresh stay nationwide.
   useEffect(() => {
     let cancelled = false
-    if (skipIpAfterReloadRef.current) return undefined
-    if (searchParams.get('state')) return undefined
+    if (skipIpLocationRef.current) {
+      disableAutoVisitorLocation()
+      return undefined
+    }
+    if (searchParams.get('state') || !shouldAutoApplyVisitorLocation()) return undefined
 
     detectVisitorLocation().then((geo) => {
-      if (cancelled || !geo?.state) return
-      setGeoLabel([geo.city, geo.state].filter(Boolean).join(', '))
+      if (cancelled || skipIpLocationRef.current || !shouldAutoApplyVisitorLocation()) return
+      if (!geo?.state) return
       setSearchParams((prev) => {
         if (prev.get('state')) return prev
         const next = new URLSearchParams(prev)
@@ -900,6 +948,7 @@ export default function RehabCenters() {
   )
 
   const filteredCenters = useMemo(() => {
+    if (apiEnabled()) return centers
     const base = filterCenters(centers, {
       query,
       state: stateFilter,
@@ -909,7 +958,6 @@ export default function RehabCenters() {
       catalogNames,
     })
 
-    // If city is too specific and returns nothing, fall back to state and rank by city.
     if (strictCity && cityFilter && base.length === 0 && stateFilter) {
       const stateOnly = filterCenters(centers, {
         query,
@@ -935,16 +983,37 @@ export default function RehabCenters() {
   ])
 
   const hasActiveFilters = Boolean(query || stateFilter || serviceFilter || insuranceFilter || cityFilter)
+  const resultCount = apiEnabled() ? matchTotal : filteredCenters.length
+  const totalCount = apiEnabled() ? catalogTotal : STATIC_CENTERS.length
+  const visibleCenters = filteredCenters
+  const hasMore = apiEnabled() ? page < pages : false
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE)
-  }, [query, stateFilter, cityFilter, serviceFilter, insuranceFilter])
-
-  const visibleCenters = useMemo(
-    () => filteredCenters.slice(0, visibleCount),
-    [filteredCenters, visibleCount],
-  )
-  const hasMore = visibleCount < filteredCenters.length
+  async function loadMore() {
+    if (!apiEnabled() || loadingMore || page >= pages) return
+    const nextPage = page + 1
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      per_page: String(PAGE_SIZE),
+    })
+    if (debouncedQuery) params.set('q', debouncedQuery)
+    if (stateFilter) params.set('state', stateFilter)
+    if (strictCity && cityFilter) params.set('city', cityFilter)
+    if (serviceFilter) params.set('service', serviceFilter)
+    if (insuranceFilter) params.set('insurance', insuranceFilter)
+    setLoadingMore(true)
+    try {
+      const data = await fetchApi(`/api/rehab-centers?${params}`)
+      const items = directoryItems(data)
+      setCenters(prev => [...prev, ...items])
+      setPage(data?.page || nextPage)
+      setPages(data?.pages || pages)
+      setMatchTotal(data?.total ?? matchTotal)
+    } catch {
+      /* keep current page */
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   function patchParams(updates) {
     const next = new URLSearchParams(searchParams)
@@ -960,11 +1029,16 @@ export default function RehabCenters() {
     patchParams({ insurance: value })
   }
 
+  function optOutOfIpLocation() {
+    skipIpLocationRef.current = true
+    disableAutoVisitorLocation()
+  }
+
   function updateStateFilter(value) {
     setStateFilter(value)
     setCityFilter('')
     setStrictCity(false)
-    setGeoLabel('')
+    optOutOfIpLocation()
     patchParams({ state: value, city: '' })
   }
 
@@ -974,13 +1048,14 @@ export default function RehabCenters() {
   }
 
   function clearFilters() {
+    optOutOfIpLocation()
     setQuery('')
     setStateFilter('')
     setCityFilter('')
     setServiceFilter('')
     setInsuranceFilter('')
     setStrictCity(false)
-    setGeoLabel('')
+    setCityApplied(false)
     setSearchParams({}, { replace: true })
   }
 
@@ -1009,34 +1084,33 @@ export default function RehabCenters() {
           insurance={insuranceFilter}
           onInsuranceChange={updateInsuranceFilter}
           insuranceOptions={insuranceOptions}
-          resultCount={filteredCenters.length}
-          totalCount={centers.length}
+          resultCount={resultCount}
+          totalCount={totalCount}
           onClear={clearFilters}
           hasActiveFilters={hasActiveFilters}
-          locationHint={geoLabel || [cityFilter, stateFilter].filter(Boolean).join(', ')}
+          city={cityApplied ? cityFilter : ''}
         />
       </div>
 
-      <div className="rehab-intro-bar">
-        <div className="container rehab-intro-inner">
-          <p>
-            {loading ? (
-              <>Loading featured centers…</>
-            ) : (stateFilter || cityFilter) ? (
-              <>
-                Showing centers near{' '}
-                <strong>{[cityFilter, stateFilter].filter(Boolean).join(', ') || 'you'}</strong>
-                {insuranceFilter ? <> that accept <strong>{insuranceFilter}</strong></> : null}
-                {' — '}top {Math.min(PAGE_SIZE, filteredCenters.length)} listed first.
-              </>
-            ) : hasActiveFilters ? (
-              <>Refine your search above or browse all <strong>{centers.length} centers</strong>.</>
-            ) : (
-              <>Are you a treatment provider? <Link to="/provider">Log in to the provider platform</Link> or <strong>claim your listing</strong> below.</>
-            )}
-          </p>
+      {(loading || stateFilter || (cityApplied && cityFilter) || hasActiveFilters) && (
+        <div className="rehab-intro-bar">
+          <div className="container rehab-intro-inner">
+            <p>
+              {loading ? (
+                <>Loading centers…</>
+              ) : (stateFilter || (cityApplied && cityFilter)) ? (
+                <>
+                  Showing {resultCount.toLocaleString()} centers in{' '}
+                  <strong>{[cityApplied ? cityFilter : '', stateFilter].filter(Boolean).join(', ') || 'the selected area'}</strong>
+                  {insuranceFilter ? <> that accept <strong>{insuranceFilter}</strong></> : null}.
+                </>
+              ) : (
+                <>Refine your search above or browse all <strong>{totalCount.toLocaleString()} centers</strong>.</>
+              )}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <section className="rehab-list-section" id="rehab-directory-results">
         <div className="container rehab-list">
@@ -1055,10 +1129,10 @@ export default function RehabCenters() {
             return (
             <article className={`rehab-card${center.claimed ? '' : ' rehab-card--unclaimed'}`} key={center.id}>
               <div className={`rehab-card-img-wrap${center.claimed ? '' : ' rehab-card-img-wrap--unclaimed'}`}>
-                {center.image && (landingPath
-                  ? <Link to={landingPath} aria-label={`View ${center.name} listing`}><img src={center.image} alt={center.name} loading="lazy" /></Link>
-                  : <img src={center.image} alt={center.name} loading="lazy" />
-                )}
+                {landingPath
+                  ? <Link to={landingPath} aria-label={`View ${center.name} listing`}><img src={listingImageSrc(center)} alt={center.name} loading="lazy" /></Link>
+                  : <img src={listingImageSrc(center)} alt={center.name} loading="lazy" />
+                }
               </div>
               <div className="rehab-card-body">
                 <div className="rehab-card-top">
@@ -1143,14 +1217,15 @@ export default function RehabCenters() {
           {!loading && hasMore && (
             <div className="rehab-show-more">
               <p className="rehab-show-more-meta">
-                Showing {visibleCenters.length} of {filteredCenters.length} centers
+                Showing {visibleCenters.length.toLocaleString()} of {resultCount.toLocaleString()} centers
               </p>
               <button
                 type="button"
                 className="btn rehab-show-more-btn"
-                onClick={() => setVisibleCount(count => count + PAGE_SIZE)}
+                disabled={loadingMore}
+                onClick={loadMore}
               >
-                Show more
+                {loadingMore ? 'Loading…' : 'Show more'}
               </button>
             </div>
           )}

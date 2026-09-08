@@ -66,10 +66,46 @@ export function normalizeText(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-/** Match a service/level-of-care filter against specialties and levels_of_care. */
-export function centerMatchesService(specialties, serviceId, levelsOfCare = []) {
+const SERVICE_CODE_FILTER_MAP = {
+  inpatient: ['HI', 'RES', 'RTCA', 'RTCC', 'ORES', 'IPSY'],
+  outpatient: ['OP', 'OMH'],
+  php: ['PHP', 'PH'],
+  'dual-diagnosis': ['SUMH', 'IDD', 'MHSU'],
+  'mental-health': ['MH'],
+  trauma: ['TRMA', 'PTSD'],
+  telehealth: ['TELE'],
+  family: ['CFT', 'FPSY'],
+  'eating-disorders': ['PED'],
+  'substance-use': ['SA'],
+  mat: ['NRT', 'NSC'],
+}
+
+export function groupServiceDetails(details) {
+  const groups = []
+  const index = new Map()
+  for (const item of details || []) {
+    const key = item.category_code || 'OTHER'
+    if (!index.has(key)) {
+      const group = {
+        category_code: item.category_code,
+        category_name: item.category_name || 'Services',
+        codes: [],
+      }
+      index.set(key, group)
+      groups.push(group)
+    }
+    index.get(key).codes.push(item)
+  }
+  return groups
+}
+
+/** Match a service/level-of-care filter against specialties, levels of care, and SAMHSA codes. */
+export function centerMatchesService(specialties, serviceId, levelsOfCare = [], serviceCodes = []) {
   const service = REHAB_SERVICE_TYPES.find(s => s.id === serviceId)
   if (!service) return false
+  const mapped = SERVICE_CODE_FILTER_MAP[serviceId] || []
+  const have = new Set((serviceCodes || []).map(code => String(code).toUpperCase()))
+  if (mapped.some(code => have.has(code.toUpperCase()))) return true
   const haystack = normalizeText([...(specialties || []), ...(levelsOfCare || [])].join(' '))
   return service.keywords.some(kw => haystack.includes(normalizeText(kw)))
 }

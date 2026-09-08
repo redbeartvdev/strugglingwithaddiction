@@ -1,0 +1,85 @@
+.sw-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.sw-card {
+  padding: 28px;
+}
+
+.sw-steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 0;
+}
+
+.sw-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.sw-steps span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline, #e5e7eb);
+  font-weight: 700;
+}
+
+.sw-steps li.is-active {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.sw-steps li.is-active span,
+.sw-steps li.is-done span {
+  background: var(--brand, #98b8c4);
+  border-color: transparent;
+  color: #fff;
+}
+
+.sw-title {
+  margin: 6px 0 10px;
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+
+.sw-lead {
+  margin: 0 0 12px;
+  color: var(--fg-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.sw-center {
+  margin: 0 0 18px;
+  color: var(--fg-2);
+}
+
+.sw-field {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.sw-field input {
+  width: 100%;
+}
+
+.sw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, apiUpload } from '../../api'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
+import AdminEmailList from './EmailList'
 
 const PROVIDERS = [
   { value: 'auto', label: 'Auto (Resend → SMTP → console)' },
@@ -40,6 +42,11 @@ const emptySettings = {
   social_youtube: '',
   social_instagram: '',
   social_linkedin: '',
+  mailchimp_enabled: false,
+  mailchimp_api_key: '',
+  clear_mailchimp_api_key: false,
+  mailchimp_audience_id: '',
+  abandonment_emails_enabled: true,
 }
 
 export default function AdminEmails() {
@@ -58,6 +65,7 @@ export default function AdminEmails() {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [resendingId, setResendingId] = useState(null)
+  const [mailchimpPing, setMailchimpPing] = useState('')
 
   function loadLogs() {
     return api('/api/admin/emails').then(setLogs)
@@ -100,6 +108,11 @@ export default function AdminEmails() {
         social_youtube: s.social_youtube || '',
         social_instagram: s.social_instagram || '',
         social_linkedin: s.social_linkedin || '',
+        mailchimp_enabled: !!s.mailchimp_enabled,
+        mailchimp_api_key: '',
+        clear_mailchimp_api_key: false,
+        mailchimp_audience_id: s.mailchimp_audience_id || '',
+        abandonment_emails_enabled: s.abandonment_emails_enabled !== false,
       }))
       if (!testTo && s.email_from) setTestTo(s.email_from)
     })
@@ -111,6 +124,7 @@ export default function AdminEmails() {
       activity: loadLogs,
       templates: loadTemplates,
       settings: loadSettings,
+      list: () => Promise.resolve(),
     }
     loaders[tab]?.().catch(e => setErr(e.message))
   }, [tab])
@@ -221,11 +235,16 @@ export default function AdminEmails() {
         social_youtube: form.social_youtube || null,
         social_instagram: form.social_instagram || null,
         social_linkedin: form.social_linkedin || null,
+        mailchimp_enabled: !!form.mailchimp_enabled,
+        mailchimp_audience_id: form.mailchimp_audience_id || null,
+        abandonment_emails_enabled: form.abandonment_emails_enabled !== false,
         clear_resend_api_key: form.clear_resend_api_key,
         clear_smtp_password: form.clear_smtp_password,
+        clear_mailchimp_api_key: form.clear_mailchimp_api_key,
       }
       if (form.resend_api_key.trim()) payload.resend_api_key = form.resend_api_key.trim()
       if (form.smtp_password.trim()) payload.smtp_password = form.smtp_password.trim()
+      if (form.mailchimp_api_key.trim()) payload.mailchimp_api_key = form.mailchimp_api_key.trim()
       const updated = await api('/api/admin/email-settings', {
         method: 'PATCH',
         body: JSON.stringify(payload),
@@ -235,8 +254,10 @@ export default function AdminEmails() {
         ...f,
         resend_api_key: '',
         smtp_password: '',
+        mailchimp_api_key: '',
         clear_resend_api_key: false,
         clear_smtp_password: false,
+        clear_mailchimp_api_key: false,
         logo_url: updated.logo_url || '',
         smtp_host: updated.smtp_host || '',
         smtp_port: updated.smtp_port || 587,
@@ -260,6 +281,20 @@ export default function AdminEmails() {
       setMsg('Logo updated.')
     } catch (e) {
       setErr(e.message)
+    }
+  }
+
+  async function pingMailchimp() {
+    setBusy(true)
+    setErr('')
+    setMailchimpPing('')
+    try {
+      const res = await api('/api/admin/email-settings/mailchimp/ping', { method: 'POST' })
+      setMailchimpPing(`Connected: ${res.list_name || res.list_id}${res.member_count != null ? ` · ${res.member_count} members` : ''}`)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -318,12 +353,13 @@ export default function AdminEmails() {
     <div className="page-stack">
       <header className="page-header">
         <h1 className="page-title">Emails.</h1>
-        <p className="page-sub">Activity logs, editable notification templates, and delivery settings.</p>
+        <p className="page-sub">Named mailing lists, assignment, CSV export, templates, and delivery settings.</p>
       </header>
 
       <div className="tabs-row">
         {[
           ['activity', 'Activity'],
+          ['list', 'Lists'],
           ['templates', 'Templates'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
@@ -391,6 +427,8 @@ export default function AdminEmails() {
         </Card>
       )}
 
+      {tab === 'list' && <AdminEmailList embedded />}
+
       {tab === 'templates' && (
         <div className="form-grid-2" style={{ alignItems: 'start', gap: 20 }}>
           <Card>
@@ -414,6 +452,7 @@ export default function AdminEmails() {
                         <span>
                           <strong>{t.label}</strong>
                           {t.is_custom ? <>{' '}<Badge tone="info">Custom</Badge></> : null}
+                          {t.routed_to_mailchimp ? <>{' '}<Badge tone="info">Mailchimp</Badge></> : null}
                           <span className="muted" style={{ display: 'block', fontSize: 12 }}>{t.key}</span>
                         </span>
                       </button>
@@ -431,6 +470,13 @@ export default function AdminEmails() {
                   <p className="eyebrow">Edit template</p>
                   <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>{selectedTemplate.label}</h2>
                   <p className="muted">{selectedTemplate.description}</p>
+                  {selectedTemplate.routed_to_mailchimp && (
+                    <p className="muted" style={{ marginTop: 8 }}>
+                      Built-in send is off. Contacts are added to Mailchimp with tags
+                      {' '}<code>swa-abandonment-claim</code> / <code>swa-abandonment-submit</code>.
+                      Set up a Customer Journey on those tags in Mailchimp.
+                    </p>
+                  )}
                   {selectedTemplate.preference_gate && (
                     <p className="muted" style={{ marginTop: 8 }}>
                       Preference gate: <code>{selectedTemplate.preference_gate}</code>
@@ -520,6 +566,8 @@ export default function AdminEmails() {
             Effective provider: <code>{settingsMeta?.effective_provider || '—'}</code>
             {settingsMeta?.env_resend_configured ? ' · env Resend set' : ''}
             {settingsMeta?.env_smtp_configured ? ' · env SMTP set' : ''}
+            {' · '}
+            <Link to="/admin/settings?tab=mailchimp">Admin Settings → Mailchimp</Link>
           </p>
 
           <label>Provider</label>
@@ -684,6 +732,74 @@ export default function AdminEmails() {
               )}
             </>
           )}
+
+          <p className="eyebrow" style={{ marginTop: 16 }}>Mailchimp</p>
+          <p className="muted" style={{ marginBottom: 8 }}>
+            Syncs new registrations, listing claims, and new rehab-center submissions into one audience.
+            Status: {settingsMeta?.mailchimp_configured ? 'ready' : 'not configured'}
+            {settingsMeta?.env_mailchimp_configured ? ' · env key set' : ''}
+            {' · '}
+            <Link to="/admin/email-list">Manage named lists</Link>
+          </p>
+          <label style={{ display: 'block', marginBottom: 8 }}>
+            <input
+              type="checkbox"
+              checked={!!form.mailchimp_enabled}
+              onChange={e => setForm(f => ({ ...f, mailchimp_enabled: e.target.checked }))}
+            />{' '}
+            Enable Mailchimp audience sync
+          </label>
+          <label>
+            API key{settingsMeta?.mailchimp_api_key_set ? ' (saved — leave blank to keep)' : ''}
+          </label>
+          <input
+            type="password"
+            autoComplete="off"
+            value={form.mailchimp_api_key}
+            onChange={e => setForm(f => ({ ...f, mailchimp_api_key: e.target.value, clear_mailchimp_api_key: false }))}
+            placeholder={settingsMeta?.mailchimp_api_key_set ? '••••••••' : 'abcd…-us21'}
+          />
+          {settingsMeta?.mailchimp_api_key_set && (
+            <label style={{ display: 'block', marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={form.clear_mailchimp_api_key}
+                onChange={e => setForm(f => ({ ...f, clear_mailchimp_api_key: e.target.checked }))}
+              />{' '}
+              Clear saved Mailchimp API key
+            </label>
+          )}
+          <label style={{ marginTop: 8 }}>Audience / list ID</label>
+          <input
+            value={form.mailchimp_audience_id}
+            onChange={e => setForm(f => ({ ...f, mailchimp_audience_id: e.target.value }))}
+            placeholder="e.g. a1b2c3d4e5"
+          />
+          <label style={{ display: 'block', marginTop: 12 }}>
+            <input
+              type="checkbox"
+              checked={form.abandonment_emails_enabled === false}
+              onChange={e => setForm(f => ({ ...f, abandonment_emails_enabled: !e.target.checked }))}
+            />{' '}
+            Disable built-in abandonment emails and send those contacts to Mailchimp
+          </label>
+          {form.abandonment_emails_enabled === false && !form.mailchimp_enabled && (
+            <p className="muted" style={{ marginTop: 6 }}>
+              Built-in abandonment emails will stop. Enable Mailchimp above so those contacts still land in your audience.
+            </p>
+          )}
+          <p className="muted" style={{ marginTop: 6 }}>
+            Tags applied: <code>swa-registration</code>, <code>swa-claim</code>, <code>swa-new-center</code>,
+            {' '}<code>swa-abandonment-claim</code>, <code>swa-abandonment-submit</code>.
+            Merge fields: FNAME, LNAME, PHONE, CENTER, SOURCE, CONTURL.
+            Save settings, then test the connection.
+          </p>
+          <div className="form-actions" style={{ marginTop: 8 }}>
+            <Button type="button" variant="ghost" onClick={pingMailchimp} disabled={busy}>
+              Test Mailchimp connection
+            </Button>
+            {mailchimpPing && <span className="success">{mailchimpPing}</span>}
+          </div>
 
           <p className="eyebrow" style={{ marginTop: 16 }}>Footer social links</p>
           <div className="form-grid-2">

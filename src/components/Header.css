@@ -128,6 +128,7 @@
     top: 72px;
     left: 0;
     right: 0;
+    z-index: 101;
     background: #1a1a2e;
     flex-direction: column;
     align-items: flex-start;

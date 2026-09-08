@@ -140,9 +140,9 @@ function ProviderDetail({ data }) {
           />
         </Card>
         <Card>
-          <p className="eyebrow">Recent leads</p>
+          <p className="eyebrow">Recent abandonment leads</p>
           <RankList
-            empty="No leads in this range."
+            empty="Listing inquiries are not stored. Only abandoned claim/submit journeys appear here."
             rows={(data.recent_leads || []).map(lead => ({
               key: String(lead.id),
               title: lead.full_name,
@@ -232,9 +232,9 @@ function PlatformAnalytics({ data }) {
         </Card>
 
         <Card>
-          <p className="eyebrow">Top leads by center</p>
+          <p className="eyebrow">Abandoned journeys by center</p>
           <RankList
-            empty="No leads in this range."
+            empty="No abandonment leads in this range. Listing inquiries are emailed to each center and are not stored."
             rows={(data.top_leads || []).map(row => ({
               key: String(row.center_id),
               title: row.name,
@@ -243,7 +243,7 @@ function PlatformAnalytics({ data }) {
             }))}
           />
           <Button variant="ghost" size="sm" as={Link} to="/admin/leads" style={{ marginTop: 12 }}>
-            Open leads
+            Open abandonment leads
           </Button>
         </Card>
 
@@ -272,9 +272,9 @@ function PlatformAnalytics({ data }) {
         </Card>
 
         <Card className="aa-span-2">
-          <p className="eyebrow">Recent leads</p>
+          <p className="eyebrow">Recent abandonment leads</p>
           <RankList
-            empty="No leads in this range."
+            empty="Listing inquiries are not stored. Only abandoned claim/submit journeys appear here."
             rows={(data.recent_leads || []).map(lead => ({
               key: String(lead.id),
               title: lead.full_name,

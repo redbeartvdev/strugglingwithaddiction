@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.rehab import ClaimStatus, FacilityRole, ListingStatus, CenterSource
+from app.schemas.service_code import ServiceCodePublic
 
 
 class InsuranceDetail(BaseModel):
@@ -26,10 +27,13 @@ class RehabCenterPublic(BaseModel):
     claimed: bool
     verified_badge: bool = False
     featured: bool = False
+    inquiry_form_enabled: bool = True
     # Premium fields only when claimed+subscribed
     insurances: list[str] = Field(default_factory=list)
     insurance_details: list[InsuranceDetail] = Field(default_factory=list)
     levels_of_care: list[str] = Field(default_factory=list)
+    service_codes: list[str] = Field(default_factory=list)
+    service_details: list[ServiceCodePublic] = Field(default_factory=list)
     amenities: list[str] = Field(default_factory=list)
     accreditations: list[str] = Field(default_factory=list)
     google_maps_url: str | None = None
@@ -63,6 +67,40 @@ class CenterReviewsOut(BaseModel):
 
 class RehabDirectoryStats(BaseModel):
     claimed: int
+    published: int = 0
+
+
+class RehabCenterDirectoryPage(BaseModel):
+    items: list[RehabCenterPublic]
+    total: int
+    catalog_total: int
+    page: int
+    per_page: int
+    pages: int
+    city_applied: bool = False
+
+
+class RehabCenterAdminListItem(BaseModel):
+    id: int
+    slug: str
+    name: str
+    location_display: str
+    city: str | None = None
+    state: str | None = None
+    website: str | None = None
+    listing_status: ListingStatus
+    claimed: bool
+    published_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class RehabCenterAdminPage(BaseModel):
+    items: list[RehabCenterAdminListItem]
+    total: int
+    page: int
+    per_page: int
+    pages: int
 
 
 class RehabCenterAdmin(BaseModel):
@@ -76,6 +114,10 @@ class RehabCenterAdmin(BaseModel):
     state: str | None
     zip: str | None
     phone: str | None
+    intake1: str | None = None
+    intake2: str | None = None
+    intake1a: str | None = None
+    intake2a: str | None = None
     website: str | None
     verification_url: str | None = None
     contact_email: str | None = None
@@ -92,11 +134,13 @@ class RehabCenterAdmin(BaseModel):
     specialties: list[str]
     insurances: list[str] | None = None
     levels_of_care: list[str] | None = None
+    service_codes: list[str] | None = None
     amenities: list[str] | None = None
     accreditations: list[str] | None = None
     testimonials: list | None = None
     claimed: bool
     contact_visible: bool
+    inquiry_form_enabled: bool = True
     cert_verified_at: datetime | None = None
     verified_badge: bool = False
     featured_until: datetime | None = None
@@ -121,6 +165,10 @@ class RehabCenterCreate(BaseModel):
     state: str | None = None
     zip: str | None = None
     phone: str | None = None
+    intake1: str | None = None
+    intake2: str | None = None
+    intake1a: str | None = None
+    intake2a: str | None = None
     website: str | None = None
     verification_url: str | None = None
     contact_email: str | None = None
@@ -133,11 +181,13 @@ class RehabCenterCreate(BaseModel):
     specialties: list[str] = Field(default_factory=list)
     insurances: list[str] = Field(default_factory=list)
     levels_of_care: list[str] = Field(default_factory=list)
+    service_codes: list[str] = Field(default_factory=list)
     amenities: list[str] = Field(default_factory=list)
     accreditations: list[str] = Field(default_factory=list)
     testimonials: list = Field(default_factory=list)
     claimed: bool = False
     contact_visible: bool = False
+    inquiry_form_enabled: bool = True
     verified_badge: bool = False
     listing_status: ListingStatus = ListingStatus.draft
     source: CenterSource = CenterSource.manual
@@ -154,6 +204,10 @@ class RehabCenterUpdate(BaseModel):
     state: str | None = None
     zip: str | None = None
     phone: str | None = None
+    intake1: str | None = None
+    intake2: str | None = None
+    intake1a: str | None = None
+    intake2a: str | None = None
     website: str | None = None
     verification_url: str | None = None
     contact_email: str | None = None
@@ -166,11 +220,13 @@ class RehabCenterUpdate(BaseModel):
     specialties: list[str] | None = None
     insurances: list[str] | None = None
     levels_of_care: list[str] | None = None
+    service_codes: list[str] | None = None
     amenities: list[str] | None = None
     accreditations: list[str] | None = None
     testimonials: list | None = None
     claimed: bool | None = None
     contact_visible: bool | None = None
+    inquiry_form_enabled: bool | None = None
     verified_badge: bool | None = None
     featured_until: datetime | None = None
     listing_status: ListingStatus | None = None

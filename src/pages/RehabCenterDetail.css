@@ -51,6 +51,18 @@
   -webkit-backdrop-filter: blur(1px);
 }
 
+.rpd-hero-logo {
+  position: absolute;
+  right: clamp(1.25rem, 4vw, 2.5rem);
+  bottom: clamp(1.25rem, 4vw, 2.5rem);
+  z-index: 2;
+  width: min(148px, 36vw);
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+}
+
 .rpd-hero-inner {
   position: relative;
   z-index: 1;
@@ -173,7 +185,7 @@
 }
 
 .rpd-call-btn:hover,
-.rpd-form-submit:hover {
+.rpd-form-submit:hover:not(:disabled) {
   background: #4aafeb;
   border-color: #4aafeb;
   box-shadow: 0 6px 20px rgba(95, 189, 246, 0.35);
@@ -422,15 +434,66 @@
   margin-top: 0.75rem;
 }
 
+.rpd-hp {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.rpd-form-legal {
+  margin: 0.9rem 0 0;
+  color: var(--rpd-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.rpd-form-legal a,
+.rpd-form label.rpd-form-consent a {
+  color: var(--brand-blue, #5FBDF6);
+  text-decoration: underline;
+}
+
+.rpd-form label.rpd-form-consent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--rpd-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.rpd-form label.rpd-form-consent input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.18rem 0 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--brand-blue, #5FBDF6);
+}
+
 .rpd-form-submit {
   width: 100%;
   margin-top: 1rem;
 }
 
+.rpd-form-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .rpd-form-call {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.45rem;
   margin-top: 0.85rem;
   color: var(--rpd-ink);
@@ -579,6 +642,32 @@
   height: 0.4rem;
   border-radius: 50%;
   background: var(--brand-red);
+}
+
+.rpd-service-groups {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.rpd-service-group {
+  background: var(--rpd-soft);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.rpd-service-group h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.65rem;
+}
+
+.rpd-service-code {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--rpd-muted);
+  font-weight: 650;
 }
 
 .rpd-insurance-logos {

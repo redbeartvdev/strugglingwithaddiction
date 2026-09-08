@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FaSearch, FaSlidersH, FaTimes, FaMapMarkerAlt } from 'react-icons/fa'
 import { US_STATES } from '../lib/usStates'
 import { REHAB_SERVICE_TYPES } from '../lib/rehabServices'
@@ -46,6 +47,60 @@ function useTypewriter(phrases, { typingSpeed = 42, pauseMs = 2400, deleteSpeed 
   return text
 }
 
+function directoryStatusLine({
+  query,
+  state,
+  city,
+  service,
+  insurance,
+  resultCount,
+  totalCount,
+  hasActiveFilters,
+}) {
+  const count = Number(resultCount || 0).toLocaleString()
+  const catalog = Number(totalCount || 0).toLocaleString()
+  if (!hasActiveFilters) {
+    return <>Showing all <strong>{catalog}</strong> centers</>
+  }
+
+  const place = [city, state].filter(Boolean).join(', ')
+  const serviceLabel = REHAB_SERVICE_TYPES.find(item => item.id === service)?.label || service
+  const extras = []
+  if (serviceLabel) extras.push(<>for <strong>{serviceLabel}</strong></>)
+  if (insurance) extras.push(<>that accept <strong>{insurance}</strong></>)
+
+  if (query && place) {
+    return (
+      <>
+        Found <strong>{count}</strong> centers in <strong>{place}</strong> matching “{query}”
+        {extras.map((node, i) => <span key={i}> {node}</span>)}
+      </>
+    )
+  }
+  if (query) {
+    return (
+      <>
+        Found <strong>{count}</strong> centers matching “{query}”
+        {extras.map((node, i) => <span key={i}> {node}</span>)}
+      </>
+    )
+  }
+  if (place) {
+    return (
+      <>
+        Showing <strong>{count}</strong> centers in <strong>{place}</strong>
+        {extras.map((node, i) => <span key={i}> {node}</span>)}
+      </>
+    )
+  }
+  return (
+    <>
+      Found <strong>{count}</strong> centers
+      {extras.map((node, i) => <span key={i}> {node}</span>)}
+    </>
+  )
+}
+
 export default function RehabSearch({
   query,
   onQueryChange,
@@ -60,12 +115,17 @@ export default function RehabSearch({
   totalCount,
   onClear,
   hasActiveFilters,
-  locationHint = '',
+  city = '',
 }) {
   const [filtersOpen, setFiltersOpen] = useState(() => Boolean(insurance || state))
   const [focused, setFocused] = useState(false)
   const [hintIdx, setHintIdx] = useState(0)
   const [thinking, setThinking] = useState(false)
+  const [stuck, setStuck] = useState(false)
+  const [useFixed, setUseFixed] = useState(false)
+  const anchorRef = useRef(null)
+  const sentinelRef = useRef(null)
+  const wrapRef = useRef(null)
   const typedPrompt = useTypewriter(AI_PROMPTS)
 
   useEffect(() => {
@@ -84,12 +144,79 @@ export default function RehabSearch({
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const headerPx = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--header-height'),
+    ) || 72
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setStuck(!entry.isIntersecting),
+      { threshold: 0, rootMargin: `-${headerPx}px 0px 0px 0px` },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    const anchor = anchorRef.current
+    if (!wrap || !anchor) return
+
+    const clearFixed = () => {
+      setUseFixed(false)
+      anchor.style.minHeight = ''
+      wrap.style.width = ''
+      wrap.style.left = ''
+    }
+
+    if (!stuck) {
+      clearFixed()
+      return
+    }
+
+    const headerPx = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--header-height'),
+    ) || 72
+    const top = wrap.getBoundingClientRect().top
+    const stickyFailed = top < headerPx - 2
+
+    if (!stickyFailed) {
+      clearFixed()
+      return
+    }
+
+    const place = () => {
+      const rect = anchor.getBoundingClientRect()
+      wrap.style.width = `${rect.width}px`
+      wrap.style.left = `${rect.left}px`
+      anchor.style.minHeight = `${wrap.offsetHeight}px`
+    }
+
+    setUseFixed(true)
+    place()
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('resize', place)
+      clearFixed()
+    }
+  }, [stuck])
+
   const activeFilterCount = (state ? 1 : 0) + (service ? 1 : 0) + (insurance ? 1 : 0)
+  const wrapClass = [
+    'rehab-search-wrap',
+    stuck ? 'is-stuck' : '',
+    useFixed ? 'is-stuck-fixed' : '',
+  ].filter(Boolean).join(' ')
 
   return (
-    <div className="rehab-search-wrap">
+    <div ref={anchorRef} className={`rehab-search-anchor${stuck ? ' is-stuck' : ''}`}>
+      <div ref={sentinelRef} className="rehab-search-sentinel" aria-hidden="true" />
+      <div ref={wrapRef} className={wrapClass}>
       <div className={`rehab-search-card ${focused ? 'rehab-search-card--focused' : ''}`}>
-        <div className="rehab-search-ai">
+        <div className="rehab-search-ai" aria-hidden={stuck || undefined}>
           <p className="rehab-search-ai-prompt" aria-live="polite">
             {typedPrompt}
             <span className="rehab-search-cursor" aria-hidden="true" />
@@ -208,16 +335,16 @@ export default function RehabSearch({
           <div className={`rehab-search-results ${thinking ? 'rehab-search-results--thinking' : ''}`}>
             {thinking && <span className="rehab-search-thinking-dot" aria-hidden="true" />}
             <span>
-              {hasActiveFilters ? (
-                <>
-                  Found <strong>{resultCount}</strong> of {totalCount} centers
-                  {locationHint ? <> near <strong>{locationHint}</strong></> : null}
-                </>
-              ) : (
-                <>
-                  Showing all <strong>{totalCount}</strong> featured centers
-                </>
-              )}
+              {directoryStatusLine({
+                query,
+                state,
+                city,
+                service,
+                insurance,
+                resultCount,
+                totalCount,
+                hasActiveFilters,
+              })}
             </span>
           </div>
 
@@ -227,6 +354,12 @@ export default function RehabSearch({
             </button>
           )}
         </div>
+      </div>
+      <p className="rehab-search-provider">
+        Are you a treatment provider?{' '}
+        <Link to="/provider">Log in to the provider platform</Link>
+        {' '}or <strong>claim your listing</strong> below.
+      </p>
       </div>
     </div>
   )

@@ -4,12 +4,15 @@ import re
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.api.geo import US_STATE_ABBREVS
 from app.api.rehab_helpers import (
-    center_matches_insurance,
-    center_matches_service,
+    SERVICE_KEYWORDS,
     center_to_public,
+    centers_to_directory,
+    public_listing_image,
 )
 from app.core.deps import AdminUser, ClientUser, CurrentUser, get_current_user_optional
 from app.core.security import hash_password
@@ -23,6 +26,7 @@ from app.models.rehab import (
     CenterSource,
 )
 from app.models.user import User, UserRole
+from app.services.service_codes import SERVICE_CODE_FILTER_MAP, sanitize_center_service_codes
 from app.schemas.rehab import (
     ClaimAdmin,
     ClaimedClientAdmin,
@@ -33,7 +37,10 @@ from app.schemas.rehab import (
     CenterReviewsOut,
     ReviewItem,
     RehabCenterAdmin,
+    RehabCenterAdminListItem,
+    RehabCenterAdminPage,
     RehabCenterCreate,
+    RehabCenterDirectoryPage,
     RehabCenterPublic,
     RehabCenterUpdate,
     RehabDirectoryStats,
@@ -46,6 +53,7 @@ from app.services.tickets import generate_claim_ticket
 
 router = APIRouter(tags=["rehab"])
 settings = get_settings()
+_STATE_NAME_TO_ABBR = {name.lower(): abbr for abbr, name in US_STATE_ABBREVS.items()}
 
 
 def _landing_segment(value: str | None) -> str:
@@ -54,30 +62,137 @@ def _landing_segment(value: str | None) -> str:
 
 def _admin_center_out(center: RehabCenter) -> RehabCenterAdmin:
     item = RehabCenterAdmin.model_validate(center)
-    item.image_url = resolve_image_url(center.image_key)
+    item.image_url = public_listing_image(center)
     item.gallery_urls = [get_public_url(k) for k in (center.gallery_keys or [])]
     return item
 
 
-@router.get("/api/rehab-centers", response_model=list[RehabCenterPublic])
+def _admin_center_list_item(center: RehabCenter) -> RehabCenterAdminListItem:
+    return RehabCenterAdminListItem.model_validate(center)
+
+
+def _state_aliases(value: str | None) -> list[str]:
+    raw = (value or "").strip()
+    if not raw:
+        return []
+    aliases = {raw}
+    upper = raw.upper()
+    if upper in US_STATE_ABBREVS:
+        aliases.add(upper)
+        aliases.add(US_STATE_ABBREVS[upper])
+    abbr = _STATE_NAME_TO_ABBR.get(raw.lower())
+    if abbr:
+        aliases.add(abbr)
+        aliases.add(US_STATE_ABBREVS.get(abbr, abbr))
+    return list(aliases)
+
+
+def _safe_like(value: str) -> str:
+    return value.replace("\\", "").replace("%", "").replace("_", "").strip()
+
+
+def _published_centers_query(db: Session):
+    return db.query(RehabCenter).filter(
+        RehabCenter.listing_status == ListingStatus.published,
+        RehabCenter.deleted_at.is_(None),
+    )
+
+
+@router.get("/api/rehab-centers", response_model=RehabCenterDirectoryPage)
 def list_centers(
     db: Annotated[Session, Depends(get_db)],
+    q: str | None = Query(default=None, max_length=200),
     state: str | None = Query(default=None, max_length=100),
     city: str | None = Query(default=None, max_length=100),
     insurance: str | None = Query(default=None, max_length=120),
     service: str | None = Query(default=None, max_length=64),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
 ):
-    query = db.query(RehabCenter).filter(RehabCenter.listing_status == ListingStatus.published, RehabCenter.deleted_at.is_(None))
-    if state:
-        query = query.filter(RehabCenter.state.ilike(state.strip()))
-    if city:
-        query = query.filter(RehabCenter.city.ilike(city.strip()))
-    centers = query.order_by(RehabCenter.featured_until.desc().nullslast(), RehabCenter.name).all()
+    catalog_total = _published_centers_query(db).count()
+    query = _published_centers_query(db)
+
+    state_vals = _state_aliases(state)
+    if state_vals:
+        query = query.filter(or_(*[RehabCenter.state.ilike(v) for v in state_vals]))
+
+    term = _safe_like(q or "")
+    if term:
+        like = f"%{term}%"
+        search_filters = [
+            RehabCenter.name.ilike(like),
+            RehabCenter.location_display.ilike(like),
+            RehabCenter.city.ilike(like),
+            RehabCenter.state.ilike(like),
+            RehabCenter.zip.ilike(like),
+            RehabCenter.description.ilike(like),
+            RehabCenter.slug.ilike(like),
+        ]
+        state_abbr = _STATE_NAME_TO_ABBR.get(term.lower())
+        if state_abbr:
+            search_filters.append(RehabCenter.state.ilike(state_abbr))
+        query = query.filter(or_(*search_filters))
+
     if insurance:
-        centers = [c for c in centers if center_matches_insurance(c, insurance)]
+        needle = _safe_like(insurance)
+        if needle.lower() in ("other insurance", "other"):
+            query = query.filter(func.array_to_string(RehabCenter.insurances, " ").ilike("%other%"))
+        elif needle:
+            query = query.filter(func.array_to_string(RehabCenter.insurances, " ").ilike(f"%{needle}%"))
+
     if service:
-        centers = [c for c in centers if center_matches_service(c, service)]
-    return [center_to_public(db, c) for c in centers]
+        service_id = service.strip().lower()
+        clauses = []
+        codes = SERVICE_CODE_FILTER_MAP.get(service_id) or []
+        if codes:
+            clauses.append(RehabCenter.service_codes.overlap(codes))
+        blob = func.concat(
+            func.coalesce(func.array_to_string(RehabCenter.specialties, " "), ""),
+            " ",
+            func.coalesce(func.array_to_string(RehabCenter.levels_of_care, " "), ""),
+        )
+        for kw in SERVICE_KEYWORDS.get(service_id) or []:
+            clauses.append(blob.ilike(f"%{kw}%"))
+        if clauses:
+            query = query.filter(or_(*clauses))
+        else:
+            query = query.filter(RehabCenter.id.is_(None))
+
+    city_term = _safe_like(city or "")
+    city_applied = False
+    if city_term:
+        city_query = query.filter(RehabCenter.city.ilike(f"%{city_term}%"))
+        if city_query.count() > 0:
+            query = city_query
+            city_applied = True
+
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
+    page = min(page, pages)
+    order = []
+    if city_term:
+        order.append(RehabCenter.city.ilike(f"%{city_term}%").desc())
+    now = datetime.now(timezone.utc)
+    featured_rank = case(
+        (and_(RehabCenter.featured_until.isnot(None), RehabCenter.featured_until > now), 1),
+        else_=0,
+    )
+    order.extend([
+        featured_rank.desc(),
+        RehabCenter.verified_badge.desc(),
+        RehabCenter.claimed.desc(),
+        RehabCenter.name,
+    ])
+    centers = query.order_by(*order).offset((page - 1) * per_page).limit(per_page).all()
+    return {
+        "items": centers_to_directory(db, centers),
+        "total": total,
+        "catalog_total": catalog_total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+        "city_applied": city_applied,
+    }
 
 
 @router.get("/api/rehab-centers/landing/{state}/{city}/{facility}", response_model=RehabCenterPublic)
@@ -113,16 +228,9 @@ def get_claimed_center_landing(
 
 @router.get("/api/rehab-centers/stats", response_model=RehabDirectoryStats)
 def directory_stats(db: Annotated[Session, Depends(get_db)]):
-    claimed = (
-        db.query(RehabCenter)
-        .filter(
-            RehabCenter.listing_status == ListingStatus.published,
-            RehabCenter.deleted_at.is_(None),
-            RehabCenter.claimed.is_(True),
-        )
-        .count()
-    )
-    return RehabDirectoryStats(claimed=claimed)
+    published = _published_centers_query(db)
+    claimed = published.filter(RehabCenter.claimed.is_(True)).count()
+    return RehabDirectoryStats(claimed=claimed, published=published.count())
 
 
 @router.get("/api/rehab-centers/{slug}", response_model=RehabCenterPublic)
@@ -240,12 +348,56 @@ def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
     )
 
 
-@router.get("/api/admin/rehab-centers", response_model=list[RehabCenterAdmin])
-def admin_list_centers(_: AdminUser, db: Annotated[Session, Depends(get_db)], trash: bool = Query(False)):
-    q = db.query(RehabCenter)
-    q = q.filter(RehabCenter.deleted_at.isnot(None) if trash else RehabCenter.deleted_at.is_(None))
-    centers = q.order_by(RehabCenter.updated_at.desc()).all()
-    return [_admin_center_out(c) for c in centers]
+@router.get("/api/admin/rehab-centers", response_model=RehabCenterAdminPage)
+def admin_list_centers(
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    trash: bool = Query(False),
+    q: str = Query("", max_length=200),
+    claimed: bool | None = Query(None),
+    status: ListingStatus | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+):
+    query = db.query(RehabCenter)
+    query = query.filter(RehabCenter.deleted_at.isnot(None) if trash else RehabCenter.deleted_at.is_(None))
+    if claimed is not None:
+        query = query.filter(RehabCenter.claimed.is_(claimed))
+    if status is not None:
+        query = query.filter(RehabCenter.listing_status == status)
+    term = q.strip()
+    if term:
+        like = f"%{term}%"
+        filters = [
+            RehabCenter.name.ilike(like),
+            RehabCenter.location_display.ilike(like),
+            RehabCenter.slug.ilike(like),
+            RehabCenter.city.ilike(like),
+            RehabCenter.state.ilike(like),
+            RehabCenter.zip.ilike(like),
+            RehabCenter.phone.ilike(like),
+            RehabCenter.samhsa_id.ilike(like),
+        ]
+        state_abbr = _STATE_NAME_TO_ABBR.get(term.lower())
+        if state_abbr:
+            filters.append(RehabCenter.state.ilike(state_abbr))
+        query = query.filter(or_(*filters))
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
+    page = min(page, pages)
+    centers = (
+        query.order_by(RehabCenter.updated_at.desc(), RehabCenter.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    return {
+        "items": [_admin_center_list_item(c) for c in centers],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+    }
 
 
 @router.get("/api/admin/rehab-centers/{center_id}", response_model=RehabCenterAdmin)
@@ -260,7 +412,9 @@ def admin_get_center(center_id: int, _: AdminUser, db: Annotated[Session, Depend
 def create_center(body: RehabCenterCreate, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
     if db.query(RehabCenter).filter(RehabCenter.slug == body.slug).first():
         raise HTTPException(status_code=400, detail="Slug exists")
-    center = RehabCenter(**body.model_dump())
+    payload = body.model_dump()
+    payload["service_codes"] = sanitize_center_service_codes(db, payload.get("service_codes"))
+    center = RehabCenter(**payload)
     if center.listing_status == ListingStatus.published and not center.published_at:
         center.published_at = body.published_at or datetime.now(timezone.utc)
     db.add(center)
@@ -274,7 +428,10 @@ def update_center(center_id: int, body: RehabCenterUpdate, _: AdminUser, db: Ann
     center = db.query(RehabCenter).filter(RehabCenter.id == center_id).first()
     if not center:
         raise HTTPException(status_code=404, detail="Center not found")
-    for k, v in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    if "service_codes" in data:
+        data["service_codes"] = sanitize_center_service_codes(db, data.get("service_codes"))
+    for k, v in data.items():
         setattr(center, k, v)
     if body.listing_status == ListingStatus.published and center.published_at is None:
         center.published_at = body.published_at if body.published_at is not None else datetime.now(timezone.utc)

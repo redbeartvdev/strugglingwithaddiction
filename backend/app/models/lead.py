@@ -29,3 +29,11 @@ class CenterLead(Base, TimestampMixin):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     center: Mapped["RehabCenter | None"] = relationship(back_populates="leads")  # noqa: F821
+
+
+def is_visitor_inquiry(lead: "CenterLead") -> bool:
+    """True for listing-form inquiries. Those are no longer stored; historical rows stay hidden."""
+    if (getattr(lead, "tag", None) or "") == "abandonment":
+        return False
+    kind = getattr(lead, "source_kind", None) or "inquiry"
+    return kind == "inquiry"

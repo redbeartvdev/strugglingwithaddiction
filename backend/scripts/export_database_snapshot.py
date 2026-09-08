@@ -36,6 +36,7 @@ TABLES = [
     "blog_settings",
     "rehab_centers",
     "insurance_catalog",
+    "service_code_catalog",
     "subscription_plans",
     "subscriptions",
     "client_landing_pages",
@@ -44,7 +45,7 @@ TABLES = [
 
 # Columns wiped before writing (never commit live secrets).
 REDACT = {
-    "platform_email_settings": {"resend_api_key", "smtp_password", "smtp_host", "smtp_username"},
+    "platform_email_settings": {"resend_api_key", "smtp_password", "smtp_host", "smtp_username", "mailchimp_api_key"},
     "subscription_plans": {"stripe_price_id_monthly", "stripe_price_id_yearly"},
     "subscriptions": {"stripe_customer_id", "stripe_subscription_id"},
     "rehab_center_claims": {"phone_otp_hash", "phone_otp_expires_at"},

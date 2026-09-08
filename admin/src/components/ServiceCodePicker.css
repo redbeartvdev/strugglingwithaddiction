@@ -1,0 +1,121 @@
+.scp {
+  display: grid;
+  gap: 12px;
+}
+
+.scp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scp-search {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.scp-search input {
+  margin: 0;
+}
+
+.scp-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.scp-group {
+  border: 1px solid var(--hairline, #e5e7eb);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+
+.scp-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface-2, #f8fafc);
+}
+
+.scp-group-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.scp-group-title {
+  font-weight: 650;
+}
+
+.scp-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.scp-item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.scp-item input {
+  width: auto;
+  margin: 3px 0 0;
+}
+
+.scp-item.is-on {
+  background: color-mix(in srgb, var(--accent, #0d6e6e) 10%, transparent);
+}
+
+.scp-code {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  color: var(--fg-2, #6b7280);
+}
+
+.scp-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--fg-2, #6b7280);
+}
+
+.scp-empty {
+  padding: 12px 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
