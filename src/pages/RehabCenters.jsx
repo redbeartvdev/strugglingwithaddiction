@@ -16,6 +16,7 @@ import { resolveOutboundListingLink } from '../lib/outboundListingLink'
 import { listingImageSrc } from '../lib/listingMedia'
 import { US_STATES } from '../lib/usStates'
 import RehabSearch from '../components/RehabSearch'
+import { usePageSeo } from '../hooks/usePageSeo'
 import InsuranceAcceptedSection from '../components/InsuranceAcceptedSection'
 import ListingPlanPicker from '../components/ListingPlanPicker'
 import './RehabCenters.css'
@@ -803,6 +804,12 @@ function stripFilterParams(params) {
 
 export default function RehabCenters() {
   const [searchParams, setSearchParams] = useSearchParams()
+  usePageSeo({
+    title: 'Trusted Rehab Centers Across the USA',
+    description:
+      'Search licensed rehab centers across the United States. Filter by state, insurance, detox, inpatient, and outpatient care on Struggling With Addiction.',
+    path: '/rehab-centers',
+  })
   const [claimCenter, setClaimCenter] = useState(null)
   const [submitOpen, setSubmitOpen] = useState(false)
   const [submitResumeToken, setSubmitResumeToken] = useState(null)
@@ -1142,7 +1149,7 @@ export default function RehabCenters() {
             </div>
           )}
           {!loading && visibleCenters.map(center => {
-            const landingPath = center.claimed ? rehabLandingPath(center) : null
+            const landingPath = center.public_page === false ? null : rehabLandingPath(center)
             const outbound = center.claimed ? resolveOutboundListingLink(center) : null
             return (
             <article className={`rehab-card${center.claimed ? '' : ' rehab-card--unclaimed'}`} key={center.id}>

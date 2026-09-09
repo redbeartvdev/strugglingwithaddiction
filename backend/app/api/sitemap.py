@@ -13,14 +13,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from app.api.rehab_helpers import center_landing_path, is_indexable_listing, published_centers_query
 from app.config import get_settings
 from app.database import get_db
-from app.models.billing import Subscription
 from app.models.blog import Author, Post, PostStatus
 from app.models.client_portal import ClientLandingPage
 from app.models.insurance import InsuranceCatalog
 from app.models.profile import UserProfile
-from app.models.rehab import ListingStatus, RehabCenter
+from app.models.rehab import RehabCenter
 from app.services.storage import resolve_image_url
 
 router = APIRouter(tags=["seo"])
@@ -48,7 +48,6 @@ STATIC_PAGES = (
     "/rehab-centers",
     "/insurance-coverage",
     "/videos",
-    "/portal",
     "/privacy",
     "/terms",
     "/accessibility",
@@ -92,17 +91,6 @@ def _slugify_segment(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(value or "").lower().strip()).strip("-")
 
 
-def _center_landing_path(center: RehabCenter) -> str | None:
-    state = center.state or (center.location_display or "").split(",")[-1].strip()
-    city = center.city or (center.location_display or "").split(",")[0].strip()
-    if not state or not city or not center.name:
-        return None
-    return (
-        f"/rehabs/united-states/{_slugify_segment(state)}/"
-        f"{_slugify_segment(city)}/{_slugify_segment(center.name)}"
-    )
-
-
 def _xml_response(body: str) -> Response:
     return Response(
         content=body,
@@ -137,31 +125,10 @@ def _urlset(entries: list[str], with_images: bool = False) -> str:
     )
 
 
-def _active_owner_ids(db: Session) -> set[int]:
-    rows = (
-        db.query(Subscription.user_id)
-        .filter(Subscription.status.in_(("active", "trialing", "past_due")))
-        .all()
-    )
-    return {row[0] for row in rows if row[0] is not None}
-
-
 def _indexable_centers(db: Session) -> list[RehabCenter]:
-    owners = _active_owner_ids(db)
-    centers = (
-        db.query(RehabCenter)
-        .filter(
-            RehabCenter.listing_status == ListingStatus.published,
-            RehabCenter.deleted_at.is_(None),
-        )
-        .all()
-    )
     out: list[RehabCenter] = []
-    for center in centers:
-        public = bool(center.contact_visible) or (
-            bool(center.claimed) and bool(center.owner_user_id) and center.owner_user_id in owners
-        )
-        if public and _center_landing_path(center):
+    for center in published_centers_query(db).all():
+        if is_indexable_listing(center) and center_landing_path(center):
             out.append(center)
     return out
 
@@ -219,7 +186,7 @@ def _all_url_entries(db: Session) -> list[str]:
     states: dict[str, datetime | None] = {}
     cities: dict[tuple[str, str], datetime | None] = {}
     for center in centers:
-        path = _center_landing_path(center)
+        path = center_landing_path(center)
         if not path:
             continue
         lastmod = center.updated_at or center.published_at
@@ -273,6 +240,7 @@ def robots_txt() -> Response:
         "Disallow: /confirm-email\n"
         "Disallow: /swa-login\n"
         "Disallow: /provider\n"
+        "Disallow: /portal\n"
         "Disallow: /unsubscribe\n"
         "Disallow: /claim-status/\n"
         "Disallow: /submit-center/\n"

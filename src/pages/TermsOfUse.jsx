@@ -1,8 +1,15 @@
 import './Legal.css'
 import { Link } from 'react-router-dom'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { TermsOfUseContent } from '../components/LegalCopy'
 
 export default function TermsOfUse() {
+  usePageSeo({
+    title: 'Terms of Use',
+    description:
+      'Terms of use for Struggling With Addiction, including directory listings, articles, and provider portal access.',
+    path: '/terms',
+  })
   return (
     <main>
 

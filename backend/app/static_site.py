@@ -6,8 +6,19 @@ import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+
+from app.api.sitemap import canonical_base_url
+from app.database import SessionLocal
+from app.seo.document import inject
+from app.seo.pages import (
+    insurance_legacy_redirect,
+    legacy_center_redirect,
+    not_found_page,
+    resolve_public_page,
+)
+from app.seo.redirects import lookup_redirect
 
 logger = logging.getLogger("swa")
 
@@ -43,6 +54,51 @@ def _file_response(path: Path) -> FileResponse:
     return FileResponse(path, media_type=media_type or "application/octet-stream")
 
 
+def _normalize_public_path(full_path: str) -> str:
+    path = f"/{full_path}" if full_path else "/"
+    if path != "/" and "//" in path:
+        path = re_collapse(path)
+    return path
+
+
+def re_collapse(path: str) -> str:
+    while "//" in path:
+        path = path.replace("//", "/")
+    return path or "/"
+
+
+def _render_seo_html(path: str, index: Path) -> HTMLResponse | RedirectResponse:
+    mapped = lookup_redirect(path)
+    if mapped:
+        dest, status = mapped
+        return RedirectResponse(dest, status_code=status)
+
+    if len(path) > 1 and path.endswith("/"):
+        return RedirectResponse(path.rstrip("/") or "/", status_code=301)
+
+    insurance = insurance_legacy_redirect(path)
+    if insurance:
+        return RedirectResponse(insurance, status_code=301)
+
+    shell = index.read_text(encoding="utf-8")
+    base = canonical_base_url()
+    db = SessionLocal()
+    try:
+        legacy = legacy_center_redirect(db, path)
+        if legacy:
+            return RedirectResponse(legacy, status_code=301)
+        page = resolve_public_page(path, db, base)
+        if page is None:
+            page = not_found_page(path, base)
+        html = inject(shell, page, base)
+        return HTMLResponse(html, status_code=page.status)
+    except Exception:
+        logger.exception("SEO HTML render failed for %s", path)
+        return _file_response(index)
+    finally:
+        db.close()
+
+
 def register_static_site(app: FastAPI) -> None:
     index = STATIC_ROOT / "index.html"
     if not index.is_file():
@@ -54,8 +110,8 @@ def register_static_site(app: FastAPI) -> None:
         logger.warning("static/index.html exists but static/admin/index.html missing — admin UI unavailable")
 
     @app.get("/", include_in_schema=False)
-    async def site_root() -> FileResponse:
-        return _file_response(index)
+    async def site_root():
+        return _render_seo_html("/", index)
 
     @app.get("/admin", include_in_schema=False)
     @app.get("/admin/", include_in_schema=False)
@@ -76,12 +132,11 @@ def register_static_site(app: FastAPI) -> None:
         return _file_response(admin_index)
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def public_spa(full_path: str) -> FileResponse:
+    async def public_spa(full_path: str):
         if full_path.startswith(("api/", "uploads/", "health")) or full_path == "health":
             raise HTTPException(status_code=404)
         if full_path == "admin" or full_path.startswith("admin/"):
             raise HTTPException(status_code=404)
-        # /images is served by mount_image_assets; avoid SPA fallback for missing files there.
         if full_path.startswith("images/"):
             raise HTTPException(status_code=404)
 
@@ -89,10 +144,10 @@ def register_static_site(app: FastAPI) -> None:
         if candidate.is_file():
             return _file_response(candidate)
 
-        # Missing static files must 404 — returning index.html breaks script/img tags.
         if full_path.startswith(("assets/", "favicon")) or "." in Path(full_path).name:
             raise HTTPException(status_code=404)
 
-        return _file_response(index)
+        path = _normalize_public_path(full_path)
+        return _render_seo_html(path, index)
 
     logger.info("Serving public site from %s and admin from %s", STATIC_ROOT, ADMIN_ROOT)

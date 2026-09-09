@@ -13,6 +13,7 @@ Disallow: /reset-password
 Disallow: /confirm-email
 Disallow: /swa-login
 Disallow: /provider
+Disallow: /portal
 Disallow: /unsubscribe
 Disallow: /claim-status/
 Disallow: /submit-center/

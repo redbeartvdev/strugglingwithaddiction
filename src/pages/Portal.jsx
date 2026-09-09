@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FaBuilding,
@@ -6,6 +6,7 @@ import {
   FaLifeRing,
 } from 'react-icons/fa'
 import { fetchApi } from '../lib/api'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { getAdminSiteUrl, providerDashboardPath, superadminLoginUrl } from '../lib/adminSite'
 import './Portal.css'
 
@@ -92,12 +93,13 @@ export default function Portal() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    const site = 'Struggling With Addiction'
-    document.title = `Rehab Provider Login | ${site}`
-    return () => { document.title = site }
-  }, [])
+  usePageSeo({
+    title: 'Rehab Provider Login',
+    description:
+      'Sign in to manage a claimed treatment listing, leads, billing, and partner tools on Struggling With Addiction.',
+    path: '/portal',
+    noindex: true,
+  })
 
   function switchMode(next) {
     setMode(next)
