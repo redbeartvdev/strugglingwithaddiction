@@ -763,8 +763,9 @@ function filterCenters(centers, { query, state, city, service, insurance, catalo
   })
 }
 
-function rankCenters(centers, { city } = {}) {
+function rankCenters(centers, { city, shuffleSeed } = {}) {
   const cityNeedle = normalizeText(city)
+  const seed = String(shuffleSeed || '')
   return [...centers].sort((a, b) => {
     if (cityNeedle) {
       const aCity = normalizeText(getCenterCity(a)).includes(cityNeedle) ? 1 : 0
@@ -774,8 +775,38 @@ function rankCenters(centers, { city } = {}) {
     const aFeatured = a.featured ? 1 : 0
     const bFeatured = b.featured ? 1 : 0
     if (aFeatured !== bFeatured) return bFeatured - aFeatured
+    const aVerified = a.verified_badge ? 1 : 0
+    const bVerified = b.verified_badge ? 1 : 0
+    if (aVerified !== bVerified) return bVerified - aVerified
+    const aClaimed = a.claimed ? 1 : 0
+    const bClaimed = b.claimed ? 1 : 0
+    if (aClaimed !== bClaimed) return bClaimed - aClaimed
+    if (aClaimed && bClaimed) {
+      return String(a.name || '').localeCompare(String(b.name || ''))
+    }
+    if (seed) {
+      const aRank = unclaimedShuffleRank(a.id ?? a.slug, seed)
+      const bRank = unclaimedShuffleRank(b.id ?? b.slug, seed)
+      if (aRank !== bRank) return aRank < bRank ? -1 : 1
+    }
     return String(a.name || '').localeCompare(String(b.name || ''))
   })
+}
+
+function newDirectoryShuffleSeed() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+  }
+  return Math.random().toString(36).slice(2, 18)
+}
+
+function unclaimedShuffleRank(id, seed) {
+  const text = `${id}:${seed}`
+  let hash = 0
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
+  }
+  return hash
 }
 
 // NOTE: Backend endpoint used for listing inquiries (emailed to the center, not stored):
@@ -824,6 +855,7 @@ export default function RehabCenters() {
   const [cityApplied, setCityApplied] = useState(false)
   const reloadResetRef = useRef(isDocumentReloadOn('/rehab-centers'))
   const skipIpLocationRef = useRef(reloadResetRef.current || !shouldAutoApplyVisitorLocation())
+  const shuffleSeedRef = useRef(newDirectoryShuffleSeed())
   const [query, setQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
   const [debouncedQuery, setDebouncedQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
   const [stateFilter, setStateFilter] = useState(() => (
@@ -893,6 +925,7 @@ export default function RehabCenters() {
     const params = new URLSearchParams({
       page: '1',
       per_page: String(PAGE_SIZE),
+      shuffle: shuffleSeedRef.current,
     })
     if (debouncedQuery) params.set('q', debouncedQuery)
     if (stateFilter) params.set('state', stateFilter)
@@ -979,10 +1012,10 @@ export default function RehabCenters() {
         insurance: insuranceFilter,
         catalogNames,
       })
-      return rankCenters(stateOnly, { city: cityFilter })
+      return rankCenters(stateOnly, { city: cityFilter, shuffleSeed: shuffleSeedRef.current })
     }
 
-    return rankCenters(base, { city: cityFilter })
+    return rankCenters(base, { city: cityFilter, shuffleSeed: shuffleSeedRef.current })
   }, [
     centers,
     query,
@@ -1019,6 +1052,7 @@ export default function RehabCenters() {
     const params = new URLSearchParams({
       page: String(nextPage),
       per_page: String(PAGE_SIZE),
+      shuffle: shuffleSeedRef.current,
     })
     if (debouncedQuery) params.set('q', debouncedQuery)
     if (stateFilter) params.set('state', stateFilter)

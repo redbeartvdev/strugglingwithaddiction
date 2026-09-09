@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
-from sqlalchemy import and_, case, func, or_
+from sqlalchemy import String, and_, case, cast, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.geo import US_STATE_ABBREVS
@@ -88,6 +88,10 @@ def _safe_like(value: str) -> str:
     return value.replace("\\", "").replace("%", "").replace("_", "").strip()
 
 
+def _directory_shuffle_seed(value: str | None) -> str:
+    return "".join(ch for ch in (value or "") if ch.isalnum())[:32]
+
+
 def _published_centers_query(db: Session):
     return db.query(RehabCenter).filter(
         RehabCenter.listing_status == ListingStatus.published,
@@ -103,6 +107,7 @@ def list_centers(
     city: str | None = Query(default=None, max_length=100),
     insurance: str | None = Query(default=None, max_length=120),
     service: str | None = Query(default=None, max_length=64),
+    shuffle: str | None = Query(default=None, max_length=64),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -178,8 +183,18 @@ def list_centers(
         featured_rank.desc(),
         RehabCenter.verified_badge.desc(),
         RehabCenter.claimed.desc(),
-        RehabCenter.name,
     ])
+    seed = _directory_shuffle_seed(shuffle)
+    if seed:
+        shuffle_key = func.md5(func.concat(cast(RehabCenter.id, String), ":", seed))
+        order.append(
+            case(
+                (RehabCenter.claimed.is_(True), RehabCenter.name),
+                else_=shuffle_key,
+            )
+        )
+    else:
+        order.append(RehabCenter.name)
     centers = query.order_by(*order).offset((page - 1) * per_page).limit(per_page).all()
     return {
         "items": centers_to_directory(db, centers),
