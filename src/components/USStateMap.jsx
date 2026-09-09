@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MAP_VIEWBOX, US_MAP_STATES } from '../data/usMapPaths'
 import { buildRehabDirectoryUrl } from '../lib/rehabServices'
+import { canonicalUsStateName } from '../lib/usStates'
 import './USStateMap.css'
 
 const INSET_STATE_IDS = new Set(['NH', 'VT', 'NJ', 'DE', 'DC', 'MA', 'CT', 'RI', 'MD'])
 
-function stateDirectoryUrl(stateName) {
-  return buildRehabDirectoryUrl({ state: stateName })
+function stateDirectoryUrl(state) {
+  const canonical = canonicalUsStateName(state.id) || canonicalUsStateName(state.name)
+  return buildRehabDirectoryUrl({ state: canonical || state.name })
 }
 
 export default function USStateMap() {
@@ -38,7 +40,7 @@ export default function USStateMap() {
   }, [])
 
   function handleSelect(state) {
-    navigate(stateDirectoryUrl(state.name))
+    navigate(stateDirectoryUrl(state))
   }
 
   const hoveredState = hoveredId
@@ -141,10 +143,14 @@ export default function USStateMap() {
 
       <div className="us-state-map-tooltip" aria-live="polite">
         {hoveredState ? (
-          <>
+          <button
+            type="button"
+            className="us-state-map-tooltip-btn"
+            onClick={() => handleSelect(hoveredState)}
+          >
             <strong>{hoveredState.name}</strong>
             <span>Click to browse centers</span>
-          </>
+          </button>
         ) : (
           <span>Select a state to find treatment centers near you</span>
         )}

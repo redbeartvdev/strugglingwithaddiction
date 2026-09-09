@@ -36,6 +36,13 @@ def normalize_us_state(value: str | None) -> str | None:
     raw = " ".join(str(value or "").strip().split())
     if not raw:
         return None
+    key = " ".join(raw.lower().replace(".", "").split())
+    nicknames = {
+        "washington, dc": "DC",
+        "washington dc": "DC",
+        "district of columbia": "DC",
+    }
+    raw = nicknames.get(key, raw)
     upper = raw.upper()
     if upper in US_STATE_ABBREVS:
         return US_STATE_ABBREVS[upper]

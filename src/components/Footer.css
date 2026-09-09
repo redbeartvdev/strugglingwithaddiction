@@ -7,8 +7,8 @@
 .footer-inner {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
-  gap: 4rem;
-  padding: 4rem 1.5rem;
+  gap: 2.5rem;
+  padding: 2.5rem 1.5rem;
 }
 
 /* ── Brand column ────────────────────────── */
@@ -81,14 +81,14 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #5FBDF6;
-  margin-bottom: 1rem;
+  margin-bottom: 0.55rem;
 }
 
 .footer-col ul {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.15rem;
 }
 
 .footer-col a {
@@ -96,7 +96,8 @@
   color: #d1d5db;
   text-decoration: none;
   transition: color 0.3s;
-  min-height: 44px;
+  min-height: 0;
+  padding-block: 0.1rem;
   display: inline-flex;
   align-items: center;
 }
@@ -135,7 +136,8 @@
   color: #d1d5db;
   text-decoration: none;
   transition: color 0.3s;
-  min-height: 44px;
+  min-height: 0;
+  padding-block: 0.2rem;
   display: inline-flex;
   align-items: center;
 }
@@ -163,6 +165,11 @@
 @media (max-width: 560px) {
   .footer-links {
     grid-template-columns: 1fr;
+  }
+
+  .footer-col a,
+  .footer-legal a {
+    min-height: 44px;
   }
 
   .footer-bottom-inner {

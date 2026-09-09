@@ -1,5 +1,5 @@
 import { fetchApi, apiEnabled } from './api'
-import { US_STATE_ABBREVS, US_STATES } from './usStates'
+import { canonicalUsStateName } from './usStates'
 
 const CACHE_KEY = 'swa_visitor_geo_v1'
 const AUTO_LOCATION_KEY = 'swa_directory_auto_location_v1'
@@ -46,12 +46,7 @@ function writeCache(data) {
 }
 
 export function normalizeUsStateName(value) {
-  const raw = String(value || '').trim()
-  if (!raw) return ''
-  const upper = raw.toUpperCase()
-  if (US_STATE_ABBREVS[upper]) return US_STATE_ABBREVS[upper]
-  const match = US_STATES.find(s => s.toLowerCase() === raw.toLowerCase())
-  return match || ''
+  return canonicalUsStateName(value)
 }
 
 /** Resolve visitor state/city from IP via backend. Cached in sessionStorage. */

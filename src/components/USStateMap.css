@@ -74,6 +74,20 @@
   font-size: 1.05rem;
 }
 
+.us-state-map-tooltip-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 @media (max-width: 640px) {
   .us-map-label {
     font-size: 9px;

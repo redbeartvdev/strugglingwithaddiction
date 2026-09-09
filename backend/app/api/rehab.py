@@ -68,16 +68,28 @@ def _admin_center_list_item(center: RehabCenter) -> RehabCenterAdminListItem:
     return RehabCenterAdminListItem.model_validate(center)
 
 
+_STATE_NICKNAMES = {
+    "washington, dc": "DC",
+    "washington dc": "DC",
+    "district of columbia": "DC",
+}
+
+
+def _state_lookup_key(value: str) -> str:
+    return " ".join(value.lower().replace(".", "").split())
+
+
 def _state_aliases(value: str | None) -> list[str]:
     raw = (value or "").strip()
     if not raw:
         return []
     aliases = {raw}
-    upper = raw.upper()
+    lookup = _STATE_NICKNAMES.get(_state_lookup_key(raw)) or raw
+    upper = lookup.upper()
     if upper in US_STATE_ABBREVS:
         aliases.add(upper)
         aliases.add(US_STATE_ABBREVS[upper])
-    abbr = _STATE_NAME_TO_ABBR.get(raw.lower())
+    abbr = _STATE_NAME_TO_ABBR.get(lookup.lower())
     if abbr:
         aliases.add(abbr)
         aliases.add(US_STATE_ABBREVS.get(abbr, abbr))

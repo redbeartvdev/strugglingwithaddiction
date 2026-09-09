@@ -721,8 +721,10 @@ function filterCenters(centers, { query, state, city, service, insurance, catalo
 
   return centers.filter(center => {
     if (state) {
+      const wanted = normalizeUsStateName(state) || state
       const centerState = getCenterState(center)
-      if (!centerState || normalizeText(centerState) !== normalizeText(state)) return false
+      const have = normalizeUsStateName(centerState) || centerState
+      if (!centerState || normalizeText(have) !== normalizeText(wanted)) return false
     }
     if (cityNeedle) {
       const centerCity = getCenterCity(center)
@@ -854,7 +856,10 @@ export default function RehabCenters() {
   const [catalogTotal, setCatalogTotal] = useState(apiEnabled() ? 0 : STATIC_CENTERS.length)
   const [cityApplied, setCityApplied] = useState(false)
   const reloadResetRef = useRef(isDocumentReloadOn('/rehab-centers'))
-  const skipIpLocationRef = useRef(reloadResetRef.current || !shouldAutoApplyVisitorLocation())
+  const inboundState = Boolean(searchParams.get('state'))
+  const skipIpLocationRef = useRef(
+    reloadResetRef.current || inboundState || !shouldAutoApplyVisitorLocation()
+  )
   const shuffleSeedRef = useRef(newDirectoryShuffleSeed())
   const [query, setQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
   const [debouncedQuery, setDebouncedQuery] = useState(() => (reloadResetRef.current ? '' : searchParams.get('q') || ''))
