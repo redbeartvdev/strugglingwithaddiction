@@ -6,6 +6,7 @@
 
 :root {
   --brand-blue: #5FBDF6;
+  --brand-blue-strong: #0c6e9e;
   --brand-red: #8c1126;
   --dark: #1a1a2e;
   --dark-soft: #2d2d44;
@@ -57,7 +58,7 @@ button {
 /* ── Buttons ─────────────────────────────── */
 .btn {
   display: inline-block;
-  background-color: var(--brand-blue);
+  background-color: var(--brand-blue-strong);
   color: var(--white);
   padding: 0.85rem 2rem;
   border: 2px solid transparent;
@@ -84,8 +85,8 @@ button {
 
 .btn-outline {
   background-color: transparent;
-  border-color: var(--brand-blue);
-  color: var(--brand-blue);
+  border-color: var(--brand-blue-strong);
+  color: var(--brand-blue-strong);
 }
 
 .btn-outline:hover {
@@ -140,7 +141,7 @@ h3 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 0.78rem;
-  color: var(--brand-blue);
+  color: var(--brand-blue-strong);
   margin-bottom: 0.6rem;
   font-weight: 700;
 }

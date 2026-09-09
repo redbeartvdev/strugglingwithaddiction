@@ -51,7 +51,19 @@ def mount_image_assets(app: FastAPI) -> None:
 
 def _file_response(path: Path) -> FileResponse:
     media_type, _ = mimetypes.guess_type(path.name)
-    return FileResponse(path, media_type=media_type or "application/octet-stream")
+    headers = {}
+    relative = path.as_posix()
+    if "/assets/" in relative or path.parent.name == "assets":
+        headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.suffix.lower() in {".woff2", ".woff"}:
+        headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.suffix.lower() in {".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico"}:
+        headers["Cache-Control"] = "public, max-age=2592000"
+    return FileResponse(
+        path,
+        media_type=media_type or "application/octet-stream",
+        headers=headers,
+    )
 
 
 def _normalize_public_path(full_path: str) -> str:

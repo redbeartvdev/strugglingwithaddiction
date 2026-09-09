@@ -8,7 +8,7 @@ import {
   FaBookOpen,
   FaPhoneAlt,
 } from 'react-icons/fa'
-import { useRecentPosts } from '../hooks/useBlogData'
+import { useRecentPosts } from '../hooks/useRecentPosts'
 import { usePageSeo } from '../hooks/usePageSeo'
 import GuidedFinder from '../components/GuidedFinder'
 import NewsletterSection from '../components/NewsletterSection'
@@ -16,8 +16,32 @@ import './Home.css'
 
 const USStateMap = lazy(() => import('../components/USStateMap'))
 
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+function useInViewOnce(ref) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || visible) return undefined
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '240px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visible])
+  return visible
 }
 
 const ICON_STYLE = { color: '#8c1126', fontSize: '2rem', flexShrink: 0 }
@@ -138,14 +162,29 @@ export default function Home() {
     path: '/',
   })
   const [slide, setSlide] = useState(0)
+  const [heroReady, setHeroReady] = useState(false)
   const [statsTriggered, setStatsTriggered] = useState(false)
   const statsRef = useRef(null)
+  const mapRef = useRef(null)
+  const mapVisible = useInViewOnce(mapRef)
   const hasAnimated = useRef(false)
 
   useEffect(() => {
+    const startHero = () => setHeroReady(true)
+    const idle = window.requestIdleCallback
+    if (typeof idle === 'function') {
+      const id = idle(startHero, { timeout: 1200 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const t = setTimeout(startHero, 200)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!heroReady) return undefined
     const t = setInterval(() => setSlide(s => (s + 1) % HERO_IMAGES.length), 7000)
     return () => clearInterval(t)
-  }, [])
+  }, [heroReady])
 
 
   useEffect(() => {
@@ -170,16 +209,12 @@ export default function Home() {
 
       {/* ── Hero ─────────────────────────────────── */}
       <section className="hero" id="hero">
-        {HERO_IMAGES.map((src, i) => (
+        {heroReady && (
           <div
-            key={src}
-            className="hero-slide"
-            style={{
-              backgroundImage: `url(${src})`,
-              opacity: i === slide ? 1 : 0,
-            }}
+            className="hero-slide is-active"
+            style={{ backgroundImage: `url(${HERO_IMAGES[slide]})` }}
           />
-        ))}
+        )}
         <div className="hero-overlay" />
         <div className="container hero-content">
           <div className="hero-layout">
@@ -245,7 +280,11 @@ export default function Home() {
             <img
               src="/images/Physician-discussing-pain-management-leading-to-opioid-addiction-with-a-patient-receiving-prescription-painkillers_2184907001.webp"
               alt="A patient speaking with a doctor about treatment and medical care"
+              width={720}
+              height={480}
               loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 560px"
             />
           </div>
         </div>
@@ -314,7 +353,7 @@ export default function Home() {
       </section>
 
       {/* ── State Map ───────────────────────────── */}
-      <section className="home-state-map-section" id="find-by-state">
+      <section className="home-state-map-section" id="find-by-state" ref={mapRef}>
         <div className="container">
           <div className="home-state-map-layout">
             <div className="home-state-map-text">
@@ -325,9 +364,13 @@ export default function Home() {
               </p>
             </div>
             <div className="home-state-map-visual">
-              <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
-                <USStateMap />
-              </Suspense>
+              {mapVisible ? (
+                <Suspense fallback={<div className="us-state-map-loading">Loading map…</div>}>
+                  <USStateMap />
+                </Suspense>
+              ) : (
+                <div className="us-state-map-loading">Map loads as you scroll</div>
+              )}
             </div>
           </div>
         </div>
@@ -388,7 +431,7 @@ export default function Home() {
               <article className="home-blog-card" key={post.id}>
                 <Link to={`/blog/${post.slug}`} className="home-blog-img-wrap" tabIndex={-1} aria-hidden="true">
                   {post.featuredImage
-                    ? <img src={post.featuredImage} alt="" loading="lazy" />
+                    ? <img src={post.featuredImage} alt="" loading="lazy" width={400} height={220} />
                     : <div className="home-blog-img-placeholder" />
                   }
                 </Link>
@@ -396,7 +439,9 @@ export default function Home() {
                   <time>{formatDate(post.date)}</time>
                   <h3><Link to={`/blog/${post.slug}`} dangerouslySetInnerHTML={{ __html: post.title }} /></h3>
                   <p>{post.excerpt.slice(0, 120)}{post.excerpt.length > 120 ? '…' : ''}</p>
-                  <Link to={`/blog/${post.slug}`} className="btn home-blog-btn">Read More</Link>
+                  <Link to={`/blog/${post.slug}`} className="btn home-blog-btn">
+                    {`Read “${stripHtml(post.title)}”`}
+                  </Link>
                 </div>
               </article>
             ))}

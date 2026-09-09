@@ -23,6 +23,8 @@ export default function Header() {
             src="/images/SWA-logo-web-white-small_vSE-1.webp"
             alt="Struggling With Addiction"
             className="logo-img"
+            width={164}
+            height={42}
           />
         </Link>
 
