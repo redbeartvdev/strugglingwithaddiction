@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FaSearch, FaSlidersH, FaTimes, FaMapMarkerAlt } from 'react-icons/fa'
+import { FaArrowUp, FaSearch, FaSlidersH, FaTimes, FaMapMarkerAlt } from 'react-icons/fa'
 import { US_STATES } from '../lib/usStates'
 import { REHAB_SERVICE_TYPES } from '../lib/rehabServices'
 import './RehabSearch.css'
@@ -121,11 +121,8 @@ export default function RehabSearch({
   const [focused, setFocused] = useState(false)
   const [hintIdx, setHintIdx] = useState(0)
   const [thinking, setThinking] = useState(false)
-  const [stuck, setStuck] = useState(false)
-  const [useFixed, setUseFixed] = useState(false)
+  const [showJumpToSearch, setShowJumpToSearch] = useState(false)
   const anchorRef = useRef(null)
-  const sentinelRef = useRef(null)
-  const wrapRef = useRef(null)
   const typedPrompt = useTypewriter(AI_PROMPTS)
 
   useEffect(() => {
@@ -145,78 +142,33 @@ export default function RehabSearch({
   }, [])
 
   useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
+    const anchor = anchorRef.current
+    if (!anchor) return undefined
 
     const headerPx = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--header-height'),
     ) || 72
 
     const observer = new IntersectionObserver(
-      ([entry]) => setStuck(!entry.isIntersecting),
+      ([entry]) => setShowJumpToSearch(!entry.isIntersecting),
       { threshold: 0, rootMargin: `-${headerPx}px 0px 0px 0px` },
     )
-    observer.observe(sentinel)
+    observer.observe(anchor)
     return () => observer.disconnect()
   }, [])
 
-  useLayoutEffect(() => {
-    const wrap = wrapRef.current
-    const anchor = anchorRef.current
-    if (!wrap || !anchor) return
-
-    const clearFixed = () => {
-      setUseFixed(false)
-      anchor.style.minHeight = ''
-      wrap.style.width = ''
-      wrap.style.left = ''
-    }
-
-    if (!stuck) {
-      clearFixed()
-      return
-    }
-
-    const headerPx = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--header-height'),
-    ) || 72
-    const top = wrap.getBoundingClientRect().top
-    const stickyFailed = top < headerPx - 2
-
-    if (!stickyFailed) {
-      clearFixed()
-      return
-    }
-
-    const place = () => {
-      const rect = anchor.getBoundingClientRect()
-      wrap.style.width = `${rect.width}px`
-      wrap.style.left = `${rect.left}px`
-      anchor.style.minHeight = `${wrap.offsetHeight}px`
-    }
-
-    setUseFixed(true)
-    place()
-    window.addEventListener('resize', place)
-    return () => {
-      window.removeEventListener('resize', place)
-      clearFixed()
-    }
-  }, [stuck])
+  function scrollToSearch() {
+    anchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const activeFilterCount = (state ? 1 : 0) + (service ? 1 : 0) + (insurance ? 1 : 0)
-  const wrapClass = [
-    'rehab-search-wrap',
-    stuck ? 'is-stuck' : '',
-    useFixed ? 'is-stuck-fixed' : '',
-  ].filter(Boolean).join(' ')
 
   return (
-    <div ref={anchorRef} className={`rehab-search-anchor${stuck ? ' is-stuck' : ''}`}>
-      <div ref={sentinelRef} className="rehab-search-sentinel" aria-hidden="true" />
-      <div ref={wrapRef} className={wrapClass}>
+    <>
+    <div ref={anchorRef} className="rehab-search-anchor" id="rehab-directory-search">
+      <div className="rehab-search-wrap">
       <div className={`rehab-search-card ${focused ? 'rehab-search-card--focused' : ''}`}>
-        <div className="rehab-search-ai" aria-hidden={stuck || undefined}>
+        <div className="rehab-search-ai">
           <p className="rehab-search-ai-prompt" aria-live="polite">
             {typedPrompt}
             <span className="rehab-search-cursor" aria-hidden="true" />
@@ -362,5 +314,16 @@ export default function RehabSearch({
       </p>
       </div>
     </div>
+
+    <button
+      type="button"
+      className={`btn rehab-search-jump${showJumpToSearch ? ' is-visible' : ''}`}
+      onClick={scrollToSearch}
+      aria-label="Scroll up to search and filters"
+    >
+      <FaArrowUp aria-hidden="true" />
+      <span>Scroll up to search</span>
+    </button>
+    </>
   )
 }

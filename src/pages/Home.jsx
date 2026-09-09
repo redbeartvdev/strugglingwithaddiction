@@ -231,7 +231,7 @@ export default function Home() {
               compare options, and contact facilities directly.
             </p>
             <div className="hope-ctas">
-              <Link to="/rehab-centers" className="btn">Explore Resources</Link>
+              <Link to="/rehab-centers" className="btn">Explore Treatment Centers</Link>
             </div>
           </div>
           <div className="hope-image" aria-hidden="true">

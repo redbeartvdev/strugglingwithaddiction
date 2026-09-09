@@ -6,7 +6,7 @@ import { apiEnabled, fetchApi } from '../lib/api'
 import { analyticsSessionKey, detectDevice, guessVisitorState } from '../lib/analytics'
 import { STATIC_CENTERS } from './RehabCenters'
 import { rehabLandingPath } from '../lib/rehabLanding'
-import { formatCareLabel, groupServiceDetails } from '../lib/rehabServices'
+import { formatCareLabel, formatSpecialtyLabel, groupServiceDetails } from '../lib/rehabServices'
 import { resolveOutboundListingLink, withDirectoryAttribution } from '../lib/outboundListingLink'
 import { isPlaceholderListingImage, listingImageSrc } from '../lib/listingMedia'
 import ReviewsCarousel from '../components/ReviewsCarousel'
@@ -144,7 +144,7 @@ function ChipList({ items }) {
   if (!items?.length) return null
   return (
     <ul className="rpd-care-list">
-      {items.map(item => <li key={item}>{formatCareLabel(item)}</li>)}
+      {items.map(item => <li key={item} title={item}>{formatCareLabel(formatSpecialtyLabel(item))}</li>)}
     </ul>
   )
 }

@@ -49,6 +49,16 @@ export function buildRehabDirectoryUrl({ state, city, service, insurance } = {})
   return query ? `/rehab-centers?${query}` : '/rehab-centers'
 }
 
+/** Shorter public labels for long SAMHSA-derived specialty names. */
+export function formatSpecialtyLabel(label) {
+  const text = String(label || '').trim()
+  if (!text) return text
+  if (/co-occurring substance use plus either serious mental illness/i.test(text)) {
+    return 'TCSPEMI'
+  }
+  return text
+}
+
 /** Expand common care abbreviations for public-facing labels. */
 export function formatCareLabel(label) {
   if (!label) return label

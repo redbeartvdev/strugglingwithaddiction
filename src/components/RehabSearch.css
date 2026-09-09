@@ -1,35 +1,47 @@
-/* ── Search wrapper (overlaps hero, sticks below header) ───────── */
+/* ── Search wrapper (overlaps hero) ───────── */
 .rehab-search-anchor {
   position: relative;
+  scroll-margin-top: calc(var(--header-height) + 1rem);
 }
 
-.rehab-search-sentinel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 1px;
+.rehab-search-jump {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.5rem;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.35rem;
+  font-size: 0.82rem;
+  opacity: 0;
   pointer-events: none;
+  transform: translateY(10px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    background-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.rehab-search-jump.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.rehab-search-jump.is-visible:hover {
+  transform: translateY(-2px);
+}
+
+.rehab-search-jump svg {
+  flex-shrink: 0;
+  font-size: 0.85rem;
 }
 
 .rehab-search-wrap {
-  position: sticky;
-  top: var(--header-height);
-  z-index: 90;
   margin-top: calc(-3.5rem + 20px);
   margin-bottom: 0;
-}
-
-.rehab-search-wrap.is-stuck {
-  background: #fafaf8;
-  box-shadow: 0 -1px 0 0 #fafaf8;
-  padding-bottom: 0.15rem;
-}
-
-.rehab-search-wrap.is-stuck-fixed {
-  position: fixed;
-  top: var(--header-height);
-  margin-top: 0;
 }
 
 .rehab-search-card {
@@ -51,16 +63,6 @@
   transform: translateY(-2px);
 }
 
-.rehab-search-wrap.is-stuck .rehab-search-card {
-  padding: 0.9rem 1.35rem 0.8rem;
-  max-height: calc(100dvh - var(--header-height) - 0.75rem);
-  overflow-y: auto;
-}
-
-.rehab-search-wrap.is-stuck .rehab-search-card--focused {
-  transform: none;
-}
-
 /* ── AI prompt area ───────────────────────── */
 .rehab-search-ai {
   margin-bottom: 1.25rem;
@@ -68,12 +70,6 @@
   max-height: 6.5rem;
   opacity: 1;
   transition: max-height 0.25s ease, margin 0.25s ease, opacity 0.2s ease;
-}
-
-.rehab-search-wrap.is-stuck .rehab-search-ai {
-  max-height: 0;
-  margin-bottom: 0;
-  opacity: 0;
 }
 
 .rehab-search-ai-prompt {
@@ -377,11 +373,6 @@
   color: #1a1a2e;
 }
 
-.rehab-search-wrap.is-stuck .rehab-search-provider {
-  margin-top: 0.55rem;
-  font-size: 0.8rem;
-}
-
 /* ── Empty state ──────────────────────────── */
 .rehab-empty-state {
   text-align: center;
@@ -421,29 +412,17 @@
     margin-top: -2rem;
   }
 
-  .rehab-search-wrap.is-stuck .rehab-search-card {
-    padding: 0.7rem 0.85rem 0.65rem;
-    border-radius: 0 0 14px 14px;
+  .rehab-search-jump {
+    right: 0.75rem;
+    bottom: 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.72rem;
   }
 
-  .rehab-search-wrap.is-stuck .rehab-search-bar-row {
-    flex-direction: row;
-    align-items: stretch;
-  }
-
-  .rehab-search-wrap.is-stuck .rehab-search-input {
-    padding-top: 0.7rem;
-    padding-bottom: 0.7rem;
-    font-size: 0.92rem;
-  }
-
-  .rehab-search-wrap.is-stuck .rehab-search-filters-toggle {
-    padding: 0 0.85rem;
-  }
-
-  .rehab-search-wrap.is-stuck .rehab-search-status {
-    margin-top: 0.6rem;
-    padding-top: 0.55rem;
+  .rehab-search-jump span {
+    max-width: 6.5rem;
+    line-height: 1.25;
+    text-align: left;
   }
 
   .rehab-search-card {

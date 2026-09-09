@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaSearch, FaLock } from 'react-icons/fa'
 import { MdVerified } from 'react-icons/md'
 import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
-import { centerMatchesService, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
+import { centerMatchesService, formatSpecialtyLabel, getCenterCity, getCenterState, normalizeText, specialtyMatchesAnyService, REHAB_SERVICE_TYPES, REHAB_INSURANCE_TYPES } from '../lib/rehabServices'
 import {
   detectVisitorLocation,
   disableAutoVisitorLocation,
@@ -780,7 +780,7 @@ function rankCenters(centers, { city } = {}) {
 // NOTE: Backend endpoint used for listing inquiries (emailed to the center, not stored):
 // POST /api/rehab-centers/{slug}/leads body: { full_name, email, phone?, message, source_url?, hp_website?, accepted_policies }
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 const SEARCH_DEBOUNCE_MS = 300
 const FILTER_PARAM_KEYS = ['q', 'state', 'city', 'service', 'insurance']
 
@@ -811,6 +811,7 @@ export default function RehabCenters() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [matchTotal, setMatchTotal] = useState(apiEnabled() ? 0 : STATIC_CENTERS.length)
   const [catalogTotal, setCatalogTotal] = useState(apiEnabled() ? 0 : STATIC_CENTERS.length)
   const [cityApplied, setCityApplied] = useState(false)
@@ -912,6 +913,10 @@ export default function RehabCenters() {
     return () => controller.abort()
   }, [debouncedQuery, stateFilter, cityFilter, strictCity, serviceFilter, insuranceFilter])
 
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [query, stateFilter, cityFilter, serviceFilter, insuranceFilter])
+
   // First visit only: fill location from IP. Reset, All states, and refresh stay nationwide.
   useEffect(() => {
     let cancelled = false
@@ -985,11 +990,24 @@ export default function RehabCenters() {
   const hasActiveFilters = Boolean(query || stateFilter || serviceFilter || insuranceFilter || cityFilter)
   const resultCount = apiEnabled() ? matchTotal : filteredCenters.length
   const totalCount = apiEnabled() ? catalogTotal : STATIC_CENTERS.length
-  const visibleCenters = filteredCenters
-  const hasMore = apiEnabled() ? page < pages : false
+  const visibleCenters = apiEnabled()
+    ? filteredCenters
+    : filteredCenters.slice(0, visibleCount)
+  const hasMore = apiEnabled()
+    ? page < pages
+    : visibleCount < filteredCenters.length
 
   async function loadMore() {
-    if (!apiEnabled() || loadingMore || page >= pages) return
+    if (loadingMore) return
+
+    if (!apiEnabled()) {
+      setLoadingMore(true)
+      setVisibleCount(count => Math.min(count + PAGE_SIZE, filteredCenters.length))
+      window.setTimeout(() => setLoadingMore(false), 250)
+      return
+    }
+
+    if (page >= pages) return
     const nextPage = page + 1
     const params = new URLSearchParams({
       page: String(nextPage),
@@ -1165,8 +1183,9 @@ export default function RehabCenters() {
                     <span
                       className={`rehab-tag${serviceFilter && specialtyMatchesAnyService(s, [serviceFilter]) ? ' rehab-tag--match' : ''}`}
                       key={s}
+                      title={s}
                     >
-                      {s}
+                      {formatSpecialtyLabel(s)}
                     </span>
                   ))}
                 </div>
