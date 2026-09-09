@@ -9,6 +9,7 @@ import {
   FaPhoneAlt,
 } from 'react-icons/fa'
 import { useRecentPosts } from '../hooks/useBlogData'
+import { usePageSeo } from '../hooks/usePageSeo'
 import GuidedFinder from '../components/GuidedFinder'
 import NewsletterSection from '../components/NewsletterSection'
 import './Home.css'
@@ -130,6 +131,12 @@ const HERO_IMAGES = [
 
 export default function Home() {
   const recentPosts = useRecentPosts()
+  usePageSeo({
+    title: 'Find Rehab & Addiction Treatment Centers',
+    description:
+      'Find licensed rehab and addiction treatment centers near you. Compare care types, check insurance, and read recovery guides from Struggling With Addiction.',
+    path: '/',
+  })
   const [slide, setSlide] = useState(0)
   const [statsTriggered, setStatsTriggered] = useState(false)
   const statsRef = useRef(null)
@@ -178,7 +185,7 @@ export default function Home() {
           <div className="hero-layout">
             <div className="hero-copy">
               <span className="section-label" style={{ color: '#5FBDF6' }}>You Are Not Alone</span>
-              <h1>You don't have to figure this out alone.</h1>
+              <h1>Find licensed rehab and treatment centers near you</h1>
               <p className="hero-sub">
                 Find a licensed treatment center near you, browse by state or by the kind of care you need,
                 and get straight answers about what recovery actually looks like.

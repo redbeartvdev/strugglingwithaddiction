@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { usePageSeo } from '../hooks/usePageSeo'
 import NewsletterSection from '../components/NewsletterSection'
 import team from '../data/team.json'
 import './About.css'
@@ -7,11 +7,12 @@ import './About.css'
 const HERO_IMAGE = '/images/blog/SWA_You-Can-Now-Get-Buprenorphine-Treatment-Online_2451838189.webp'
 
 export default function About() {
-  useEffect(() => {
-    const site = 'Struggling With Addiction'
-    document.title = `About | ${site}`
-    return () => { document.title = site }
-  }, [])
+  usePageSeo({
+    title: 'About Our Editors & Treatment Directory',
+    description:
+      'Meet the editors behind Struggling With Addiction — a national rehab directory and newsroom covering treatment, insurance, and recovery.',
+    path: '/about',
+  })
 
   return (
     <main className="about-page">

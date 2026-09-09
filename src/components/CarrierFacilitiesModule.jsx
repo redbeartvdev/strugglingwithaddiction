@@ -74,7 +74,7 @@ export default function CarrierFacilitiesModule({
         <ul className="icov-facility-list">
           {centers.map((center) => {
             const outbound = center.claimed ? resolveOutboundListingLink(center) : null
-            const landing = center.claimed ? rehabLandingPath(center) : null
+            const landing = center.public_page === false ? null : rehabLandingPath(center)
             return (
               <li key={center.id} className="icov-facility-card">
                 <div>

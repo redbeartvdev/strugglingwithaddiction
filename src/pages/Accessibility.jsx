@@ -1,7 +1,14 @@
 import './Legal.css'
 import { Link } from 'react-router-dom'
+import { usePageSeo } from '../hooks/usePageSeo'
 
 export default function Accessibility() {
+  usePageSeo({
+    title: 'Accessibility',
+    description:
+      'Accessibility commitment for Struggling With Addiction, including how to request help using the treatment directory.',
+    path: '/accessibility',
+  })
   return (
     <main>
 

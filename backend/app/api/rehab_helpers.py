@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.billing import Subscription
 from app.models.insurance import InsuranceCatalog
-from app.models.rehab import RehabCenter
+from app.models.rehab import ListingStatus, RehabCenter
 from app.schemas.rehab import InsuranceDetail, RehabCenterPublic
 from app.services.email import get_platform_email_settings
 from app.services.listing_media import LISTING_PLACEHOLDER_IMAGE, listing_image_key
@@ -48,6 +48,76 @@ def _norm(value: str) -> str:
 def _norm_search(value: str) -> str:
     cleaned = re.sub(r"[^a-z0-9\s]+", " ", str(value or "").lower())
     return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def landing_segment(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", str(value or "").lower().strip()).strip("-")
+
+
+def center_landing_path(center: RehabCenter) -> str | None:
+    state = center.state or (center.location_display or "").split(",")[-1].strip()
+    city = center.city or (center.location_display or "").split(",")[0].strip()
+    if not state or not city or not center.name:
+        return None
+    return (
+        f"/rehabs/united-states/{landing_segment(state)}/"
+        f"{landing_segment(city)}/{landing_segment(center.name)}"
+    )
+
+
+def is_indexable_listing(center: RehabCenter) -> bool:
+    """Quality floor for a crawlable facility page (not claimed-only).
+
+    Requires a real place plus contact and program facts so we do not emit
+    13k doorway stubs. Street/phone may be redacted on the public JSON for
+    unclaimed rows; they still count here because the record is complete.
+    """
+    if center.listing_status != ListingStatus.published or center.deleted_at is not None:
+        return False
+    if not landing_segment(center.name) or not landing_segment(center.city) or not landing_segment(center.state):
+        return False
+    has_contact = bool((center.address_line or "").strip() or (center.phone or "").strip())
+    has_program = bool(
+        (center.description or "").strip()
+        or (center.specialties or [])
+        or (center.levels_of_care or [])
+        or (center.service_codes or [])
+    )
+    return has_contact and has_program
+
+
+def published_centers_query(db: Session):
+    return db.query(RehabCenter).filter(
+        RehabCenter.listing_status == ListingStatus.published,
+        RehabCenter.deleted_at.is_(None),
+    )
+
+
+def find_center_by_landing(db: Session, state: str, city: str, facility: str) -> RehabCenter | None:
+    state_slug = landing_segment(state)
+    city_slug = landing_segment(city)
+    facility_slug = landing_segment(facility)
+    if not state_slug or not city_slug or not facility_slug:
+        return None
+    candidates = published_centers_query(db).filter(
+        RehabCenter.city.isnot(None),
+        RehabCenter.state.isnot(None),
+    ).all()
+    for item in candidates:
+        if (
+            landing_segment(item.state) == state_slug
+            and landing_segment(item.city) == city_slug
+            and landing_segment(item.name) == facility_slug
+        ):
+            return item
+    return None
+
+
+def find_center_by_slug(db: Session, slug: str) -> RehabCenter | None:
+    clean = (slug or "").strip().strip("/")
+    if not clean:
+        return None
+    return published_centers_query(db).filter(RehabCenter.slug == clean).first()
 
 
 def center_matches_service(center: RehabCenter, service_id: str | None) -> bool:
@@ -191,6 +261,7 @@ def center_to_public(db: Session, center: RehabCenter) -> RehabCenterPublic:
         zip=center.zip if premium else None,
         google_reviews_url=center.google_reviews_url if premium else None,
         testimonials=(center.testimonials or []) if premium else [],
+        public_page=is_indexable_listing(center),
     )
 
 
@@ -253,6 +324,7 @@ def centers_to_directory(db: Session, centers: list[RehabCenter]) -> list[RehabC
                 state=center.state,
                 zip=center.zip if premium else None,
                 google_reviews_url=center.google_reviews_url if premium else None,
+                public_page=is_indexable_listing(center),
             )
         )
     return items

@@ -1,8 +1,15 @@
 import './Legal.css'
 import { Link } from 'react-router-dom'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { PrivacyPolicyContent } from '../components/LegalCopy'
 
 export default function PrivacyPolicy() {
+  usePageSeo({
+    title: 'Privacy Policy',
+    description:
+      'How Struggling With Addiction collects, uses, and protects personal information on this treatment directory and newsroom.',
+    path: '/privacy',
+  })
   return (
     <main>
 

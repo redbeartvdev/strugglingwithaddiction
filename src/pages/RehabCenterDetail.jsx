@@ -7,6 +7,7 @@ import { analyticsSessionKey, detectDevice, guessVisitorState } from '../lib/ana
 import { STATIC_CENTERS } from './RehabCenters'
 import { rehabLandingPath } from '../lib/rehabLanding'
 import { formatCareLabel, formatSpecialtyLabel, groupServiceDetails } from '../lib/rehabServices'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { resolveOutboundListingLink, withDirectoryAttribution } from '../lib/outboundListingLink'
 import { isPlaceholderListingImage, listingImageSrc } from '../lib/listingMedia'
 import ReviewsCarousel from '../components/ReviewsCarousel'
@@ -248,7 +249,7 @@ export default function RehabCenterDetail() {
 
   useEffect(() => {
     const path = `/rehabs/united-states/${state}/${city}/${facility}`
-    const fromStatic = () => STATIC_CENTERS.find(item => rehabLandingPath(item) === path && item.claimed)
+    const fromStatic = () => STATIC_CENTERS.find(item => rehabLandingPath(item) === path)
     let cancelled = false
 
     if (!apiEnabled()) {
@@ -314,12 +315,33 @@ export default function RehabCenterDetail() {
     return () => observer.disconnect()
   }, [center])
 
+  const place = [center?.city, center?.state].filter(Boolean).join(', ')
+  usePageSeo(
+    error
+      ? {
+          title: 'Listing not found',
+          description: 'This treatment listing is unavailable. Search licensed rehab centers in the directory.',
+          noindex: true,
+        }
+      : center
+        ? {
+            title: place ? `${center.name} in ${place}` : center.name,
+            description:
+              center.description
+              || `${center.name} is a treatment facility listed in ${place || 'the United States'}. See services and how to inquire.`,
+          }
+        : {
+            title: 'Treatment center listing',
+            description: 'Open a licensed rehab and addiction treatment listing on Struggling With Addiction.',
+          },
+  )
+
   if (error) {
     return (
       <main className="rpd-page">
         <div className="container rpd-empty">
           <h1>Listing not found</h1>
-          <p>This claimed landing page is unavailable or no longer active.</p>
+          <p>This listing is unavailable or no longer published.</p>
           <Link className="btn" to="/rehab-centers">Browse centers</Link>
         </div>
       </main>
@@ -411,7 +433,7 @@ export default function RehabCenterDetail() {
         <div className="rpd-content">
           <section id="about" className="rpd-section">
             <h2>About {center.name}</h2>
-            <p>{center.description || 'This claimed center has published its profile on Struggling With Addiction.'}</p>
+            <p>{center.description || `${center.name} is listed in the Struggling With Addiction treatment directory.`}</p>
             <div className="rpd-quick-links">
               {center.phone && <a href={`tel:${center.phone.replace(/\D/g, '')}`}><FaPhone aria-hidden="true" /> {center.phone}</a>}
               {coverageHref && (

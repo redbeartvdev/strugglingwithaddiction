@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { usePosts, useAuthors } from '../hooks/useBlogData'
+import { usePageSeo } from '../hooks/usePageSeo'
 import './AuthorPage.css'
 
 const PER_PAGE = 12
@@ -20,6 +21,20 @@ export default function AuthorPage() {
     if (!author) return []
     return posts.filter(p => p.authorId === author.id)
   }, [author, posts])
+
+  usePageSeo(
+    author
+      ? {
+          title: author.name,
+          description: author.bio || `Articles by ${author.name} on addiction, treatment, and recovery.`,
+          path: `/author/${author.slug}`,
+        }
+      : {
+          title: 'Author',
+          description: 'Read recovery articles from Struggling With Addiction authors.',
+          noindex: true,
+        },
+  )
 
   if (!author) return <Navigate to="/blog" replace />
 

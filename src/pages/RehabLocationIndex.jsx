@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiEnabled, fetchApi } from '../lib/api'
 import { rehabLandingPath } from '../lib/rehabLanding'
+import { usePageSeo } from '../hooks/usePageSeo'
 
 export default function RehabLocationIndex() {
   const { state, city } = useParams()
   const [centers, setCenters] = useState([])
   const place = city ? `${city}, ${state}` : state
+  usePageSeo({
+    title: `Rehab Centers in ${place}`,
+    description: `Find rehab and addiction treatment centers in ${place}. Compare listed programs and contact facilities on Struggling With Addiction.`,
+  })
   useEffect(() => {
     if (!apiEnabled()) return
     const query = new URLSearchParams({ state, ...(city ? { city } : {}) })
@@ -20,7 +25,7 @@ export default function RehabLocationIndex() {
     <h1>Rehab centers in {place}</h1>
     <p>Explore treatment facilities listed in our directory. Providers can claim their listing to keep information current.</p>
     {centers.length === 0 ? <p>No published centers found for this location.</p> : <ul>
-      {centers.filter(center => center.claimed && rehabLandingPath(center)).map(center => <li key={center.id} style={{ margin: '1rem 0' }}>
+      {centers.filter(center => center.public_page !== false && rehabLandingPath(center)).map(center => <li key={center.id} style={{ margin: '1rem 0' }}>
         <Link to={rehabLandingPath(center)}><strong>{center.name}</strong></Link><br />{center.location}
       </li>)}
     </ul>}

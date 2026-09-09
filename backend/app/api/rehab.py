@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 from pathlib import Path
-import re
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
@@ -12,6 +11,8 @@ from app.api.rehab_helpers import (
     SERVICE_KEYWORDS,
     center_to_public,
     centers_to_directory,
+    find_center_by_landing,
+    is_indexable_listing,
     public_listing_image,
 )
 from app.core.deps import AdminUser, ClientUser, CurrentUser, get_current_user_optional
@@ -54,10 +55,6 @@ from app.services.tickets import generate_claim_ticket
 router = APIRouter(tags=["rehab"])
 settings = get_settings()
 _STATE_NAME_TO_ABBR = {name.lower(): abbr for abbr, name in US_STATE_ABBREVS.items()}
-
-
-def _landing_segment(value: str | None) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
 
 
 def _admin_center_out(center: RehabCenter) -> RehabCenterAdmin:
@@ -202,28 +199,11 @@ def get_claimed_center_landing(
     facility: str,
     db: Annotated[Session, Depends(get_db)],
 ):
-    """Resolve canonical location URLs only for subscribed, claimed centers."""
-    candidates = (
-        db.query(RehabCenter)
-        .filter(RehabCenter.listing_status == ListingStatus.published, RehabCenter.deleted_at.is_(None))
-        .all()
-    )
-    center = next(
-        (
-            item
-            for item in candidates
-            if _landing_segment(item.state) == state
-            and _landing_segment(item.city) == city
-            and _landing_segment(item.name) == facility
-        ),
-        None,
-    )
-    if not center:
-        raise HTTPException(status_code=404, detail="Claimed center landing page not found")
-    public = center_to_public(db, center)
-    if not public.claimed:
-        raise HTTPException(status_code=404, detail="Claimed center landing page not found")
-    return public
+    """Resolve canonical location URLs for published listings that meet the SEO quality floor."""
+    center = find_center_by_landing(db, state, city, facility)
+    if not center or not is_indexable_listing(center):
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return center_to_public(db, center)
 
 
 @router.get("/api/rehab-centers/stats", response_model=RehabDirectoryStats)

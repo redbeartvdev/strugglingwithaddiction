@@ -46,6 +46,7 @@ class RehabCenterPublic(BaseModel):
     zip: str | None = None
     google_reviews_url: str | None = None
     testimonials: list = Field(default_factory=list)
+    public_page: bool = False
 
 
 class ReviewItem(BaseModel):
