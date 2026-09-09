@@ -30,6 +30,29 @@ class CenterPageView(Base):
     center: Mapped["RehabCenter"] = relationship()  # noqa: F821
 
 
+class CenterInquirySend(Base):
+    """Anonymous count of listing inquiries emailed to a rehab provider.
+
+    Stores no visitor name, email, phone, or message — only that a send occurred.
+    Visible on that provider's dashboard only.
+    """
+
+    __tablename__ = "center_inquiry_sends"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rehab_center_id: Mapped[int] = mapped_column(
+        ForeignKey("rehab_centers.id", ondelete="CASCADE"),
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        index=True,
+    )
+
+    center: Mapped["RehabCenter"] = relationship()  # noqa: F821
+
+
 class SitePageView(Base):
     """Public site page-view events for platform (superadmin) analytics."""
 

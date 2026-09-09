@@ -26,10 +26,10 @@ const WHATS_NEW = [
 
 const LINKS = [
   { to: '/client/profile', label: 'Profile Page Editor', detail: 'Listing, insurance, gallery, and partner page' },
-  { to: '/client/profile?tab=analytics', label: 'Analytics', detail: 'Visits, states, devices, and leads' },
+  { to: '/client/profile?tab=analytics', label: 'Analytics', detail: 'Visits, states, devices, and inquiry sends' },
   { to: '/client/profile?tab=insurance', label: 'Insurance', detail: 'Accepted USA plans with logos' },
   { to: '/client/profile?tab=partner', label: 'Partner page', detail: 'Headline, about, and publish settings' },
-  { to: '/client/leads', label: 'Inquiries', detail: 'Emailed to your assigned address — not stored' },
+  { to: '/client/leads', label: 'Inquiries', detail: 'See how many were emailed to your inbox' },
   { to: '/client/upsells', label: 'Upgrades', detail: 'Verified badge, featured placement, articles' },
   { to: '/client/billing', label: 'Billing', detail: 'Subscription and invoices' },
 ]
@@ -201,10 +201,14 @@ export default function ClientDashboard() {
           <Link className="cd-stat-link" to="/client/profile?tab=analytics">View analytics ›</Link>
         </Card>
         <Card className="cd-stat-card">
-          <p className="cd-stat-label">Inquiries</p>
-          <p className="cd-stat-value">Email</p>
-          <p className="cd-stat-hint">Sent to your assigned inquiry address and not stored in our database</p>
-          <Link className="cd-stat-link" to="/client/leads">Inquiry email ›</Link>
+          <p className="cd-stat-label">Inquiries today</p>
+          <p className="cd-stat-value">{summary ? (summary.inquiry_sends ?? 0) : '—'}</p>
+          <p className="cd-stat-hint">
+            {summary
+              ? `${summary.inquiry_sends_total ?? 0} emailed all time · messages stay in your inbox`
+              : 'Count of inquiries emailed to your assigned address'}
+          </p>
+          <Link className="cd-stat-link" to="/client/profile?tab=analytics">View analytics ›</Link>
         </Card>
         <Card className="cd-stat-card">
           <p className="cd-stat-label">Insurance plans</p>

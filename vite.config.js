@@ -7,6 +7,8 @@ const apiProxy = {
   '/api': { target: apiTarget, changeOrigin: true },
   '/uploads': { target: apiTarget, changeOrigin: true },
   '/health': { target: apiTarget, changeOrigin: true },
+  '/robots.txt': { target: apiTarget, changeOrigin: true },
+  '/sitemap.xml': { target: apiTarget, changeOrigin: true },
 }
 
 export default defineConfig({

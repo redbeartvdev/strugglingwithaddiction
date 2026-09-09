@@ -104,6 +104,17 @@ def run_migrations(engine: Engine) -> None:
         ))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_page_views_center ON center_page_views (rehab_center_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_page_views_visited ON center_page_views (visited_at)"))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS center_inquiry_sends (
+                id SERIAL PRIMARY KEY,
+                rehab_center_id INTEGER NOT NULL REFERENCES rehab_centers(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_inquiry_sends_center ON center_inquiry_sends (rehab_center_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_center_inquiry_sends_created ON center_inquiry_sends (created_at)"))
 
     with engine.begin() as conn:
         conn.execute(text(

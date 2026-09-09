@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /client
+Disallow: /client/
+Disallow: /editor
+Disallow: /editor/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+Disallow: /confirm-email
+Disallow: /swa-login
+Disallow: /provider
+Disallow: /unsubscribe
+Disallow: /claim-status/
+Disallow: /submit-center/
+
+Sitemap: https://strugglingwithaddiction.com/sitemap.xml

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import ActiveSubscriber, AdminUser
 from app.database import get_db
-from app.models.analytics import CenterPageView, SitePageView
+from app.models.analytics import CenterInquirySend, CenterPageView, SitePageView
 from app.models.lead import CenterLead, is_visitor_inquiry
 from app.models.rehab import ListingStatus, RehabCenter
 
@@ -178,6 +178,24 @@ def _query_center_views_leads(
     return views, [lead for lead in leads if not is_visitor_inquiry(lead)]
 
 
+def _inquiry_send_counts(db: Session, center_id: int, start: datetime, end: datetime) -> tuple[int, int]:
+    in_range = (
+        db.query(CenterInquirySend)
+        .filter(
+            CenterInquirySend.rehab_center_id == center_id,
+            CenterInquirySend.created_at >= start,
+            CenterInquirySend.created_at <= end,
+        )
+        .count()
+    )
+    total = (
+        db.query(CenterInquirySend)
+        .filter(CenterInquirySend.rehab_center_id == center_id)
+        .count()
+    )
+    return in_range, total
+
+
 def _analytics_payload_for_center(
     center: RehabCenter,
     views: list[CenterPageView],
@@ -315,7 +333,14 @@ def client_analytics(
 
     start, end = _resolve_range(range, date_from, date_to)
     views, leads = _query_center_views_leads(db, center.id, start, end)
-    return _analytics_payload_for_center(center, views, leads, start, end, range)
+    payload = _analytics_payload_for_center(center, views, leads, start, end, range)
+    inquiry_sends, inquiry_sends_total = _inquiry_send_counts(db, center.id, start, end)
+    payload["summary"]["inquiry_sends"] = inquiry_sends
+    payload["summary"]["inquiry_sends_total"] = inquiry_sends_total
+    payload["summary"]["conversion_rate"] = (
+        round((inquiry_sends / len(views)) * 100, 1) if views else 0.0
+    )
+    return payload
 
 
 @router.get("/api/admin/analytics")

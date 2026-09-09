@@ -28,7 +28,7 @@ from app.models.platform_settings import PlatformEmailSettings, PlatformStripeSe
 from app.models.center_submission import CenterSubmission, CenterSubmissionStatus
 from app.models.insurance import InsuranceCatalog
 from app.models.service_code import ServiceCodeCatalog
-from app.models.analytics import CenterPageView, SitePageView
+from app.models.analytics import CenterInquirySend, CenterPageView, SitePageView
 
 __all__ = [
     "Base",
@@ -70,6 +70,7 @@ __all__ = [
     "InsuranceCatalog",
     "ServiceCodeCatalog",
     "CenterPageView",
+    "CenterInquirySend",
     "SitePageView",
     "CenterSubmission",
     "CenterSubmissionStatus",

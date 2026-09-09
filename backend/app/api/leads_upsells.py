@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
@@ -16,6 +17,7 @@ from app.core.deps import ActiveSubscriber, AdminUser, ClientUser
 from app.core.rate_limit import limiter
 from app.database import get_db
 from app.models.billing import Subscription
+from app.models.analytics import CenterInquirySend
 from app.models.lead import CenterLead, is_visitor_inquiry
 from app.models.rehab import ClaimStatus, ListingStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellFulfillment, UpsellOrder, UpsellOrderStatus, UpsellProductType
@@ -28,6 +30,7 @@ from app.services.storage import get_public_url, resolve_image_url, upload_image
 
 router = APIRouter(tags=["leads-upsells"])
 settings = get_settings()
+logger = logging.getLogger("swa")
 
 
 def _slugify_segment(value: str | None) -> str:
@@ -379,9 +382,7 @@ def _completeness(center: RehabCenter) -> dict:
     return {"filled": filled, "total": len(checks), "percent": int(round(100 * filled / len(checks)))}
 
 
-@router.post("/api/rehab-centers/{slug}/leads", response_model=InquirySubmitOut)
-@limiter.limit("8/hour")
-def submit_lead(request: Request, slug: str, body: LeadCreate, db: Annotated[Session, Depends(get_db)]):
+def submit_lead(request: Request, slug: str, body: LeadCreate, db: Session = Depends(get_db)):
     # Honeypot: bots that fill hidden fields get a success response and no email.
     if body.hp_website:
         return InquirySubmitOut()
@@ -429,7 +430,24 @@ def submit_lead(request: Request, slug: str, body: LeadCreate, db: Annotated[Ses
     if not sent:
         raise HTTPException(status_code=502, detail="Could not deliver this inquiry. Please try again or call the center.")
 
+    # Count only — no visitor name, email, phone, or message is stored.
+    try:
+        db.add(CenterInquirySend(rehab_center_id=center.id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to record inquiry send count for center %s", center.id)
+
     return InquirySubmitOut()
+
+
+# Resolve types before SlowAPI/FastAPI inspect the handler (`from __future__ import annotations`).
+submit_lead.__annotations__["request"] = Request
+submit_lead.__annotations__["slug"] = str
+submit_lead.__annotations__["body"] = LeadCreate
+submit_lead.__annotations__["db"] = Session
+submit_lead = limiter.limit("8/hour")(submit_lead)
+router.post("/api/rehab-centers/{slug}/leads", response_model=InquirySubmitOut)(submit_lead)
 
 
 @router.get("/api/client/leads", response_model=list[LeadOut])

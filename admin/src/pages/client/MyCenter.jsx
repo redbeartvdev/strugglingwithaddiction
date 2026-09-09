@@ -122,8 +122,12 @@ function AnalyticsPanel({ locked }) {
         <>
           <div className="mc-stat-grid">
             <StatCard label="Profile visits" value={data.summary.page_views} hint={`${data.summary.unique_sessions} unique sessions`} />
-            <StatCard label="Inquiries" value="Email only" hint="Not stored in our database" />
-            <StatCard label="Conversion" value={`${data.summary.conversion_rate}%`} hint="Tracked visits only — inquiries are emailed, not counted" />
+            <StatCard
+              label="Inquiries emailed"
+              value={data.summary.inquiry_sends ?? 0}
+              hint={`${data.summary.inquiry_sends_total ?? 0} sent all time · messages stay in your inbox`}
+            />
+            <StatCard label="Conversion" value={`${data.summary.conversion_rate}%`} hint="Inquiries emailed ÷ profile visits in this range" />
           </div>
 
           <div className="mc-analytics-grid">
@@ -173,9 +177,10 @@ function AnalyticsPanel({ locked }) {
 
             <Card>
               <p className="eyebrow">Listing inquiries</p>
+              <p className="mc-stat-value" style={{ margin: '8px 0 6px' }}>{data.summary.inquiry_sends ?? 0}</p>
               <p className="muted">
-                Visitor inquiries are emailed to your assigned inquiry address and are not stored
-                in our database, so they do not appear here.
+                Inquiries emailed to your assigned address in this range.
+                Visitor names and messages are not stored here — only this count.
               </p>
               <Link className="btn btn-ghost btn-sm" to="/client/leads" style={{ marginTop: 12 }}>Inquiry email</Link>
             </Card>
