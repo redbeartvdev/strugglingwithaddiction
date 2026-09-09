@@ -73,7 +73,7 @@
 }
 
 .guided-finder-step-marker.is-active .guided-finder-step-num {
-  background: var(--brand-blue);
+  background: var(--brand-blue-strong);
   color: var(--white);
 }
 
@@ -231,7 +231,7 @@
 }
 
 .guided-finder--hero .guided-finder-step-marker {
-  opacity: 0.5;
+  opacity: 0.85;
 }
 
 .guided-finder--hero .guided-finder-step-marker.is-active,
@@ -248,7 +248,7 @@
 }
 
 .guided-finder--hero .guided-finder-step-marker.is-active .guided-finder-step-num {
-  background: var(--brand-blue);
+  background: var(--brand-blue-strong);
   color: var(--white);
 }
 

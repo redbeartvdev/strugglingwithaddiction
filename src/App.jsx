@@ -4,9 +4,10 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import PageViewTracker from './components/PageViewTracker'
 import Home from './pages/Home'
-import Portal from './pages/Portal'
-import NotFound from './pages/NotFound'
-import Videos from './pages/Videos'
+
+const Portal = lazy(() => import('./pages/Portal'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const Videos = lazy(() => import('./pages/Videos'))
 import './lib/documentNav'
 import './App.css'
 

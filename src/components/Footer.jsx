@@ -15,6 +15,8 @@ export default function Footer() {
               src="/images/SWA-logo-web-white-small_vSE-1.webp"
               alt="Struggling With Addiction"
               className="footer-logo-img"
+              width={187}
+              height={48}
             />
           </div>
           <p className="footer-tagline">
@@ -25,7 +27,7 @@ export default function Footer() {
 
         <div className="footer-links">
           <div className="footer-col">
-            <h4>Navigate</h4>
+            <p className="footer-heading">Navigate</p>
             <ul>
               <li><Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Home</Link></li>
               <li><Link to="/rehab-centers">Directory</Link></li>
@@ -37,7 +39,7 @@ export default function Footer() {
             </ul>
           </div>
           <div className="footer-col">
-            <h4>Site Support</h4>
+            <p className="footer-heading">Site Support</p>
             <ul>
               <li><a href="mailto:info@strugglingwithaddiction.com">info@strugglingwithaddiction.com</a></li>
               <li><Link to="/rehab-centers">Browse Directory</Link></li>

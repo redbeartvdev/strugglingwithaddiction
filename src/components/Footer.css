@@ -43,10 +43,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.85);
   transition: color 0.2s, background-color 0.2s;
 }
 
@@ -75,7 +75,7 @@
   gap: 2rem;
 }
 
-.footer-col h4 {
+.footer-col .footer-heading {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -93,9 +93,12 @@
 
 .footer-col a {
   font-size: 0.92rem;
-  color: #9ca3af;
+  color: #d1d5db;
   text-decoration: none;
   transition: color 0.3s;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .footer-col a:hover {
@@ -118,7 +121,7 @@
 
 .footer-bottom p {
   font-size: 0.82rem;
-  color: #6b7280;
+  color: #d1d5db;
 }
 
 .footer-legal {
@@ -129,9 +132,12 @@
 
 .footer-legal a {
   font-size: 0.82rem;
-  color: #6b7280;
+  color: #d1d5db;
   text-decoration: none;
   transition: color 0.3s;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .footer-legal a:hover {

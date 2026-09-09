@@ -3,7 +3,6 @@ import { apiEnabled, fetchApi, getApiBase } from '../lib/api'
 import staticPosts from '../data/posts.json'
 import staticCategories from '../data/categories.json'
 import staticAuthors from '../data/authors.json'
-import staticRecent from '../data/recentPosts.json'
 
 /** Normalize API + static post shapes for list/filter UI. */
 export function normalizePost(p) {
@@ -125,17 +124,4 @@ export function useAuthors() {
     fetchApi('/api/authors').then(d => { if (d) setAuthors(d) }).catch(() => {})
   }, [])
   return authors
-}
-
-export function useRecentPosts() {
-  const [posts, setPosts] = useState(staticRecent.slice(0, 3))
-  useEffect(() => {
-    if (!apiEnabled()) return
-    fetchApi('/api/posts?limit=3')
-      .then(d => {
-        if (Array.isArray(d) && d.length) setPosts(mergeWithStaticPosts(d, staticRecent).slice(0, 3))
-      })
-      .catch(() => {})
-  }, [])
-  return posts
 }

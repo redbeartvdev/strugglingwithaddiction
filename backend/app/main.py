@@ -102,6 +102,17 @@ class CanonicalHostMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class StaticCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path.startswith("/images/") or path.startswith("/fonts/") or path.endswith((".woff2", ".woff")):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 # Dev: allow any localhost port (Vite may use 5173–5176). Prod: explicit CORS_ORIGINS only.
 _cors_origins = list(settings.cors_origin_list)
 if settings.is_production:
@@ -120,6 +131,7 @@ if not settings.is_production:
 
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 app.add_middleware(CanonicalHostMiddleware)
+app.add_middleware(StaticCacheMiddleware)
 
 upload_path = Path(settings.upload_dir)
 upload_path.mkdir(parents=True, exist_ok=True)
