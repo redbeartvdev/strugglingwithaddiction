@@ -23,6 +23,7 @@ from app.schemas.billing import (
     BillingInvoiceOut,
     CheckoutRequest,
     RegisterBillingRequest,
+    StripeConnectRequest,
     StripeSettingsUpdate,
     SubscriberAdmin,
     SubscriptionOut,
@@ -35,6 +36,7 @@ from app.services.stripe_config import (
     apply_catalog_prices,
     checkout_receipt_options,
     checkout_subscription_options,
+    connect_stripe_account,
     construct_stripe_event,
     ensure_stripe_webhook_endpoint,
     ensure_customer_email,
@@ -1628,6 +1630,24 @@ def _provision_stripe_catalog(db: Session, request: Request, *, mode: str):
     apply_catalog_prices(db, created, mode=active)
     payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"))
     payload["provisioned"] = created
+    return payload
+
+
+@router.post("/admin/stripe-connect")
+def admin_connect_stripe(body: StripeConnectRequest, _: AdminUser, db: Annotated[Session, Depends(get_db)], request: Request):
+    """One-step connect: save the key, create products/prices/webhook, return status."""
+    try:
+        connected = connect_stripe_account(db, secret_key=body.secret_key, mode=body.mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc)[:240]) from exc
+    payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"), include_account=False)
+    payload["account"] = connected.get("account")
+    payload["provisioned"] = connected.get("catalog")
+    payload["webhook"] = connected.get("webhook")
+    payload["ok"] = bool((connected.get("account") or {}).get("ok"))
+    payload["verified_mode"] = normalize_stripe_mode(body.mode)
     return payload
 
 

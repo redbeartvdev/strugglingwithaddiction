@@ -515,13 +515,78 @@ def ensure_stripe_webhook_endpoint(st) -> dict[str, str]:
             url=wanted,
             enabled_events=list(STRIPE_WEBHOOK_EVENTS),
         )
-        return {"id": target.id, "url": wanted}
+        return {"id": target.id, "url": wanted, "secret": None}
     created = st.WebhookEndpoint.create(
         url=wanted,
         enabled_events=list(STRIPE_WEBHOOK_EVENTS),
-        description="SWA live billing",
+        description="SWA billing webhook",
     )
-    return {"id": created.id, "url": wanted}
+    return {
+        "id": created.id,
+        "url": wanted,
+        "secret": getattr(created, "secret", None),
+    }
+
+
+def connect_stripe_account(db: Session, *, secret_key: str, mode: str) -> dict[str, Any]:
+    """Save a key, create catalog + webhook, and return status for that mode."""
+    key = (secret_key or "").strip()
+    active = normalize_stripe_mode(mode)
+    if active == "live" and not key.startswith(("sk_live_", "rk_live_")):
+        raise ValueError("Production needs a live secret key (sk_live_… or rk_live_…).")
+    if active == "test" and not key.startswith(("sk_test_", "rk_test_")):
+        raise ValueError("Sandbox needs a test secret key (sk_test_… or rk_test_…). In Stripe, turn on Test mode and copy that key.")
+
+    row = get_or_create_stripe_settings(db)
+    row.enabled = True
+    if active == "test":
+        row.test_secret_key = key
+    else:
+        row.secret_key = key
+        row.mode = "live"
+    db.commit()
+
+    st = init_stripe_sdk(db, mode=active)
+    if not st:
+        raise RuntimeError("Stripe did not accept that key.")
+    try:
+        st.Account.retrieve()
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"Stripe rejected this key: {exc}") from exc
+
+    catalog = provision_stripe_catalog(st)
+    apply_catalog_prices(db, catalog, mode=active)
+    try:
+        ensure_catalog_tax_codes(st)
+    except Exception:
+        pass
+    hook = ensure_stripe_webhook_endpoint(st)
+    if hook.get("secret"):
+        row = get_or_create_stripe_settings(db)
+        if active == "test":
+            row.test_webhook_secret = hook["secret"]
+        else:
+            row.webhook_secret = hook["secret"]
+        db.commit()
+    try:
+        configs = st.billing_portal.Configuration.list(limit=1)
+        if not configs.data:
+            st.billing_portal.Configuration.create(
+                business_profile={"headline": "Struggling With Addiction billing"},
+                features={
+                    "invoice_history": {"enabled": True},
+                    "payment_method_update": {"enabled": True},
+                    "customer_update": {"enabled": True, "allowed_updates": ["email", "address"]},
+                    "subscription_cancel": {"enabled": True, "mode": "at_period_end"},
+                },
+            )
+    except Exception:
+        pass
+    return {
+        "catalog": catalog,
+        "webhook": {"id": hook.get("id"), "url": hook.get("url")},
+        "account": probe_stripe_account(db, mode=active),
+    }
 
 
 def stripe_product_data(name: str, **extra: Any) -> dict[str, Any]:

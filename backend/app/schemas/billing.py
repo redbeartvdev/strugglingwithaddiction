@@ -85,6 +85,11 @@ class StripeSettingsUpdate(BaseModel):
     clear_test_webhook_secret: bool = False
 
 
+class StripeConnectRequest(BaseModel):
+    secret_key: str = Field(min_length=16)
+    mode: str = "live"
+
+
 class BillingInvoiceOut(BaseModel):
     id: int
     stripe_invoice_id: str
