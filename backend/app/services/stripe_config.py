@@ -78,9 +78,16 @@ def resolve_stripe_config(db: Session | None = None, *, mode: str | None = None)
         return (db_val or "").strip() or (env_val or "").strip()
 
     enabled = True if row is None else bool(row.enabled)
-    active = normalize_stripe_mode(
+    requested = normalize_stripe_mode(
         mode if mode is not None else ((row.mode if row else None) or settings.stripe_mode)
     )
+    if requested == "test" and mode is None:
+        test_key = pick(row.test_secret_key if row else None, settings.stripe_test_secret_key)
+        live_key = pick(row.secret_key if row else None, settings.stripe_secret_key)
+        # An admin toggle to sandbox without a test key would take production offline.
+        if not test_key and live_key:
+            requested = "live"
+    active = requested
     if active == "test":
         return StripeConfig(
             secret_key=pick(row.test_secret_key if row else None, settings.stripe_test_secret_key),
@@ -319,6 +326,11 @@ def apply_env_stripe_to_settings(db: Session) -> None:
             changed = True
     if not (row.mode or "").strip():
         row.mode = normalize_stripe_mode(settings.stripe_mode)
+        changed = True
+    if normalize_stripe_mode(row.mode) == "test" and not (
+        (row.test_secret_key or "").strip() or settings.stripe_test_secret_key
+    ):
+        row.mode = "live"
         changed = True
     if changed:
         db.commit()
