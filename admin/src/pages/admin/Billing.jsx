@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiBlob } from '../../api'
 import Button from '../../components/ui/Button'
+import StripeSettingsForm from '../../components/StripeSettingsForm'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -29,22 +30,13 @@ export default function AdminBilling() {
   const [subs, setSubs] = useState([])
   const [unpaid, setUnpaid] = useState([])
   const [invoices, setInvoices] = useState([])
+  const [invoiceCounts, setInvoiceCounts] = useState({ all: 0, paid: 0, unpaid: 0 })
+  const [invoiceFilter, setInvoiceFilter] = useState('all')
   const [upgrades, setUpgrades] = useState([])
   const [report, setReport] = useState(null)
   const [stripe, setStripe] = useState(null)
   const [plans, setPlans] = useState([])
   const [err, setErr] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [stripeForm, setStripeForm] = useState({
-    enabled: true,
-    secret_key: '',
-    webhook_secret: '',
-    publishable_key: '',
-    price_monthly: '',
-    price_yearly: '',
-    price_verified_badge: '',
-    price_featured_placement: '',
-  })
   const [days, setDays] = useState(30)
 
   function loadTab(id = tab) {
@@ -60,7 +52,16 @@ export default function AdminBilling() {
       api('/api/billing/admin/unpaid').then(d => setUnpaid(d.items || [])).catch(e => setErr(e.message))
     }
     if (id === 'invoices') {
-      api('/api/billing/admin/invoices').then(setInvoices).catch(e => setErr(e.message))
+      api(`/api/billing/admin/invoices?filter=${invoiceFilter}`)
+        .then(data => {
+          if (Array.isArray(data)) {
+            setInvoices(data)
+            return
+          }
+          setInvoices(data.invoices || [])
+          setInvoiceCounts(data.counts || { all: 0, paid: 0, unpaid: 0 })
+        })
+        .catch(e => setErr(e.message))
     }
     if (id === 'upgrades') {
       api('/api/admin/upsell-orders').then(setUpgrades).catch(e => setErr(e.message))
@@ -69,52 +70,11 @@ export default function AdminBilling() {
       api(`/api/billing/admin/reports/sales?days=${days}`).then(setReport).catch(e => setErr(e.message))
     }
     if (id === 'stripe') {
-      api('/api/billing/admin/stripe-settings').then(s => {
-        setStripe(s)
-        setStripeForm(f => ({
-          ...f,
-          enabled: s.enabled !== false,
-          publishable_key: s.publishable_key || '',
-          price_monthly: s.price_monthly || '',
-          price_yearly: s.price_yearly || '',
-          price_verified_badge: s.price_verified_badge || '',
-          price_featured_placement: s.price_featured_placement || '',
-          secret_key: '',
-          webhook_secret: '',
-        }))
-      }).catch(e => setErr(e.message))
+      api('/api/billing/admin/stripe-settings').then(setStripe).catch(e => setErr(e.message))
     }
   }
 
-  useEffect(() => { loadTab(tab) }, [tab, days])
-
-  async function saveStripe(e) {
-    e.preventDefault()
-    setSaving(true)
-    setErr('')
-    try {
-      const body = {
-        enabled: stripeForm.enabled,
-        publishable_key: stripeForm.publishable_key || null,
-        price_monthly: stripeForm.price_monthly || null,
-        price_yearly: stripeForm.price_yearly || null,
-        price_verified_badge: stripeForm.price_verified_badge || null,
-        price_featured_placement: stripeForm.price_featured_placement || null,
-      }
-      if (stripeForm.secret_key.trim()) body.secret_key = stripeForm.secret_key.trim()
-      if (stripeForm.webhook_secret.trim()) body.webhook_secret = stripeForm.webhook_secret.trim()
-      const s = await api('/api/billing/admin/stripe-settings', {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      })
-      setStripe(s)
-      setStripeForm(f => ({ ...f, secret_key: '', webhook_secret: '' }))
-    } catch (ex) {
-      setErr(ex.message)
-    } finally {
-      setSaving(false)
-    }
-  }
+  useEffect(() => { loadTab(tab) }, [tab, days, invoiceFilter])
 
   const [busyInv, setBusyInv] = useState('')
   const [viewInv, setViewInv] = useState(null)
@@ -154,6 +114,23 @@ export default function AdminBilling() {
       } catch {
         setErr(ex.message)
       }
+    } finally {
+      setBusyInv('')
+    }
+  }
+
+  async function openPayLink(inv) {
+    setBusyInv(`${inv.id}-pay`)
+    setErr('')
+    try {
+      if (inv.pay_url || inv.hosted_invoice_url) {
+        window.open(inv.pay_url || inv.hosted_invoice_url, '_blank', 'noopener,noreferrer')
+        return
+      }
+      const { pay_url } = await api(`/api/billing/admin/invoices/${inv.id}/pay-link`, { method: 'POST' })
+      if (pay_url) window.open(pay_url, '_blank', 'noopener,noreferrer')
+    } catch (ex) {
+      setErr(ex.message)
     } finally {
       setBusyInv('')
     }
@@ -301,8 +278,24 @@ export default function AdminBilling() {
       {tab === 'invoices' && (
         <div>
           <p className="muted" style={{ marginBottom: 12 }}>
-            View or download PDF invoices for rehab center subscriptions and upgrades.
+            All rehab-center invoices. Filter by paid vs not paid. Unpaid rows include a Stripe pay link.
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {[
+              { id: 'all', label: `All (${invoiceCounts.all || invoices.length})` },
+              { id: 'paid', label: `Paid (${invoiceCounts.paid || 0})` },
+              { id: 'unpaid', label: `Not paid (${invoiceCounts.unpaid || 0})` },
+            ].map(item => (
+              <button
+                key={item.id}
+                type="button"
+                className={`btn ${invoiceFilter === item.id ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setInvoiceFilter(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -328,6 +321,16 @@ export default function AdminBilling() {
                     <td>{inv.status}</td>
                     <td>{inv.amount_label}</td>
                     <td className="table-actions">
+                      {inv.payable && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busyInv === `${inv.id}-pay`}
+                          onClick={() => openPayLink(inv)}
+                        >
+                          {busyInv === `${inv.id}-pay` ? '…' : 'Pay in Stripe'}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -353,7 +356,7 @@ export default function AdminBilling() {
             </table>
           </div>
           {invoices.length === 0 && (
-            <p className="muted">No invoices yet. Active subscriptions will show here automatically.</p>
+            <p className="muted">No invoices in this filter.</p>
           )}
 
           {viewInv && (
@@ -419,26 +422,12 @@ export default function AdminBilling() {
         </div>
       )}
 
-      {tab === 'stripe' && stripe && (
-        <form className="card card-flat" onSubmit={saveStripe} style={{ maxWidth: 560, display: 'grid', gap: 12 }}>
-          <p className="eyebrow">Stripe settings</p>
-          <p className="muted">
-            Status: {stripe.configured ? 'Ready' : 'Not ready'} · Prices: {stripe.prices_ready ? 'set' : 'missing'} · Webhook: {stripe.webhook_ready ? 'set' : 'missing'}
-          </p>
-          <p className="muted">Webhook URL: <code>{stripe.webhook_url}</code></p>
-          <p className="muted">Secret key on file: {stripe.secret_key_masked || '—'}</p>
-          <label>
-            <input type="checkbox" checked={stripeForm.enabled} onChange={e => setStripeForm(f => ({ ...f, enabled: e.target.checked }))} /> Enabled
-          </label>
-          <label>Secret key (leave blank to keep)<input type="password" autoComplete="off" value={stripeForm.secret_key} onChange={e => setStripeForm(f => ({ ...f, secret_key: e.target.value }))} placeholder="sk_…" /></label>
-          <label>Webhook secret (leave blank to keep)<input type="password" autoComplete="off" value={stripeForm.webhook_secret} onChange={e => setStripeForm(f => ({ ...f, webhook_secret: e.target.value }))} placeholder="whsec_…" /></label>
-          <label>Publishable key<input value={stripeForm.publishable_key} onChange={e => setStripeForm(f => ({ ...f, publishable_key: e.target.value }))} placeholder="pk_…" /></label>
-          <label>Monthly price ID<input value={stripeForm.price_monthly} onChange={e => setStripeForm(f => ({ ...f, price_monthly: e.target.value }))} placeholder="price_…" /></label>
-          <label>Yearly price ID<input value={stripeForm.price_yearly} onChange={e => setStripeForm(f => ({ ...f, price_yearly: e.target.value }))} placeholder="price_…" /></label>
-          <label>Verified badge price ID<input value={stripeForm.price_verified_badge} onChange={e => setStripeForm(f => ({ ...f, price_verified_badge: e.target.value }))} placeholder="price_…" /></label>
-          <label>Featured placement price ID<input value={stripeForm.price_featured_placement} onChange={e => setStripeForm(f => ({ ...f, price_featured_placement: e.target.value }))} placeholder="price_…" /></label>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Stripe settings'}</Button>
-        </form>
+      {tab === 'stripe' && (
+        <StripeSettingsForm
+          status={stripe}
+          onSaved={setStripe}
+          onError={setErr}
+        />
       )}
     </div>
   )

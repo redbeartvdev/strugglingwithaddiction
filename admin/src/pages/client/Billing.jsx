@@ -104,6 +104,24 @@ export default function ClientBilling() {
     }
   }
 
+  async function payInvoice(invoice) {
+    setBusyPdf(`pay-${invoice.id}`)
+    setErr('')
+    try {
+      const direct = invoice.pay_url || invoice.hosted_invoice_url
+      if (direct && invoice.payable) {
+        window.location.href = direct
+        return
+      }
+      const { pay_url } = await api(`/api/billing/invoices/${invoice.id}/pay`, { method: 'POST' })
+      if (pay_url) window.location.href = pay_url
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusyPdf('')
+    }
+  }
+
   const active = ['active', 'trialing', 'past_due'].includes(sub?.status)
 
   return (
@@ -173,8 +191,15 @@ export default function ClientBilling() {
           {(sub?.status === 'past_due' || sub?.status === 'unpaid') && (
             <div className="card" style={{ marginTop: 12, padding: 12, border: '1px solid #fecaca', background: '#fef2f2' }}>
               <p className="eyebrow">Payment renewal</p>
-              <p style={{ marginTop: 4 }}>This alert only appears when a renewal payment did not go through.</p>
-              <Button type="button" style={{ marginTop: 8 }} onClick={portal}>Update payment method</Button>
+              <p style={{ marginTop: 4 }}>This alert only appears when a renewal payment did not go through. Pay the open invoice in Stripe or update your card.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {invoices.find(inv => inv.payable) && (
+                  <Button type="button" onClick={() => payInvoice(invoices.find(inv => inv.payable))}>
+                    Pay invoice in Stripe
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" onClick={portal}>Update payment method</Button>
+              </div>
             </div>
           )}
           {sub?.current_period_end && (
@@ -231,6 +256,16 @@ export default function ClientBilling() {
                     <td style={{ textTransform: 'capitalize' }}>{inv.status}</td>
                     <td>{inv.amount_label}</td>
                     <td className="table-actions">
+                      {(inv.payable || ['open', 'unpaid', 'past_due', 'draft'].includes(String(inv.status || '').toLowerCase())) && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busyPdf === `pay-${inv.id}`}
+                          onClick={() => payInvoice(inv)}
+                        >
+                          {busyPdf === `pay-${inv.id}` ? '…' : 'Pay in Stripe'}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

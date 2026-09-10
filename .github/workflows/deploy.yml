@@ -40,6 +40,28 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Sync Stripe billing variables
+        continue-on-error: true
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "${STRIPE_SECRET_KEY:-}" ] || [ -z "${STRIPE_WEBHOOK_SECRET:-}" ]; then
+            echo "STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET GitHub secrets not set; skipping Railway Stripe sync."
+            exit 0
+          fi
+          railway variable set \
+            "STRIPE_MODE=live" \
+            "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}" \
+            "STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}" \
+            "STRIPE_PRICE_MONTHLY=price_1UDycl7916C3OAmE5bi5arRn" \
+            "STRIPE_PRICE_YEARLY=price_1UDycm7916C3OAmEozHX6ini" \
+            "STRIPE_PRICE_VERIFIED_BADGE=price_1UDycw7916C3OAmEQICZf0D6" \
+            "STRIPE_PRICE_FEATURED_PLACEMENT=price_1UDycw7916C3OAmEgDDwytP9" \
+            --service "${RAILWAY_SERVICE_ID}"
+
       - name: Deploy monolith to Railway
         run: railway up --ci --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
         env:

@@ -719,7 +719,14 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         return {"mode": "human", "order_id": order.id, "message": "Thanks — a specialist will contact you to close this package."}
 
     # Self-serve via Stripe Checkout (monthly subscriptions for badge + featured)
-    from app.services.stripe_config import init_stripe_sdk, resolve_stripe_config
+    from app.services.stripe_config import (
+        checkout_receipt_options,
+        checkout_subscription_options,
+        ensure_customer_email,
+        init_stripe_sdk,
+        resolve_stripe_config,
+        stripe_product_data,
+    )
 
     st = init_stripe_sdk(db)
     cfg = resolve_stripe_config(db)
@@ -760,7 +767,7 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         price_data = {
             "currency": "usd",
             "unit_amount": catalog["amount_cents"],
-            "product_data": {"name": catalog["label"]},
+            "product_data": stripe_product_data(catalog["label"]),
         }
         if monthly:
             price_data["recurring"] = {"interval": "month"}
@@ -780,11 +787,12 @@ def upsell_checkout(body: UpsellCheckoutRequest, user: ClientUser, db: Annotated
         "success_url": f"{settings.admin_site_url}/client/upsells?success=1",
         "cancel_url": f"{settings.admin_site_url}/client/upsells?canceled=1",
         "metadata": meta,
+        **checkout_receipt_options(mode=mode, customer_email=user.email, metadata=meta),
     }
     if monthly:
-        # Persist product type on the subscription so renewals keep the upgrade active.
-        session_kwargs["subscription_data"] = {"metadata": meta}
+        session_kwargs.update(checkout_subscription_options(user_id=user.id, extra_metadata=meta))
 
+    ensure_customer_email(st, customer_id, user.email)
     session = st.checkout.Session.create(**session_kwargs)
     order.stripe_checkout_session_id = session.id
     db.commit()

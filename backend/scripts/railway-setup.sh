@@ -151,6 +151,20 @@ set_api_variables() {
     "ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD}" \
     --service "$API_SERVICE" \
     --environment "$ENV_NAME"
+
+  if [[ -n "${STRIPE_SECRET_KEY:-}" && -n "${STRIPE_WEBHOOK_SECRET:-}" ]]; then
+    echo "Setting Stripe live catalog variables"
+    railway variable set \
+      "STRIPE_MODE=${STRIPE_MODE:-live}" \
+      "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}" \
+      "STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}" \
+      "STRIPE_PRICE_MONTHLY=${STRIPE_PRICE_MONTHLY:-price_1UDycl7916C3OAmE5bi5arRn}" \
+      "STRIPE_PRICE_YEARLY=${STRIPE_PRICE_YEARLY:-price_1UDycm7916C3OAmEozHX6ini}" \
+      "STRIPE_PRICE_VERIFIED_BADGE=${STRIPE_PRICE_VERIFIED_BADGE:-price_1UDycw7916C3OAmEQICZf0D6}" \
+      "STRIPE_PRICE_FEATURED_PLACEMENT=${STRIPE_PRICE_FEATURED_PLACEMENT:-price_1UDycw7916C3OAmEgDDwytP9}" \
+      --service "$API_SERVICE" \
+      --environment "$ENV_NAME"
+  fi
 }
 
 print_next_steps() {

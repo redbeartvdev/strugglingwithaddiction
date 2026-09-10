@@ -4,7 +4,6 @@ import csv
 import io
 import logging
 
-import stripe
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from sqlalchemy import func
@@ -33,10 +32,27 @@ from app.schemas.billing import (
 from app.services.invoice_pdf import InvoicePdfData, build_invoice_pdf
 from app.services.simple_pdf import build_simple_pdf
 from app.services.stripe_config import (
+    apply_catalog_prices,
+    checkout_receipt_options,
+    checkout_subscription_options,
+    construct_stripe_event,
+    ensure_customer_email,
+    ensure_hosted_invoice_url,
     get_or_create_stripe_settings,
+    hosted_pay_url,
     init_stripe_sdk,
+    invoice_is_payable,
+    invoice_is_unpaid,
+    normalize_stripe_mode,
+    probe_stripe_account,
+    provision_stripe_catalog,
+    receipt_url_from_checkout_session,
+    receipt_url_from_invoice,
     resolve_stripe_config,
+    stripe_product_data,
     stripe_status_payload,
+    sync_subscription_plan_prices,
+    UNPAID_INVOICE_STATUSES,
 )
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -51,12 +67,14 @@ def _stripe(db: Session | None = None):
 def _price_for_interval(db: Session, interval: BillingInterval) -> str:
     cfg = resolve_stripe_config(db)
     price_id = cfg.price_yearly if interval == BillingInterval.year else cfg.price_monthly
+    if price_id:
+        return price_id
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
     if plan:
         plan_price = plan.stripe_price_id_yearly if interval == BillingInterval.year else plan.stripe_price_id_monthly
         if plan_price:
-            price_id = plan_price
-    return price_id or ""
+            return plan_price
+    return ""
 
 
 def _user_subscription(db: Session, user_id: int) -> Subscription | None:
@@ -80,19 +98,23 @@ def _format_money(amount_cents: int | None, currency: str | None = "usd") -> str
 
 
 def _invoice_row(inv) -> dict:
+    status = getattr(inv, "status", None)
+    pay_url = hosted_pay_url(inv)
     return {
         "id": inv.id,
         "number": inv.number or inv.id,
-        "status": inv.status,
+        "status": status,
         "amount_due": inv.amount_due,
         "amount_paid": inv.amount_paid,
         "currency": inv.currency,
-        "amount_label": _format_money(inv.amount_paid if inv.status == "paid" else inv.amount_due, inv.currency),
+        "amount_label": _format_money(inv.amount_paid if status == "paid" else inv.amount_due, inv.currency),
         "created": datetime.fromtimestamp(inv.created, tz=timezone.utc).isoformat() if inv.created else None,
         "period_start": datetime.fromtimestamp(inv.period_start, tz=timezone.utc).isoformat() if getattr(inv, "period_start", None) else None,
         "period_end": datetime.fromtimestamp(inv.period_end, tz=timezone.utc).isoformat() if getattr(inv, "period_end", None) else None,
         "hosted_invoice_url": inv.hosted_invoice_url,
         "invoice_pdf": inv.invoice_pdf,
+        "pay_url": pay_url,
+        "payable": invoice_is_payable(status),
         "description": (inv.description or (inv.lines.data[0].description if inv.lines and inv.lines.data else None) or "Subscription"),
     }
 
@@ -222,6 +244,8 @@ def _invoice_out(row: BillingInvoice, email: str | None = None, center_name: str
         period_end=row.period_end,
         hosted_invoice_url=row.hosted_invoice_url,
         invoice_pdf=row.invoice_pdf,
+        pay_url=row.hosted_invoice_url if invoice_is_payable(row.status) else None,
+        payable=invoice_is_payable(row.status),
         paid_at=row.paid_at,
         source=row.source,
         product_label=row.product_label,
@@ -293,13 +317,16 @@ def register_and_checkout(body: RegisterBillingRequest, db: Annotated[Session, D
     price_id = _price_for_interval(db, interval)
     if not price_id:
         raise HTTPException(status_code=503, detail="Stripe price not configured. Set monthly/yearly price IDs in Finance settings.")
+    checkout_meta = {"user_id": str(user.id)}
     session = st.checkout.Session.create(
         customer=customer.id,
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=f"{settings.admin_site_url}/client/billing?success=1",
         cancel_url=f"{settings.admin_site_url}/register?canceled=1",
-        metadata={"user_id": str(user.id)},
+        metadata=checkout_meta,
+        **checkout_subscription_options(user_id=user.id, extra_metadata=checkout_meta),
+        **checkout_receipt_options(mode="subscription", customer_email=email, metadata=checkout_meta),
     )
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
     sub_row.plan_id = plan.id if plan else None
@@ -325,17 +352,21 @@ def create_checkout(body: CheckoutRequest, user: ClientUser, db: Annotated[Sessi
         sub_row = Subscription(user_id=user.id, stripe_customer_id=customer.id, status="pending")
         db.add(sub_row)
         db.commit()
+    ensure_customer_email(st, sub_row.stripe_customer_id, user.email)
     interval = BillingInterval.year if body.interval == "year" else BillingInterval.month
     price_id = _price_for_interval(db, interval)
     if not price_id:
         raise HTTPException(status_code=503, detail="Stripe price not configured. Set monthly/yearly price IDs in Finance settings.")
+    checkout_meta = {"user_id": str(user.id)}
     session = st.checkout.Session.create(
         customer=sub_row.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=f"{settings.admin_site_url}/client/billing?success=1",
         cancel_url=f"{settings.admin_site_url}/client/billing?canceled=1",
-        metadata={"user_id": str(user.id)},
+        metadata=checkout_meta,
+        **checkout_subscription_options(user_id=user.id, extra_metadata=checkout_meta),
+        **checkout_receipt_options(mode="subscription", customer_email=user.email, metadata=checkout_meta),
     )
     sub_row.interval = interval
     db.commit()
@@ -422,6 +453,8 @@ def list_invoices(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
                 "period_end": r.period_end.isoformat() if r.period_end else None,
                 "hosted_invoice_url": r.hosted_invoice_url,
                 "invoice_pdf": r.invoice_pdf,
+                "pay_url": r.hosted_invoice_url if invoice_is_payable(r.status) else None,
+                "payable": invoice_is_payable(r.status),
                 "description": r.description or r.product_label or "Subscription",
                 "download_path": f"/api/billing/invoices/{r.id}/pdf",
             }
@@ -447,6 +480,96 @@ def list_payments(user: ClientUser, db: Annotated[Session, Depends(get_db)]):
         "stripe_configured": True,
         "has_customer": True,
     }
+
+
+def _find_user_invoice(db: Session, user_id: int, invoice_id: str) -> BillingInvoice | None:
+    if invoice_id.isdigit():
+        return (
+            db.query(BillingInvoice)
+            .filter(BillingInvoice.id == int(invoice_id), BillingInvoice.user_id == user_id)
+            .first()
+        )
+    return (
+        db.query(BillingInvoice)
+        .filter(BillingInvoice.stripe_invoice_id == invoice_id, BillingInvoice.user_id == user_id)
+        .first()
+    )
+
+
+def _pay_url_for_invoice(st, db: Session, row: BillingInvoice | None, *, stripe_invoice_id: str | None, customer_id: str | None, user_email: str | None) -> str:
+    stripe_id = stripe_invoice_id or (row.stripe_invoice_id if row else None)
+    if st and stripe_id and not str(stripe_id).startswith("local_"):
+        url = ensure_hosted_invoice_url(st, stripe_id)
+        if url:
+            if row and row.hosted_invoice_url != url:
+                row.hosted_invoice_url = url
+                db.commit()
+            return url
+    if row and invoice_is_payable(row.status) and row.hosted_invoice_url:
+        return row.hosted_invoice_url
+    if st and customer_id and row and invoice_is_payable(row.status) and int(row.amount_due or row.amount_paid or 0) > 0:
+        ensure_customer_email(st, customer_id, user_email)
+        checkout = st.checkout.Session.create(
+            customer=customer_id,
+            mode="payment",
+            line_items=[
+                {
+                    "quantity": 1,
+                    "price_data": {
+                        "currency": row.currency or "usd",
+                        "unit_amount": int(row.amount_due or row.amount_paid or 0),
+                        "product_data": stripe_product_data(row.product_label or row.description or "Invoice"),
+                    },
+                }
+            ],
+            success_url=f"{settings.admin_site_url}/client/billing?paid=1",
+            cancel_url=f"{settings.admin_site_url}/client/billing?canceled=1",
+            metadata={"local_invoice_id": str(row.id), "user_id": str(row.user_id or "")},
+            **checkout_receipt_options(mode="payment", customer_email=user_email),
+        )
+        if checkout.url:
+            return checkout.url
+    if st and customer_id:
+        session = st.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=f"{settings.admin_site_url}/client/billing",
+        )
+        return session.url
+    raise HTTPException(status_code=404, detail="No Stripe pay link is available for this invoice")
+
+
+@router.post("/invoices/{invoice_id}/pay")
+def pay_invoice(invoice_id: str, user: ClientUser, db: Annotated[Session, Depends(get_db)]):
+    """Return a Stripe hosted invoice (or portal) URL so the provider can pay a failed/open invoice."""
+    st = _stripe(db)
+    sub_row = _user_subscription(db, user.id)
+    row = _find_user_invoice(db, user.id, invoice_id)
+    stripe_id = invoice_id if not invoice_id.isdigit() else (row.stripe_invoice_id if row else None)
+    if st and stripe_id and not str(stripe_id).startswith("local_"):
+        try:
+            inv = st.Invoice.retrieve(stripe_id)
+            if sub_row and sub_row.stripe_customer_id and inv.customer != sub_row.stripe_customer_id:
+                raise HTTPException(status_code=403, detail="Invoice does not belong to this account")
+            if not invoice_is_payable(inv.status):
+                raise HTTPException(status_code=400, detail="This invoice is not payable")
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            if not row:
+                raise HTTPException(status_code=404, detail="Invoice not found") from exc
+    elif row and not invoice_is_payable(row.status):
+        raise HTTPException(status_code=400, detail="This invoice is not payable")
+    elif not row and not (st and stripe_id):
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    pay_url = _pay_url_for_invoice(
+        st,
+        db,
+        row,
+        stripe_invoice_id=stripe_id,
+        customer_id=sub_row.stripe_customer_id if sub_row else None,
+        user_email=user.email,
+    )
+    return {"pay_url": pay_url, "kind": "stripe"}
 
 
 @router.get("/invoices/{invoice_id}/pdf")
@@ -542,18 +665,26 @@ def download_billing_history_pdf(user: ClientUser, db: Annotated[Session, Depend
     )
 
 
+@router.get("/stripe-health")
+def stripe_health(db: Annotated[Session, Depends(get_db)]):
+    """Public readiness check — no secrets. Used to confirm production has Stripe wired."""
+    cfg = resolve_stripe_config(db)
+    return {
+        "configured": cfg.configured,
+        "prices_ready": cfg.prices_ready,
+        "webhook_ready": cfg.webhook_ready,
+        "mode": cfg.mode,
+    }
+
+
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db)]):
-    cfg = resolve_stripe_config(db)
-    st = _stripe(db)
-    if not st or not cfg.webhook_secret:
-        raise HTTPException(status_code=503, detail="Webhook not configured")
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig, cfg.webhook_secret)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    event = construct_stripe_event(db, payload, sig)
+    st = init_stripe_sdk(db, mode="live" if event["livemode"] else "test")
+    if not st:
+        raise HTTPException(status_code=503, detail="Stripe is not configured for this event mode")
 
     from app.api.claim_journey import downgrade_center_after_cancel, record_payment_on_claim
     from app.models.upsell import UpsellProductType
@@ -561,8 +692,9 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
 
     etype = event["type"]
     data = event["data"]["object"]
+    checkout_paid = etype in ("checkout.session.completed", "checkout.session.async_payment_succeeded")
 
-    if etype in ("checkout.session.completed", "customer.subscription.updated", "customer.subscription.created"):
+    if checkout_paid or etype in ("customer.subscription.updated", "customer.subscription.created"):
         user_id = None
         meta = data.get("metadata") or {}
         if meta.get("user_id"):
@@ -579,7 +711,7 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
             user = db.query(User).filter(User.id == user_id).first()
             if user:
                 user.is_active = True
-            if etype == "checkout.session.completed":
+            if checkout_paid:
                 subscription_payload = None
                 subscription_id = data.get("subscription")
                 if subscription_id:
@@ -587,7 +719,8 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                         subscription_payload = st.Subscription.retrieve(subscription_id)
                     except Exception:
                         subscription_payload = None
-                _sync_subscription_from_stripe(sub_row, subscription_payload, fallback_active=True)
+                if data.get("mode") != "payment":
+                    _sync_subscription_from_stripe(sub_row, subscription_payload, fallback_active=True)
             else:
                 _sync_subscription_from_stripe(sub_row, data)
 
@@ -642,26 +775,30 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                                 "order_id": str(order.id),
                                 "login_url": f"{settings.public_site_url.rstrip('/')}/portal",
                                 "billing_url": f"{settings.admin_site_url}/client/billing",
+                                "receipt_url": receipt_url_from_checkout_session(st, data.get("id"))
+                                or f"{settings.admin_site_url}/client/billing",
                             },
                             user_id=user.id,
                             rehab_center_id=order.rehab_center_id,
                         )
-            elif etype == "checkout.session.completed":
-                # Pay-first: record payment; listing unlocks only after admin certify
+            elif checkout_paid and data.get("mode") != "payment" and not meta.get("local_invoice_id"):
+                # Pay-first listing checkout. Skip one-time invoice pay sessions.
                 record_payment_on_claim(
                     db,
                     user_id=user_id,
                     claim_ticket=meta.get("claim_ticket"),
                     rehab_center_id=int(meta["rehab_center_id"]) if meta.get("rehab_center_id") else None,
                 )
-                create_local_invoice_for_subscription(
-                    db,
-                    user_id=user_id,
-                    interval=sub_row.interval.value if sub_row.interval else None,
-                    rehab_center_id=int(meta["rehab_center_id"]) if meta.get("rehab_center_id") else None,
-                )
+                if not data.get("invoice"):
+                    create_local_invoice_for_subscription(
+                        db,
+                        user_id=user_id,
+                        interval=sub_row.interval.value if sub_row.interval else None,
+                        rehab_center_id=int(meta["rehab_center_id"]) if meta.get("rehab_center_id") else None,
+                    )
                 if user:
                     amount_label = "$99.99" if sub_row.interval == BillingInterval.year else "$9.99"
+                    stripe_receipt = receipt_url_from_checkout_session(st, data.get("id"))
                     send_email(
                         db,
                         to_email=user.email,
@@ -670,13 +807,19 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                             "name": user.email,
                             "center_name": "your listing",
                             "amount": amount_label,
-                            "receipt_url": f"{settings.admin_site_url}/client/billing",
+                            "receipt_url": stripe_receipt or f"{settings.admin_site_url}/client/billing",
                             "billing_url": f"{settings.admin_site_url}/client/billing",
                         },
                         user_id=user.id,
                     )
 
-    elif etype in ("invoice.paid", "invoice.payment_failed", "invoice.finalized", "invoice.updated"):
+    elif etype in (
+        "invoice.paid",
+        "invoice.payment_failed",
+        "invoice.payment_action_required",
+        "invoice.finalized",
+        "invoice.updated",
+    ):
         customer_id = data.get("customer")
         sub_row = db.query(Subscription).filter(Subscription.stripe_customer_id == customer_id).first() if customer_id else None
         interval = sub_row.interval.value if sub_row and sub_row.interval else None
@@ -733,6 +876,8 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                             "amount": amount_label,
                             "renewal_date": renewal,
                             "billing_url": f"{settings.admin_site_url}/client/billing",
+                            "receipt_url": receipt_url_from_invoice(data)
+                            or f"{settings.admin_site_url}/client/billing",
                         },
                         user_id=user.id,
                         rehab_center_id=center.id if center else None,
@@ -743,6 +888,12 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                     sub_row.status = "past_due"
                 user = db.query(User).filter(User.id == sub_row.user_id).first()
                 center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == sub_row.user_id).first()
+                pay_url = data.get("hosted_invoice_url") or (
+                    f"{settings.admin_site_url}/client/billing"
+                )
+                amount = data.get("amount_due") or data.get("amount_remaining")
+                amount_label = f"${amount / 100:.2f}" if isinstance(amount, int) else ""
+                attempt = data.get("attempt_count") or 1
                 if user:
                     send_email(
                         db,
@@ -752,9 +903,34 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                             "name": user.email,
                             "center_name": center.name if center else "your listing",
                             "billing_url": f"{settings.admin_site_url}/client/billing",
+                            "pay_url": pay_url,
+                            "amount": amount_label,
+                            "attempt_count": str(attempt),
                         },
                         user_id=user.id,
                         rehab_center_id=center.id if center else None,
+                        respect_preferences=False,
+                    )
+                from app.services.email import resolve_email_delivery
+
+                ops_email = resolve_email_delivery(db).get("ops_email")
+                if ops_email and (not user or ops_email.lower() != user.email.lower()):
+                    send_email(
+                        db,
+                        to_email=ops_email,
+                        template_key="payment_failed_admin",
+                        context={
+                            "name": "Admin",
+                            "email": user.email if user else "",
+                            "center_name": center.name if center else "a listing",
+                            "amount": amount_label,
+                            "pay_url": pay_url,
+                            "attempt_count": str(attempt),
+                            "billing_url": f"{settings.admin_site_url}/client/billing",
+                            "admin_invoices_url": f"{settings.admin_site_url}/admin/billing",
+                        },
+                        rehab_center_id=center.id if center else None,
+                        respect_preferences=False,
                     )
 
     elif etype in ("customer.subscription.deleted", "customer.subscription.paused"):
@@ -780,6 +956,32 @@ async def stripe_webhook(request: Request, db: Annotated[Session, Depends(get_db
                 )
             if etype == "customer.subscription.deleted":
                 downgrade_center_after_cancel(db, sub_row.user_id, send_winback=True)
+
+    elif etype == "checkout.session.async_payment_failed":
+        customer_id = data.get("customer")
+        sub_row = db.query(Subscription).filter(Subscription.stripe_customer_id == customer_id).first() if customer_id else None
+        invoice_id = data.get("invoice")
+        if invoice_id and st:
+            try:
+                inv = st.Invoice.retrieve(invoice_id) if isinstance(invoice_id, str) else invoice_id
+                upsert_billing_invoice(
+                    db,
+                    inv,
+                    user_id=sub_row.user_id if sub_row else None,
+                    source="subscription",
+                    product_label="Listing subscription",
+                )
+            except Exception:
+                logger.exception("Failed to mirror async failed checkout invoice %s", invoice_id)
+        if sub_row and sub_row.status not in ("canceled", "unpaid"):
+            sub_row.status = "past_due"
+
+    elif etype == "charge.refunded":
+        invoice_id = data.get("invoice")
+        if invoice_id:
+            row = db.query(BillingInvoice).filter(BillingInvoice.stripe_invoice_id == invoice_id).first()
+            if row and row.status == "paid":
+                row.status = "void"
 
     db.commit()
     return {"received": True}
@@ -1100,13 +1302,14 @@ def create_local_invoice_for_subscription(
     return row
 
 
-@router.get("/admin/invoices", response_model=list[BillingInvoiceOut])
+@router.get("/admin/invoices")
 def admin_list_invoices(
     _: AdminUser,
     db: Annotated[Session, Depends(get_db)],
     status: str | None = None,
     source: str | None = None,
-    limit: int = Query(100, ge=1, le=500),
+    paid_filter: str = Query("all", alias="filter"),
+    limit: int = Query(200, ge=1, le=500),
 ):
     # Ensure demo/active subscribers have viewable invoices even without Stripe webhooks.
     _ensure_local_invoices(db)
@@ -1131,7 +1334,16 @@ def admin_list_invoices(
                 continue
         db.commit()
 
+    paid_count = db.query(BillingInvoice).filter(BillingInvoice.status == "paid").count()
+    unpaid_count = db.query(BillingInvoice).filter(BillingInvoice.status.in_(tuple(UNPAID_INVOICE_STATUSES))).count()
+    all_count = db.query(BillingInvoice).count()
+
     q = db.query(BillingInvoice).order_by(BillingInvoice.paid_at.desc().nullslast(), BillingInvoice.id.desc())
+    paid_filter = (paid_filter or "all").strip().lower()
+    if paid_filter in ("paid", "yes"):
+        q = q.filter(BillingInvoice.status == "paid")
+    elif paid_filter in ("unpaid", "not_paid", "open"):
+        q = q.filter(BillingInvoice.status.in_(tuple(UNPAID_INVOICE_STATUSES)))
     if status:
         q = q.filter(BillingInvoice.status == status)
     if source:
@@ -1147,8 +1359,20 @@ def admin_list_invoices(
         if r.rehab_center_id:
             c = db.query(RehabCenter).filter(RehabCenter.id == r.rehab_center_id).first()
             center_name = c.name if c else None
-        out.append(_invoice_out(r, email=email, center_name=center_name))
-    return out
+        item = _invoice_out(r, email=email, center_name=center_name)
+        if item.payable and not item.pay_url and st and r.stripe_invoice_id:
+            url = ensure_hosted_invoice_url(st, r.stripe_invoice_id)
+            if url:
+                r.hosted_invoice_url = url
+                item.pay_url = url
+                item.hosted_invoice_url = url
+        out.append(item)
+    db.commit()
+    return {
+        "invoices": out,
+        "counts": {"all": all_count, "paid": paid_count, "unpaid": unpaid_count},
+        "filter": paid_filter,
+    }
 
 
 @router.get("/admin/invoices/{invoice_id}")
@@ -1165,6 +1389,27 @@ def admin_get_invoice(invoice_id: int, _: AdminUser, db: Annotated[Session, Depe
         c = db.query(RehabCenter).filter(RehabCenter.id == row.rehab_center_id).first()
         center_name = c.name if c else None
     return _invoice_out(row, email=email, center_name=center_name)
+
+
+@router.post("/admin/invoices/{invoice_id}/pay-link")
+def admin_invoice_pay_link(invoice_id: int, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    row = db.query(BillingInvoice).filter(BillingInvoice.id == invoice_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if not invoice_is_payable(row.status) and not invoice_is_unpaid(row.status):
+        raise HTTPException(status_code=400, detail="This invoice is not payable")
+    st = _stripe(db)
+    sub = db.query(Subscription).filter(Subscription.user_id == row.user_id).first() if row.user_id else None
+    user = db.query(User).filter(User.id == row.user_id).first() if row.user_id else None
+    pay_url = _pay_url_for_invoice(
+        st,
+        db,
+        row,
+        stripe_invoice_id=row.stripe_invoice_id,
+        customer_id=sub.stripe_customer_id if sub else None,
+        user_email=user.email if user else None,
+    )
+    return {"pay_url": pay_url, "kind": "stripe"}
 
 
 @router.get("/admin/invoices/{invoice_id}/pdf")
@@ -1327,6 +1572,20 @@ def admin_update_stripe_settings(body: StripeSettingsUpdate, _: AdminUser, db: A
         row.secret_key = None
     if data.pop("clear_webhook_secret", False):
         row.webhook_secret = None
+    if data.pop("clear_test_secret_key", False):
+        row.test_secret_key = None
+    if data.pop("clear_test_webhook_secret", False):
+        row.test_webhook_secret = None
+    if "mode" in data and data["mode"] is not None:
+        row.mode = normalize_stripe_mode(str(data.pop("mode")))
+    else:
+        data.pop("mode", None)
+    secret_fields = {
+        "secret_key",
+        "webhook_secret",
+        "test_secret_key",
+        "test_webhook_secret",
+    }
     for key in (
         "enabled",
         "secret_key",
@@ -1336,21 +1595,59 @@ def admin_update_stripe_settings(body: StripeSettingsUpdate, _: AdminUser, db: A
         "price_yearly",
         "price_verified_badge",
         "price_featured_placement",
+        "test_secret_key",
+        "test_webhook_secret",
+        "test_publishable_key",
+        "test_price_monthly",
+        "test_price_yearly",
+        "test_price_verified_badge",
+        "test_price_featured_placement",
     ):
         if key in data and data[key] is not None:
             val = data[key]
-            if isinstance(val, str) and key in ("secret_key", "webhook_secret") and "…" in val:
+            if isinstance(val, str) and key in secret_fields and "…" in val:
                 continue  # ignore masked echoes
             setattr(row, key, val if not isinstance(val, str) else val.strip() or None)
-    # Sync active plan price IDs when provided
-    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
-    if plan:
-        if body.price_monthly:
-            plan.stripe_price_id_monthly = body.price_monthly.strip()
-        if body.price_yearly:
-            plan.stripe_price_id_yearly = body.price_yearly.strip()
     db.commit()
+    sync_subscription_plan_prices(db)
     return stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"))
+
+
+def _provision_stripe_catalog(db: Session, request: Request, *, mode: str):
+    active = normalize_stripe_mode(mode)
+    st = init_stripe_sdk(db, mode=active)
+    if not st:
+        kind = "test secret key (sk_test_…)" if active == "test" else "live secret key (sk_live_ / rk_live_…)"
+        raise HTTPException(status_code=400, detail=f"Add a Stripe {kind} first, then create products.")
+    try:
+        created = provision_stripe_catalog(st)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Unable to create Stripe products: {exc}") from exc
+    apply_catalog_prices(db, created, mode=active)
+    payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"))
+    payload["provisioned"] = created
+    return payload
+
+
+@router.post("/admin/stripe-verify")
+def admin_verify_stripe(_: AdminUser, db: Annotated[Session, Depends(get_db)], request: Request):
+    payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"))
+    account = payload.get("account") or probe_stripe_account(db)
+    if not account.get("ok"):
+        raise HTTPException(status_code=502, detail=account.get("error") or "Stripe account check failed")
+    return payload
+
+
+@router.post("/admin/stripe-provision-live")
+def admin_provision_live_catalog(_: AdminUser, db: Annotated[Session, Depends(get_db)], request: Request):
+    """Find or create live products/prices on the connected Stripe account and save the IDs."""
+    return _provision_stripe_catalog(db, request, mode="live")
+
+
+@router.post("/admin/stripe-provision-sandbox")
+def admin_provision_sandbox_catalog(_: AdminUser, db: Annotated[Session, Depends(get_db)], request: Request):
+    """Create sandbox products/prices on the Stripe test account and save the IDs."""
+    return _provision_stripe_catalog(db, request, mode="test")
 
 
 @router.get("/admin/plans", response_model=list[SubscriptionPlanOut])

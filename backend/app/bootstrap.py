@@ -253,6 +253,13 @@ def bootstrap_plans(db: Session) -> None:
     db.commit()
 
 
+def bootstrap_stripe_settings(db: Session) -> None:
+    """Persist env Stripe keys/prices and keep the Base listing plan on this account."""
+    from app.services.stripe_config import apply_env_stripe_to_settings
+
+    apply_env_stripe_to_settings(db)
+
+
 def _ensure_active_subscription(db: Session, user: User) -> None:
     plan = db.query(SubscriptionPlan).order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id).first()
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()

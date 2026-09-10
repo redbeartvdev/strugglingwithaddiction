@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiUpload } from '../../api'
 import Button from '../../components/ui/Button'
+import StripeSettingsForm from '../../components/StripeSettingsForm'
 import ProfilePage from '../Profile'
 import AdminUsers from './Users'
 import RehabList from './rehab/RehabList'
@@ -93,16 +94,6 @@ export default function AdminSettings() {
   const [mailchimpPing, setMailchimpPing] = useState('')
 
   const [stripe, setStripe] = useState(null)
-  const [stripeForm, setStripeForm] = useState({
-    enabled: false,
-    secret_key: '',
-    webhook_secret: '',
-    publishable_key: '',
-    price_monthly: '',
-    price_yearly: '',
-    price_verified_badge: '',
-    price_featured_placement: '',
-  })
 
   const [blogSettings, setBlogSettings] = useState({ trash_retention_months: 6 })
 
@@ -137,16 +128,6 @@ export default function AdminSettings() {
       .then(s => {
         if (cancelled) return
         setStripe(s)
-        setStripeForm({
-          enabled: !!s.enabled,
-          secret_key: '',
-          webhook_secret: '',
-          publishable_key: s.publishable_key || '',
-          price_monthly: s.price_monthly || '',
-          price_yearly: s.price_yearly || '',
-          price_verified_badge: s.price_verified_badge || '',
-          price_featured_placement: s.price_featured_placement || '',
-        })
       })
       .catch(e => {
         if (!cancelled) setErr(e.message)
@@ -307,46 +288,6 @@ export default function AdminSettings() {
         body: JSON.stringify({ to_email: testTo.trim() }),
       })
       setMsg(`Test email sent to ${testTo.trim()}.`)
-    } catch (error) {
-      setErr(error.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function saveStripe(e) {
-    e.preventDefault()
-    setBusy(true)
-    setErr('')
-    setMsg('')
-    try {
-      const body = {
-        enabled: stripeForm.enabled,
-        publishable_key: stripeForm.publishable_key || null,
-        price_monthly: stripeForm.price_monthly || null,
-        price_yearly: stripeForm.price_yearly || null,
-        price_verified_badge: stripeForm.price_verified_badge || null,
-        price_featured_placement: stripeForm.price_featured_placement || null,
-      }
-      if (stripeForm.secret_key.trim()) body.secret_key = stripeForm.secret_key.trim()
-      if (stripeForm.webhook_secret.trim()) body.webhook_secret = stripeForm.webhook_secret.trim()
-      const s = await api('/api/billing/admin/stripe-settings', {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      })
-      setStripe(s)
-      setStripeForm(f => ({
-        ...f,
-        secret_key: '',
-        webhook_secret: '',
-        enabled: !!s.enabled,
-        publishable_key: s.publishable_key || '',
-        price_monthly: s.price_monthly || '',
-        price_yearly: s.price_yearly || '',
-        price_verified_badge: s.price_verified_badge || '',
-        price_featured_placement: s.price_featured_placement || '',
-      }))
-      setMsg('Stripe settings saved.')
     } catch (error) {
       setErr(error.message)
     } finally {
@@ -719,85 +660,15 @@ export default function AdminSettings() {
       )}
 
       {tab === 'stripe' && (
-        <form className="card card-flat" onSubmit={saveStripe} style={{ maxWidth: 560, display: 'grid', gap: 12 }}>
-          <p className="eyebrow">Stripe settings</p>
-          {stripe ? (
-            <>
-              <p className="muted">
-                Status: {stripe.configured ? 'Ready' : 'Not ready'} · Prices: {stripe.prices_ready ? 'set' : 'missing'} · Webhook: {stripe.webhook_ready ? 'set' : 'missing'}
-              </p>
-              <p className="muted">Webhook URL: <code>{stripe.webhook_url}</code></p>
-              <p className="muted">Secret key on file: {stripe.secret_key_masked || '—'}</p>
-            </>
-          ) : (
-            <p className="muted">Loading Stripe settings…</p>
-          )}
-          <label>
-            <input
-              type="checkbox"
-              checked={stripeForm.enabled}
-              onChange={e => setStripeForm(f => ({ ...f, enabled: e.target.checked }))}
-            />{' '}
-            Enabled
-          </label>
-          <label>Secret key (leave blank to keep)
-            <input
-              type="password"
-              autoComplete="off"
-              value={stripeForm.secret_key}
-              onChange={e => setStripeForm(f => ({ ...f, secret_key: e.target.value }))}
-              placeholder="sk_…"
-            />
-          </label>
-          <label>Webhook secret (leave blank to keep)
-            <input
-              type="password"
-              autoComplete="off"
-              value={stripeForm.webhook_secret}
-              onChange={e => setStripeForm(f => ({ ...f, webhook_secret: e.target.value }))}
-              placeholder="whsec_…"
-            />
-          </label>
-          <label>Publishable key
-            <input
-              value={stripeForm.publishable_key}
-              onChange={e => setStripeForm(f => ({ ...f, publishable_key: e.target.value }))}
-              placeholder="pk_…"
-            />
-          </label>
-          <label>Monthly price ID
-            <input
-              value={stripeForm.price_monthly}
-              onChange={e => setStripeForm(f => ({ ...f, price_monthly: e.target.value }))}
-              placeholder="price_…"
-            />
-          </label>
-          <label>Yearly price ID
-            <input
-              value={stripeForm.price_yearly}
-              onChange={e => setStripeForm(f => ({ ...f, price_yearly: e.target.value }))}
-              placeholder="price_…"
-            />
-          </label>
-          <label>Verified badge price ID
-            <input
-              value={stripeForm.price_verified_badge}
-              onChange={e => setStripeForm(f => ({ ...f, price_verified_badge: e.target.value }))}
-              placeholder="price_…"
-            />
-          </label>
-          <label>Featured placement price ID
-            <input
-              value={stripeForm.price_featured_placement}
-              onChange={e => setStripeForm(f => ({ ...f, price_featured_placement: e.target.value }))}
-              placeholder="price_…"
-            />
-          </label>
-          <div className="form-actions">
-            <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save Stripe settings'}</Button>
-            <Link className="btn btn-ghost" to="/admin/billing">Open Finance</Link>
-          </div>
-        </form>
+        <StripeSettingsForm
+          status={stripe}
+          onSaved={s => {
+            setStripe(s)
+            setMsg('Stripe settings saved.')
+          }}
+          onError={setErr}
+          footer={<Link className="btn btn-ghost" to="/admin/billing">Open Finance</Link>}
+        />
       )}
 
       {tab === 'rehab' && (

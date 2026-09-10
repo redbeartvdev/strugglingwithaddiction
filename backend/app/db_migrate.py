@@ -350,6 +350,23 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_billing_invoices_paid_at ON billing_invoices (paid_at)"))
 
     insp = inspect(engine)
+    if "platform_stripe_settings" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("platform_stripe_settings")}
+        with engine.begin() as conn:
+            for col, ddl in [
+                ("mode", "VARCHAR(16) NOT NULL DEFAULT 'live'"),
+                ("test_secret_key", "TEXT"),
+                ("test_webhook_secret", "TEXT"),
+                ("test_publishable_key", "VARCHAR(255)"),
+                ("test_price_monthly", "VARCHAR(255)"),
+                ("test_price_yearly", "VARCHAR(255)"),
+                ("test_price_verified_badge", "VARCHAR(255)"),
+                ("test_price_featured_placement", "VARCHAR(255)"),
+            ]:
+                if col not in cols:
+                    conn.execute(text(f"ALTER TABLE platform_stripe_settings ADD COLUMN {col} {ddl}"))
+
+    insp = inspect(engine)
     if "platform_email_settings" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("platform_email_settings")}
         with engine.begin() as conn:

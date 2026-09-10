@@ -64,6 +64,7 @@ class SubscriberAdmin(BaseModel):
 
 class StripeSettingsUpdate(BaseModel):
     enabled: bool | None = None
+    mode: str | None = None
     secret_key: str | None = None
     webhook_secret: str | None = None
     publishable_key: str | None = None
@@ -71,8 +72,17 @@ class StripeSettingsUpdate(BaseModel):
     price_yearly: str | None = None
     price_verified_badge: str | None = None
     price_featured_placement: str | None = None
+    test_secret_key: str | None = None
+    test_webhook_secret: str | None = None
+    test_publishable_key: str | None = None
+    test_price_monthly: str | None = None
+    test_price_yearly: str | None = None
+    test_price_verified_badge: str | None = None
+    test_price_featured_placement: str | None = None
     clear_secret_key: bool = False
     clear_webhook_secret: bool = False
+    clear_test_secret_key: bool = False
+    clear_test_webhook_secret: bool = False
 
 
 class BillingInvoiceOut(BaseModel):
@@ -89,6 +99,8 @@ class BillingInvoiceOut(BaseModel):
     period_end: datetime | None
     hosted_invoice_url: str | None
     invoice_pdf: str | None
+    pay_url: str | None = None
+    payable: bool = False
     paid_at: datetime | None
     source: str
     product_label: str | None

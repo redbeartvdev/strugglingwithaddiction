@@ -345,7 +345,7 @@ def center_has_paid_access(db: Session, center: RehabCenter) -> bool:
 
 @router.post("/api/billing/checkout-claim")
 def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(get_db)]):
-    from app.services.stripe_config import init_stripe_sdk, resolve_stripe_config
+    from app.services.stripe_config import checkout_receipt_options, checkout_subscription_options, ensure_customer_email, init_stripe_sdk
 
     st = init_stripe_sdk(db)
     if not st:
@@ -396,18 +396,21 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
             detail="Stripe price not configured. Set monthly/yearly price IDs in Finance settings.",
         )
 
+    checkout_meta = {
+        "user_id": str(user.id),
+        "claim_ticket": claim.ticket_number,
+        "rehab_center_id": str(claim.rehab_center_id),
+    }
+    ensure_customer_email(st, sub_row.stripe_customer_id, user.email, claim.full_name)
     session = st.checkout.Session.create(
         customer=sub_row.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=f"{settings.public_site_url}/claim-status/{claim.ticket_number}?paid=1",
         cancel_url=f"{settings.public_site_url}/claim-status/{claim.ticket_number}?canceled=1",
-        metadata={
-            "user_id": str(user.id),
-            "claim_ticket": claim.ticket_number,
-            "rehab_center_id": str(claim.rehab_center_id),
-        },
-        subscription_data={"metadata": {"user_id": str(user.id), "claim_ticket": claim.ticket_number}},
+        metadata=checkout_meta,
+        **checkout_subscription_options(user_id=user.id, extra_metadata=checkout_meta),
+        **checkout_receipt_options(mode="subscription", customer_email=user.email, metadata=checkout_meta),
     )
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active.is_(True)).first()
     sub_row.plan_id = plan.id if plan else None

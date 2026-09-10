@@ -64,6 +64,13 @@ On the **API service** (not Postgres):
 | `CORS_ORIGINS` | same as both URLs above, comma-separated |
 | `ADMIN_BOOTSTRAP_EMAIL` | your email |
 | `ADMIN_BOOTSTRAP_PASSWORD` | strong password (first boot only) |
+| `STRIPE_MODE` | `live` |
+| `STRIPE_SECRET_KEY` | `sk_live_…` or `rk_live_…` from Stripe account `acct_1UDvsr7916C3OAmE` |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` for `https://strugglingwithaddiction.com/api/billing/webhook` |
+| `STRIPE_PRICE_MONTHLY` | `price_1UDycl7916C3OAmE5bi5arRn` |
+| `STRIPE_PRICE_YEARLY` | `price_1UDycm7916C3OAmEozHX6ini` |
+| `STRIPE_PRICE_VERIFIED_BADGE` | `price_1UDycw7916C3OAmEQICZf0D6` |
+| `STRIPE_PRICE_FEATURED_PLACEMENT` | `price_1UDycw7916C3OAmEgDDwytP9` |
 
 ### 4. GitHub Actions (auto-deploy)
 
@@ -132,5 +139,15 @@ The API is up but the React site was not baked into the image (`register_static_
 
 | Variable | Purpose |
 |----------|---------|
-| `STRIPE_*` | Billing |
+| `STRIPE_*` | Billing — live catalog on Stripe account `acct_1UDvsr7916C3OAmE` (see checklist above) |
 | `S3_*` | Upload storage (or use a Railway Volume on `/app/uploads`) |
+
+Push local `backend/.env` Stripe keys to Railway (needs project access or `RAILWAY_TOKEN`):
+
+```bash
+./backend/scripts/push-stripe-to-railway.sh
+```
+
+After deploy, `POST /api/billing/webhook` must return `400` (bad signature), not `503` (`Webhook not configured`).
+
+In Stripe Dashboard → **Settings → Customer emails**, turn on **Successful payments** so cardholders get receipts.

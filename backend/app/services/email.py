@@ -153,7 +153,12 @@ TEMPLATE_META: dict[str, dict[str, str]] = {
     },
     "dunning": {
         "label": "Payment failed (dunning)",
-        "description": "Ask the subscriber to update their card after a failed renewal.",
+        "description": "Ask the subscriber to pay the open invoice or update their card after a failed charge.",
+        "category": "billing",
+    },
+    "payment_failed_admin": {
+        "label": "Admin — payment failed",
+        "description": "Internal alert when a provider invoice payment fails.",
         "category": "billing",
     },
     "cancellation": {
@@ -352,7 +357,7 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "You're all set — {center_name} renewed",
         "Hi {name},\n\nYour subscription for {center_name} renewed without a hitch.\n\n"
         "Amount: {amount}\nNext renewal: {renewal_date}\n\n"
-        "Manage billing: {billing_url}\n",
+        "View receipt: {receipt_url}\nManage billing: {billing_url}\n",
     ),
     "renewal_reminder": (
         "Heads up — {center_name} renews in {days_left} day(s)",
@@ -364,7 +369,16 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "We couldn't process your payment for {center_name}",
         "Hi {name},\n\nWe ran into a problem renewing your subscription for {center_name} — "
         "the charge didn't go through.\n\n"
-        "Update your card here before your listing loses access to paid features:\n{billing_url}\n",
+        "Amount due: {amount}\n\n"
+        "Pay this invoice now:\n{pay_url}\n\n"
+        "Or update your card here before your listing loses access to paid features:\n{billing_url}\n",
+    ),
+    "payment_failed_admin": (
+        "Payment failed — {center_name}",
+        "A Stripe payment failed for {center_name} ({email}).\n\n"
+        "Amount: {amount}\nAttempt: {attempt_count}\n\n"
+        "Provider pay link:\n{pay_url}\n\n"
+        "Invoices in admin:\n{admin_invoices_url}\n",
     ),
     "cancellation": (
         "Your cancellation for {center_name} is confirmed",
@@ -404,7 +418,7 @@ DEFAULT_TEMPLATES: dict[str, tuple[str, str]] = {
         "Receipt — {product_label}",
         "Hi {name},\n\nThanks for picking up {product_label} for {center_name}.\n\n"
         "Amount: {amount}\nOrder ID: {order_id}\n\n"
-        "Manage your listing: {login_url}\nBilling: {billing_url}\n",
+        "View receipt: {receipt_url}\nManage your listing: {login_url}\nBilling: {billing_url}\n",
     ),
     "upsell_fulfilled": (
         "{product_label} is ready for {center_name}",
@@ -568,6 +582,9 @@ def default_template_context(to_email: str = "preview@example.com", db: Session 
         "login_url": f"{settings.public_site_url.rstrip('/')}/portal",
         "billing_url": f"{settings.admin_site_url.rstrip('/')}/client/billing",
         "receipt_url": f"{settings.admin_site_url.rstrip('/')}/client/billing",
+        "pay_url": f"{settings.admin_site_url.rstrip('/')}/client/billing",
+        "admin_invoices_url": f"{settings.admin_site_url.rstrip('/')}/admin/billing",
+        "attempt_count": "1",
         "support_email": delivery["email_from"],
         "postal_address": delivery["postal_address"],
         "unsubscribe_url": f"{settings.public_site_url.rstrip('/')}/privacy",
