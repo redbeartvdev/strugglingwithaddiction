@@ -16,7 +16,7 @@ API_SERVICE="${RAILWAY_API_SERVICE:-strugglingwithaddiction-production}"
 ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
 POSTGRES_SERVICE="${RAILWAY_POSTGRES_SERVICE:-}"
 
-PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-https://strugglingwithaddiction-production.up.railway.app}"
+PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-https://strugglingwithaddiction.com}"
 ADMIN_SITE_URL="${ADMIN_SITE_URL:-}"
 ADMIN_BOOTSTRAP_EMAIL="${ADMIN_BOOTSTRAP_EMAIL:-admin@example.com}"
 ADMIN_BOOTSTRAP_PASSWORD="${ADMIN_BOOTSTRAP_PASSWORD:-}"

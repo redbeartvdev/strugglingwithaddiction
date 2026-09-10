@@ -4,6 +4,9 @@ from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+CANONICAL_PUBLIC_SITE_URL = "https://strugglingwithaddiction.com"
+CANONICAL_ADMIN_SITE_URL = "https://strugglingwithaddiction.com/admin"
+
 
 def _running_on_railway() -> bool:
     return bool(
@@ -113,6 +116,42 @@ class Settings(BaseSettings):
                 "service → Variables → Add Reference → Postgres → DATABASE_URL, set "
                 "ENVIRONMENT=production, then redeploy. Or run: ./backend/scripts/railway-setup.sh"
             )
+        return self
+
+    @model_validator(mode="after")
+    def canonicalize_custom_domain(self) -> "Settings":
+        """Never keep the Railway hostname once the custom domain is live."""
+        if "railway.app" in (self.public_site_url or ""):
+            self.public_site_url = CANONICAL_PUBLIC_SITE_URL
+        if "railway.app" in (self.admin_site_url or ""):
+            self.admin_site_url = CANONICAL_ADMIN_SITE_URL
+        if self.is_production or _running_on_railway():
+            if not self.public_site_url or "127.0.0.1" in self.public_site_url or "localhost" in self.public_site_url:
+                self.public_site_url = CANONICAL_PUBLIC_SITE_URL
+            if not self.admin_site_url or "127.0.0.1" in self.admin_site_url or "localhost" in self.admin_site_url:
+                self.admin_site_url = CANONICAL_ADMIN_SITE_URL
+            extras = (
+                CANONICAL_PUBLIC_SITE_URL,
+                CANONICAL_ADMIN_SITE_URL,
+                "https://www.strugglingwithaddiction.com",
+                "https://www.strugglingwithaddiction.com/admin",
+            )
+            origins: list[str] = []
+            for item in self.cors_origin_list:
+                if "railway.app" in item:
+                    origins.append(CANONICAL_PUBLIC_SITE_URL)
+                    origins.append(CANONICAL_ADMIN_SITE_URL)
+                else:
+                    origins.append(item)
+            origins.extend(extras)
+            seen: set[str] = set()
+            cleaned: list[str] = []
+            for item in origins:
+                if item in seen:
+                    continue
+                seen.add(item)
+                cleaned.append(item)
+            self.cors_origins = ",".join(cleaned)
         return self
 
     @property

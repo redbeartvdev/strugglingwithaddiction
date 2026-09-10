@@ -64,7 +64,11 @@ export async function api(path, options = {}) {
     try {
       data = JSON.parse(text)
     } catch {
-      throw new Error('Invalid response from server')
+      throw new Error(
+        res.status
+          ? `Server returned a non-JSON response (${res.status}). The API may have timed out — try Test connection again.`
+          : 'Invalid response from server',
+      )
     }
   }
 

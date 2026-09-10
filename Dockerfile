@@ -18,7 +18,7 @@ COPY admin/package.json admin/package-lock.json ./
 RUN npm ci
 COPY admin/ ./
 ENV VITE_API_URL=
-ENV VITE_PUBLIC_SITE_URL=
+ENV VITE_PUBLIC_SITE_URL=https://strugglingwithaddiction.com
 RUN npm run build
 
 FROM python:3.12-slim

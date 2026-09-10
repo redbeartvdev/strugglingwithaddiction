@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import CANONICAL_PUBLIC_SITE_URL, get_settings
 from app.models.billing import SubscriptionPlan
 from app.models.platform_settings import PlatformStripeSettings
 
@@ -144,7 +144,7 @@ def _mode_status(cfg: StripeConfig) -> dict[str, Any]:
     }
 
 
-def stripe_status_payload(db: Session, *, api_base: str = "") -> dict[str, Any]:
+def stripe_status_payload(db: Session, *, api_base: str = "", include_account: bool = False) -> dict[str, Any]:
     cfg = resolve_stripe_config(db)
     live = resolve_stripe_config(db, mode="live")
     test = resolve_stripe_config(db, mode="test")
@@ -176,18 +176,14 @@ def stripe_status_payload(db: Session, *, api_base: str = "") -> dict[str, Any]:
         "source": "database" if ((live_source and cfg.mode == "live") or (test_source and cfg.mode == "test")) else "env",
         "live": _mode_status(live),
         "test": _mode_status(test),
-        "account": probe_stripe_account(db),
+        "account": probe_stripe_account(db) if include_account else None,
     }
     return payload
 
 
 def public_webhook_url(api_base: str = "") -> str:
-    """Always show the public HTTPS webhook Stripe should call, not localhost."""
-    for base in ((settings.public_site_url or "").rstrip("/"), "https://strugglingwithaddiction.com"):
-        if base.startswith("https://") and "127.0.0.1" not in base and "localhost" not in base:
-            return f"{base}/api/billing/webhook"
-    base = (api_base or "").rstrip("/")
-    return f"{base}/api/billing/webhook" if base else "/api/billing/webhook"
+    """Stripe always posts to the custom domain, never the Railway hostname."""
+    return f"{CANONICAL_PUBLIC_SITE_URL.rstrip('/')}/api/billing/webhook"
 
 
 def checkout_subscription_options(*, user_id: int | str | None = None, extra_metadata: dict | None = None) -> dict[str, Any]:
@@ -245,11 +241,12 @@ def probe_stripe_account(db: Session | None = None, *, mode: str | None = None) 
     """Confirm the resolved key belongs to the expected live Stripe account."""
     cfg = resolve_stripe_config(db, mode=mode)
     if not cfg.configured:
-        return {"ok": False, "error": "Stripe is not configured"}
+        return {"ok": False, "error": "Stripe is not configured for this mode. Add the secret key, then test again."}
     st = init_stripe_sdk(db, mode=cfg.mode)
     if not st:
-        return {"ok": False, "error": "Stripe is not configured"}
+        return {"ok": False, "error": "Stripe is not configured for this mode. Add the secret key, then test again."}
     try:
+        st.max_network_retries = 1
         acct = st.Account.retrieve()
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)[:240]}
@@ -330,6 +327,10 @@ def apply_env_stripe_to_settings(db: Session) -> None:
     if st:
         try:
             ensure_catalog_tax_codes(st)
+        except Exception:
+            pass
+        try:
+            ensure_stripe_webhook_endpoint(st)
         except Exception:
             pass
 
@@ -462,6 +463,53 @@ def _stripe_get(obj: Any, key: str, default=None):
         except TypeError:
             pass
     return getattr(obj, key, default)
+
+
+STRIPE_WEBHOOK_EVENTS = (
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+    "checkout.session.async_payment_failed",
+    "customer.subscription.created",
+    "customer.subscription.updated",
+    "customer.subscription.deleted",
+    "customer.subscription.paused",
+    "invoice.paid",
+    "invoice.payment_failed",
+    "invoice.payment_action_required",
+    "invoice.finalized",
+    "invoice.updated",
+    "charge.refunded",
+)
+
+
+def ensure_stripe_webhook_endpoint(st) -> dict[str, str]:
+    """Point the live webhook at strugglingwithaddiction.com, not the Railway hostname."""
+    if not st:
+        raise RuntimeError("Stripe is not configured")
+    wanted = public_webhook_url()
+    existing = list(_iter_stripe_list(st.WebhookEndpoint.list(limit=100)))
+    railway_or_legacy = []
+    matching = None
+    for endpoint in existing:
+        url = str(_stripe_get(endpoint, "url") or "")
+        if url.rstrip("/") == wanted.rstrip("/"):
+            matching = endpoint
+        elif "railway.app" in url or url.rstrip("/").endswith("/api/billing/webhook"):
+            railway_or_legacy.append(endpoint)
+    target = matching or (railway_or_legacy[0] if railway_or_legacy else None)
+    if target:
+        st.WebhookEndpoint.modify(
+            target.id,
+            url=wanted,
+            enabled_events=list(STRIPE_WEBHOOK_EVENTS),
+        )
+        return {"id": target.id, "url": wanted}
+    created = st.WebhookEndpoint.create(
+        url=wanted,
+        enabled_events=list(STRIPE_WEBHOOK_EVENTS),
+        description="SWA live billing",
+    )
+    return {"id": created.id, "url": wanted}
 
 
 def stripe_product_data(name: str, **extra: Any) -> dict[str, Any]:

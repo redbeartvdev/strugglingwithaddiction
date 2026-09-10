@@ -36,6 +36,7 @@ from app.services.stripe_config import (
     checkout_receipt_options,
     checkout_subscription_options,
     construct_stripe_event,
+    ensure_stripe_webhook_endpoint,
     ensure_customer_email,
     ensure_hosted_invoice_url,
     get_or_create_stripe_settings,
@@ -46,6 +47,7 @@ from app.services.stripe_config import (
     normalize_stripe_mode,
     probe_stripe_account,
     provision_stripe_catalog,
+    public_webhook_url,
     receipt_url_from_checkout_session,
     receipt_url_from_invoice,
     resolve_stripe_config,
@@ -1630,12 +1632,35 @@ def _provision_stripe_catalog(db: Session, request: Request, *, mode: str):
 
 
 @router.post("/admin/stripe-verify")
-def admin_verify_stripe(_: AdminUser, db: Annotated[Session, Depends(get_db)], request: Request):
-    payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"))
-    account = payload.get("account") or probe_stripe_account(db)
-    if not account.get("ok"):
-        raise HTTPException(status_code=502, detail=account.get("error") or "Stripe account check failed")
-    return payload
+def admin_verify_stripe(
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+    request: Request,
+    mode: str | None = Query(None),
+):
+    """Probe live or sandbox without failing as HTML — the admin UI needs JSON either way."""
+    active = normalize_stripe_mode(mode) if mode else resolve_stripe_config(db).mode
+    try:
+        account = probe_stripe_account(db, mode=active)
+        if account.get("ok") and active == "live":
+            st = init_stripe_sdk(db, mode="live")
+            try:
+                account["webhook"] = ensure_stripe_webhook_endpoint(st)
+            except Exception as exc:  # noqa: BLE001
+                account["webhook_error"] = str(exc)[:240]
+        payload = stripe_status_payload(db, api_base=str(request.base_url).rstrip("/"), include_account=False)
+        payload["account"] = account
+        payload["verified_mode"] = active
+        payload["ok"] = bool(account.get("ok"))
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "configured": False,
+            "verified_mode": active,
+            "webhook_url": public_webhook_url(),
+            "account": {"ok": False, "error": str(exc)[:240]},
+        }
 
 
 @router.post("/admin/stripe-provision-live")

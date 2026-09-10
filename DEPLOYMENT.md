@@ -59,8 +59,8 @@ On the **API service** (not Postgres):
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference) |
 | `JWT_SECRET` | `openssl rand -hex 32` |
 | `ENVIRONMENT` | `production` |
-| `PUBLIC_SITE_URL` | `https://your-app.up.railway.app` |
-| `ADMIN_SITE_URL` | `https://your-app.up.railway.app/admin` |
+| `PUBLIC_SITE_URL` | `https://strugglingwithaddiction.com` |
+| `ADMIN_SITE_URL` | `https://strugglingwithaddiction.com/admin` |
 | `CORS_ORIGINS` | same as both URLs above, comma-separated |
 | `ADMIN_BOOTSTRAP_EMAIL` | your email |
 | `ADMIN_BOOTSTRAP_PASSWORD` | strong password (first boot only) |

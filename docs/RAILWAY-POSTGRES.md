@@ -60,9 +60,9 @@ On **strugglingwithaddiction-production** → **Variables** → **RAW** editor o
 |----------|--------|
 | `ENVIRONMENT` | `production` |
 | `JWT_SECRET` | Run locally: `openssl rand -hex 32` |
-| `PUBLIC_SITE_URL` | `https://strugglingwithaddiction-production.up.railway.app` |
-| `ADMIN_SITE_URL` | `https://strugglingwithaddiction-production.up.railway.app/admin` |
-| `CORS_ORIGINS` | `https://strugglingwithaddiction-production.up.railway.app,https://strugglingwithaddiction-production.up.railway.app/admin` |
+| `PUBLIC_SITE_URL` | `https://strugglingwithaddiction.com` |
+| `ADMIN_SITE_URL` | `https://strugglingwithaddiction.com/admin` |
+| `CORS_ORIGINS` | `https://strugglingwithaddiction.com,https://strugglingwithaddiction.com/admin` |
 | `ADMIN_BOOTSTRAP_EMAIL` | Your real email (must contain `@` — never use a random token) |
 | `ADMIN_BOOTSTRAP_PASSWORD` | Strong password (creates admin on first boot if that email is missing) |
 

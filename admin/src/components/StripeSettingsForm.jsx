@@ -117,11 +117,14 @@ export default function StripeSettingsForm({ status, onSaved, onError, footer = 
     }
   }
 
-  async function verifyConnection() {
-    setVerifying(true)
+  async function verifyConnection(mode) {
+    setVerifying(mode)
     onError?.('')
     try {
-      const saved = await api('/api/billing/admin/stripe-verify', { method: 'POST' })
+      const saved = await api(`/api/billing/admin/stripe-verify?mode=${mode}`, { method: 'POST' })
+      if (saved?.account && !saved.account.ok) {
+        onError?.(saved.account.error || `Could not connect to Stripe ${mode === 'test' ? 'sandbox' : 'production'}.`)
+      }
       onSaved?.(saved)
     } catch (ex) {
       onError?.(ex.message)
@@ -176,10 +179,10 @@ export default function StripeSettingsForm({ status, onSaved, onError, footer = 
             <p className="muted">Stripe account check failed: {account.error}</p>
           ) : null}
           <p className="muted">
-            Live webhook (already created on this Stripe account): <code>{status.webhook_url}</code>
+            Stripe webhook (custom domain): <code>{status.webhook_url || 'https://strugglingwithaddiction.com/api/billing/webhook'}</code>
           </p>
           <p className="muted">
-            Production must return HTTP 400 for a test POST to that URL, not 503. If it is 503, add the live secret key and webhook secret on Railway, then redeploy.
+            Live and sandbox both use this URL. It must be <code>https://strugglingwithaddiction.com/api/billing/webhook</code>, not the Railway hostname.
           </p>
         </>
       ) : (
@@ -265,8 +268,11 @@ export default function StripeSettingsForm({ status, onSaved, onError, footer = 
 
       <div className="form-actions">
         <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Stripe settings'}</Button>
-        <Button type="button" variant="ghost" disabled={verifying} onClick={verifyConnection}>
-          {verifying ? 'Checking…' : 'Test Stripe connection'}
+        <Button type="button" variant="ghost" disabled={!!verifying} onClick={() => verifyConnection('live')}>
+          {verifying === 'live' ? 'Checking production…' : 'Test production connection'}
+        </Button>
+        <Button type="button" variant="ghost" disabled={!!verifying} onClick={() => verifyConnection('test')}>
+          {verifying === 'test' ? 'Checking sandbox…' : 'Test sandbox connection'}
         </Button>
         {footer}
       </div>
