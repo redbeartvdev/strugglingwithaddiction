@@ -1,0 +1,100 @@
+# Inspect Railway production and restart if the origin is down.
+# Uses RAILWAY_TOKEN + RAILWAY_SERVICE_ID (same secrets as Deploy).
+
+name: Railway diagnose
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do after collecting logs
+        type: choice
+        default: restart
+        options:
+          - logs-only
+          - restart
+          - redeploy
+
+env:
+  RAILWAY_PROJECT_ID: 407fa40d-6608-4441-905c-f3fab0182421
+  RAILWAY_ENVIRONMENT: production
+
+jobs:
+  diagnose:
+    name: Railway status and recovery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Collect status and logs
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          set +e
+          echo "==== STATUS ===="
+          railway status --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
+          echo
+          echo "==== DEPLOYMENTS ===="
+          railway deployment list \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}" \
+            --limit 8 --json
+          echo
+          echo "==== LATEST DEPLOY LOGS ===="
+          railway logs --latest --lines 150 \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}"
+          echo
+          echo "==== LATEST BUILD LOGS ===="
+          railway logs --latest --build --lines 150 \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}"
+          echo
+          echo "==== RECENT ERRORS ===="
+          railway logs --since 12h --lines 80 --filter "@level:error" \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}"
+          exit 0
+
+      - name: Restart latest deployment
+        if: ${{ inputs.action == 'restart' }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          railway restart --yes \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}"
+
+      - name: Redeploy from source
+        if: ${{ inputs.action == 'redeploy' }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          railway redeploy --yes --from-source \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "${RAILWAY_SERVICE_ID}"
+
+      - name: Probe origin after recovery
+        if: ${{ inputs.action != 'logs-only' }}
+        run: |
+          set +e
+          sleep 20
+          for url in \
+            "https://strugglingwithaddiction-production.up.railway.app/health" \
+            "https://strugglingwithaddiction.com/health"
+          do
+            echo "==== $url ===="
+            curl -sS -m 25 -w "\nHTTP:%{http_code} time:%{time_total}\n" "$url" || true
+          done
