@@ -9,6 +9,8 @@ settings = get_settings()
 engine = create_engine(
     settings.sqlalchemy_database_url,
     pool_pre_ping=True,
+    pool_timeout=10,
+    pool_recycle=300,
     connect_args={"connect_timeout": 5},
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

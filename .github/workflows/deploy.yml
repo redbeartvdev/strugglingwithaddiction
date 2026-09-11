@@ -1,9 +1,8 @@
-# Auto-deploy on push to main: Railway monolith (API + public site + admin).
+# Keep production env in sync after Railway's GitHub auto-deploy.
 # Required secrets: RAILWAY_TOKEN, RAILWAY_SERVICE_ID — see DEPLOYMENT.md
 #
-# Deploys from repo root with /railway.toml + /Dockerfile so frontends are
-# built inside Docker. Do not deploy from backend/ alone — backend/static/ is
-# gitignored and would ship an API-only image.
+# Railway already builds the monolith from this repo (/railway.toml + /Dockerfile).
+# Do not `railway up` from Actions — it races the GitHub deploy and can 524.
 
 name: Deploy
 
@@ -62,14 +61,27 @@ jobs:
             "STRIPE_PRICE_FEATURED_PLACEMENT=price_1UDycw7916C3OAmEgDDwytP9" \
             --service "${RAILWAY_SERVICE_ID}"
 
-      - name: Deploy monolith to Railway
-        run: railway up --ci --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
+      # Railway already builds from the GitHub repo on push. A second
+      # `railway up --detach` races that deploy, cancels it, and can leave
+      # Cloudflare with no healthy origin (524).
+      - name: Wait for Railway origin
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Sync blog posts to database
-        continue-on-error: true
-        working-directory: backend
-        run: railway run --service "${{ secrets.RAILWAY_SERVICE_ID }}" python scripts/sync_blog.py
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" -m 15 https://strugglingwithaddiction.com/health || true)
+            if [ "$code" = "200" ] && grep -q '"status":"ok"' /tmp/health.json; then
+              echo "Origin healthy"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "waiting ($i) HTTP ${code:-000}"
+            sleep 15
+          done
+          echo "::error::Origin did not become healthy. Recent Railway logs:"
+          railway logs --latest --lines 80 \
+            --project 407fa40d-6608-4441-905c-f3fab0182421 \
+            --environment production \
+            --service "${RAILWAY_SERVICE_ID}" || true
+          exit 1

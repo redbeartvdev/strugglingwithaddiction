@@ -233,7 +233,10 @@ def bootstrap_admin(db: Session) -> None:
     )
     db.add(user)
     db.flush()
-    db.add(UserProfile(user_id=user.id, display_name="Administrator", slug="admin"))
+    slug = "admin"
+    if db.query(UserProfile).filter(UserProfile.slug == slug).first():
+        slug = f"admin-{user.id}"
+    db.add(UserProfile(user_id=user.id, display_name="Administrator", slug=slug))
     db.commit()
     logger.info("Created bootstrap admin %s", email)
 

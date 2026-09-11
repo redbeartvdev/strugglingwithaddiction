@@ -9,4 +9,5 @@ dockerfilePath = "Dockerfile"
 startCommand = "/bin/sh /app/start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
+overlapSeconds = 60
 restartPolicyType = "ON_FAILURE"

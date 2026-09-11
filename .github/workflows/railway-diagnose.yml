@@ -66,6 +66,7 @@ jobs:
 
       - name: Restart latest deployment
         if: ${{ inputs.action == 'restart' }}
+        continue-on-error: true
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
