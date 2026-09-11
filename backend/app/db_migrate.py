@@ -446,3 +446,59 @@ def run_migrations(engine: Engine) -> None:
             ))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_mailing_list_members_list ON mailing_list_members (list_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_mailing_list_members_contact ON mailing_list_members (contact_id)"))
+
+    wipe_email_finance_analytics_once(engine)
+
+
+WIPE_OPS_JOB = "wipe_email_finance_analytics_20260911"
+OPS_DATA_TABLES = (
+    "email_logs",
+    "billing_invoices",
+    "center_page_views",
+    "site_page_views",
+    "center_inquiry_sends",
+)
+
+
+def wipe_email_finance_analytics_once(engine: Engine, *, force: bool = False) -> dict[str, int]:
+    """Clear admin Email activity, Finance invoices, and Analytics events once.
+
+    Leaves subscribers, Stripe keys, plans, and subscriptions in place.
+    """
+    counts: dict[str, int] = {}
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_one_time_jobs (
+                    name VARCHAR(100) PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        )
+        if not force:
+            already = conn.execute(
+                text("SELECT 1 FROM app_one_time_jobs WHERE name = :name"),
+                {"name": WIPE_OPS_JOB},
+            ).first()
+            if already:
+                return {"skipped": 1}
+
+        existing = set(inspect(engine).get_table_names())
+        for table in OPS_DATA_TABLES:
+            if table not in existing:
+                continue
+            counts[table] = int(conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar() or 0)
+            conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY"))
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO app_one_time_jobs (name) VALUES (:name)
+                ON CONFLICT (name) DO UPDATE SET applied_at = NOW()
+                """
+            ),
+            {"name": WIPE_OPS_JOB},
+        )
+    return counts
