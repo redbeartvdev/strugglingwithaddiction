@@ -73,13 +73,20 @@ export default function ClaimStatus() {
   return (
     <main className="rehab-page claim-status-page">
       <div className={`container claim-status-wrap${needsPayment ? ' is-plans' : ''}`}>
-        <h1>
-          {showPaidConfirmation && approved
-            ? 'Listing active'
-            : showPaidConfirmation
-              ? 'Thank you'
-              : 'Claim Status'}
-        </h1>
+        <header className="claim-status-hero">
+          <h1>
+            {showPaidConfirmation && approved
+              ? 'Listing active'
+              : showPaidConfirmation
+                ? 'Thank you'
+                : 'Claim Status'}
+          </h1>
+          {showPaidConfirmation && !approved && (
+            <p className="claim-status-hero-lead">
+              Your payment is confirmed. We will email a confirmation with your portal access link.
+            </p>
+          )}
+        </header>
         {error && <p className="claim-status-error">{error}</p>}
 
         {canceled && !paymentReceived && (
@@ -103,7 +110,7 @@ export default function ClaimStatus() {
               )}
             </p>
             {!approved && (
-              <>
+              <div className="claim-status-copy">
                 <p>
                   Please wait for a confirmation email. That email includes your
                   provider portal access link.
@@ -112,7 +119,7 @@ export default function ClaimStatus() {
                   You may access our portal with the password you created when you
                   claimed this listing.
                 </p>
-              </>
+              </div>
             )}
             <dl className="claim-status-meta">
               <div>
@@ -135,34 +142,35 @@ export default function ClaimStatus() {
               </div>
             </dl>
 
-            <div className="claim-status-invoice">
-              <h3>Your invoice</h3>
-              {invoice && downloadUrl ? (
-                <>
+            <div className="claim-status-bottom">
+              <div className="claim-status-invoice">
+                <h3>Your invoice</h3>
+                {invoice && downloadUrl ? (
+                  <>
+                    <p>
+                      {invoice.number ? <>Invoice {invoice.number}</> : 'Listing subscription invoice'}
+                      {invoice.amount_label ? <> · {invoice.amount_label}</> : null}
+                      {invoice.interval === 'year' ? ' billed annually' : invoice.interval === 'month' ? ' billed monthly' : ''}
+                    </p>
+                    <a
+                      className="btn btn-outline"
+                      href={downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Download invoice
+                    </a>
+                  </>
+                ) : (
                   <p>
-                    {invoice.number ? <>Invoice {invoice.number}</> : 'Listing subscription invoice'}
-                    {invoice.amount_label ? <> · {invoice.amount_label}</> : null}
-                    {invoice.interval === 'year' ? ' billed annually' : invoice.interval === 'month' ? ' billed monthly' : ''}
+                    Your invoice is being prepared. It will appear here shortly,
+                    and we will also email it to you.
                   </p>
-                  <a
-                    className="btn btn-outline"
-                    href={downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Download invoice
-                  </a>
-                </>
-              ) : (
-                <p>
-                  Your invoice is being prepared. It will appear here shortly,
-                  and we will also email it to you.
-                </p>
-              )}
-            </div>
-
-            <div className="claim-status-actions">
-              <Link to="/portal" className="btn">Open provider portal</Link>
+                )}
+              </div>
+              <div className="claim-status-actions">
+                <Link to="/portal" className="btn">Open provider portal</Link>
+              </div>
             </div>
           </div>
         )}

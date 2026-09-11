@@ -297,11 +297,22 @@ def get_center_reviews(slug: str, db: Annotated[Session, Depends(get_db)]):
 
 @router.post("/api/rehab/claims", response_model=ClaimOut)
 def submit_claim(body: ClaimCreate, db: Annotated[Session, Depends(get_db)], user: Annotated[User | None, Depends(get_current_user_optional)]):
+    from app.api.claim_journey import _open_claim_for_email, abandon_duplicate_email_claims
+
     center = db.query(RehabCenter).filter(RehabCenter.id == body.rehab_center_id).first()
     if not center:
         raise HTTPException(status_code=404, detail="Center not found")
     if center.claimed:
         raise HTTPException(status_code=400, detail="Center already claimed")
+    existing = _open_claim_for_email(db, body.work_email.lower())
+    if existing:
+        abandon_duplicate_email_claims(db, email=body.work_email.lower())
+        return ClaimOut(
+            ticket_number=existing.ticket_number,
+            status=existing.status,
+            center_name=existing.center.name if existing.center else center.name,
+            message="We found your existing claim. Only one submission is allowed per email.",
+        )
     ticket = generate_claim_ticket(db)
     claim = RehabCenterClaim(
         ticket_number=ticket,
@@ -550,31 +561,39 @@ def admin_delete_gallery(
 
 @router.get("/api/admin/claims", response_model=list[ClaimAdmin])
 def list_claims(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    from app.api.claim_journey import abandon_duplicate_email_claims, claim_payment_status
+
+    abandon_duplicate_email_claims(db)
     claims = db.query(RehabCenterClaim).options(joinedload(RehabCenterClaim.center)).order_by(RehabCenterClaim.created_at.desc()).all()
-    return [
-        ClaimAdmin(
-            id=c.id,
-            ticket_number=c.ticket_number,
-            rehab_center_id=c.rehab_center_id,
-            center_name=c.center.name,
-            status=c.status,
-            full_name=c.full_name,
-            job_title=c.job_title,
-            work_email=c.work_email,
-            phone=c.phone,
-            affiliation_text=c.affiliation_text,
-            facility_role=c.facility_role,
-            business_license_url=c.business_license_url,
-            proof_of_affiliation_url=c.proof_of_affiliation_url,
-            email_domain_matched=bool(c.email_domain_matched),
-            cert_verified_at=c.cert_verified_at,
-            payment_received_at=c.payment_received_at,
-            admin_notes=c.admin_notes,
-            created_at=c.created_at,
-            reviewed_at=c.reviewed_at,
+    items = []
+    for c in claims:
+        payment_status = claim_payment_status(db, c)
+        items.append(
+            ClaimAdmin(
+                id=c.id,
+                ticket_number=c.ticket_number,
+                rehab_center_id=c.rehab_center_id,
+                center_name=c.center.name,
+                status=c.status,
+                full_name=c.full_name,
+                job_title=c.job_title,
+                work_email=c.work_email,
+                phone=c.phone,
+                affiliation_text=c.affiliation_text,
+                facility_role=c.facility_role,
+                business_license_url=c.business_license_url,
+                proof_of_affiliation_url=c.proof_of_affiliation_url,
+                email_domain_matched=bool(c.email_domain_matched),
+                cert_verified_at=c.cert_verified_at,
+                payment_received_at=c.payment_received_at,
+                payment_status=payment_status,
+                admin_notes=c.admin_notes,
+                created_at=c.created_at,
+                reviewed_at=c.reviewed_at,
+            )
         )
-        for c in claims
-    ]
+    db.commit()
+    return items
 
 
 @router.get("/api/admin/claimed-clients", response_model=list[ClaimedClientAdmin])

@@ -297,6 +297,7 @@ class ClaimAdmin(BaseModel):
     email_domain_matched: bool = False
     cert_verified_at: datetime | None = None
     payment_received_at: datetime | None = None
+    payment_status: str = "awaiting_payment"
     admin_notes: str | None
     created_at: datetime
     reviewed_at: datetime | None

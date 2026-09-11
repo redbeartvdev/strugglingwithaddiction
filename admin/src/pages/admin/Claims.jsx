@@ -25,6 +25,12 @@ function badgeTone(status) {
   return 'warn'
 }
 
+function paymentLabel(status) {
+  if (status === 'paid') return 'Payment: Paid'
+  if (status === 'none') return 'Payment: Not required'
+  return 'Payment: Awaiting payment'
+}
+
 /** Map UI action → API ClaimStatus */
 const STATUS_ACTION = {
   pending: 'pending',
@@ -197,11 +203,10 @@ export default function AdminClaims() {
               <div>
                 <strong style={{ fontSize: 'var(--text-sm)' }}>{c.ticket_number}</strong>
                 <span style={{ marginLeft: 8 }}><Badge tone={badgeTone(c.status)}>{displayStatus(c.status)}</Badge></span>
+                <span style={{ marginLeft: 8 }}>
+                  <Badge tone={c.payment_status === 'paid' ? 'ok' : 'warn'}>{paymentLabel(c.payment_status)}</Badge>
+                </span>
                 {c.email_domain_matched && <span style={{ marginLeft: 8 }}><Badge tone="ok">email domain match</Badge></span>}
-                {c.payment_received_at && <span style={{ marginLeft: 8 }}><Badge tone="ok">paid</Badge></span>}
-                {!c.payment_received_at && (c.status === 'pending' || c.status === 'under_review') && (
-                  <span style={{ marginLeft: 8 }}><Badge>awaiting payment</Badge></span>
-                )}
                 <p className="claim-meta">{c.center_name}</p>
                 <p className="claim-meta">{c.full_name} · {c.work_email}</p>
                 {c.phone && <p className="claim-meta">{c.phone}</p>}

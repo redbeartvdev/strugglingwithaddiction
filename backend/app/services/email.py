@@ -517,7 +517,8 @@ def resolve_email_delivery(db: Session | None = None) -> dict[str, Any]:
         _first_nonempty(row.logo_url if row else None, fallback=default_logo)
     )
 
-    resend_key = _first_nonempty(row.resend_api_key if row else None, settings.resend_api_key)
+    # Env key wins so Railway RESEND_API_KEY always reaches transactional mail.
+    resend_key = _first_nonempty(settings.resend_api_key, row.resend_api_key if row else None)
     smtp_host = _first_nonempty(row.smtp_host if row else None, settings.smtp_host)
     smtp_port = (row.smtp_port if row and row.smtp_port else None) or settings.smtp_port or 587
     smtp_user = _first_nonempty(row.smtp_user if row else None, settings.smtp_user)
@@ -537,13 +538,11 @@ def resolve_email_delivery(db: Session | None = None) -> dict[str, Any]:
         "linkedin": _first_nonempty(row.social_linkedin if row else None, fallback=DEFAULT_SOCIAL["linkedin"]),
     }
 
-    if provider == "resend":
-        effective = "resend" if resend_key else "none"
-    elif provider in ("gmail_smtp", "smtp"):
-        effective = "smtp" if smtp_host else "none"
-    elif resend_key:
+    # Transactional mail is Resend-only whenever a key is configured.
+    if resend_key:
+        provider = "resend"
         effective = "resend"
-    elif smtp_host:
+    elif provider in ("gmail_smtp", "smtp") and smtp_host:
         effective = "smtp"
     else:
         effective = "none"
@@ -1111,11 +1110,10 @@ def send_email(
     try:
         if delivery["effective_provider"] == "resend":
             _send_resend(to_email, subject, body, html_body, delivery, reply_to=reply_to)
-        elif delivery["effective_provider"] == "smtp":
-            _send_smtp(to_email, subject, body, html_body, delivery, reply_to=reply_to)
         else:
-            status = "skipped"
-            logger.info("EMAIL[%s] to=%s subject=%s\n%s", template_key, to_email, subject, body)
+            status = "failed"
+            err_text = "Resend is not configured. Set RESEND_API_KEY or save a Resend key in Email settings."
+            logger.error("EMAIL[%s] to=%s failed: %s", template_key, to_email, err_text)
     except Exception as exc:  # noqa: BLE001
         status = "failed"
         err_text = str(exc)

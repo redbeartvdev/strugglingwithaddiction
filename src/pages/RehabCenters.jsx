@@ -505,6 +505,7 @@ function ClaimModal({ center, onClose }) {
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
   const [busyCheckout, setBusyCheckout] = useState(false)
+  const [startingClaim, setStartingClaim] = useState(false)
   const [form, setForm] = useState({
     full_name: '',
     work_email: '',
@@ -523,7 +524,9 @@ function ClaimModal({ center, onClose }) {
   }
 
   const handleConfirmFacility = async () => {
+    if (startingClaim) return
     setError('')
+    setStartingClaim(true)
     if (apiEnabled()) {
       try {
         const res = await fetchApi('/api/rehab/claims/start', {
@@ -544,11 +547,14 @@ function ClaimModal({ center, onClose }) {
         setStep(3)
       } catch (err) {
         setError(err.message)
+      } finally {
+        setStartingClaim(false)
       }
     } else {
       setTicket('DEMO-TICKET')
       setCenterName(center.name)
       setStep(3)
+      setStartingClaim(false)
     }
   }
 
@@ -645,7 +651,9 @@ function ClaimModal({ center, onClose }) {
             </div>
             <div className="modal-form">
               {error && <p style={{ color: '#8c1126', marginBottom: '0.5rem' }}>{error}</p>}
-              <button type="button" className="btn" onClick={handleConfirmFacility}>Yes, This Is Correct</button>
+              <button type="button" className="btn" onClick={handleConfirmFacility} disabled={startingClaim}>
+                {startingClaim ? 'Saving…' : 'Yes, This Is Correct'}
+              </button>
               <button type="button" className="btn" style={{ background: '#f3f4f6', color: '#374151' }} onClick={() => setStep(1)}>Back</button>
             </div>
           </>

@@ -88,6 +88,70 @@ def _domain_match(work_email: str, website: str | None) -> bool:
     return ed == wd or ed.endswith("." + wd) or wd.endswith("." + ed)
 
 
+OPEN_CLAIM_STATUSES = (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified)
+
+
+def _open_claim_for_email(db: Session, email: str) -> RehabCenterClaim | None:
+    return (
+        db.query(RehabCenterClaim)
+        .options(joinedload(RehabCenterClaim.center))
+        .filter(
+            RehabCenterClaim.work_email == email,
+            RehabCenterClaim.status.in_(OPEN_CLAIM_STATUSES),
+        )
+        .order_by(
+            RehabCenterClaim.payment_received_at.desc().nullslast(),
+            RehabCenterClaim.created_at.desc(),
+        )
+        .first()
+    )
+
+
+def abandon_duplicate_email_claims(db: Session, *, email: str | None = None) -> int:
+    """Keep one open claim per email; close extra unpaid tickets."""
+    query = db.query(RehabCenterClaim).filter(RehabCenterClaim.status.in_(OPEN_CLAIM_STATUSES))
+    if email:
+        query = query.filter(RehabCenterClaim.work_email == email)
+    rows = query.order_by(RehabCenterClaim.created_at.desc()).all()
+    by_email: dict[str, list[RehabCenterClaim]] = {}
+    for claim in rows:
+        by_email.setdefault((claim.work_email or "").lower(), []).append(claim)
+    closed = 0
+    for grouped in by_email.values():
+        if len(grouped) < 2:
+            continue
+        grouped.sort(
+            key=lambda c: (bool(c.payment_received_at), c.created_at or datetime.min.replace(tzinfo=timezone.utc)),
+            reverse=True,
+        )
+        keep = grouped[0]
+        for extra in grouped[1:]:
+            if extra.payment_received_at or extra.id == keep.id:
+                continue
+            extra.status = ClaimStatus.abandoned
+            note = "Auto-closed: duplicate claim for this email."
+            extra.admin_notes = f"{extra.admin_notes}\n{note}".strip() if extra.admin_notes else note
+            closed += 1
+    if closed:
+        db.commit()
+    return closed
+
+
+def claim_payment_status(db: Session, claim: RehabCenterClaim) -> str:
+    if claim.payment_received_at or _subscription_marks_paid(db, claim.submitter_user_id):
+        if not claim.payment_received_at and claim.submitter_user_id:
+            record_payment_on_claim(
+                db,
+                user_id=claim.submitter_user_id,
+                claim_ticket=claim.ticket_number,
+                rehab_center_id=claim.rehab_center_id,
+            )
+        return "paid"
+    if claim.status in OPEN_CLAIM_STATUSES:
+        return "awaiting_payment"
+    return "none"
+
+
 @router.post("/api/rehab/claims/start", response_model=ClaimStartOut)
 def start_claim(body: ClaimStartRequest, db: Annotated[Session, Depends(get_db)]):
     center = db.query(RehabCenter).filter(RehabCenter.id == body.rehab_center_id, RehabCenter.deleted_at.is_(None)).first()
@@ -97,6 +161,26 @@ def start_claim(body: ClaimStartRequest, db: Annotated[Session, Depends(get_db)]
         raise HTTPException(status_code=400, detail="Center already claimed")
 
     email = body.work_email.lower()
+    existing = _open_claim_for_email(db, email)
+    if existing:
+        abandon_duplicate_email_claims(db, email=email)
+        paid = bool(existing.payment_received_at) or _subscription_marks_paid(db, existing.submitter_user_id)
+        if paid and existing.rehab_center_id != center.id:
+            raise HTTPException(
+                status_code=400,
+                detail="This email already has a paid claim. Sign in to the provider portal.",
+            )
+        return ClaimStartOut(
+            ticket_number=existing.ticket_number,
+            status=existing.status,
+            center_name=existing.center.name if existing.center else center.name,
+            message=(
+                "We found your existing claim. Continue from your ticket — only one submission is allowed per email."
+            ),
+            checkout_ready=not paid and existing.status in OPEN_CLAIM_STATUSES,
+            user_id=existing.submitter_user_id,
+        )
+
     user = db.query(User).filter(User.email == email).first()
     if user and user.role != UserRole.client:
         raise HTTPException(status_code=400, detail="Email is already registered")
