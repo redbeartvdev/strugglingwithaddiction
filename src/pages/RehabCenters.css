@@ -1001,6 +1001,126 @@
   }
 }
 
+/* ── Claim status (post-Stripe return) ─── */
+.claim-status-page {
+  padding: 4rem 1rem 5rem;
+}
+
+.claim-status-wrap {
+  max-width: 560px;
+}
+
+.claim-status-wrap.is-plans {
+  max-width: 760px;
+}
+
+.claim-status-wrap > h1 {
+  margin-bottom: 0.5rem;
+}
+
+.claim-status-error {
+  color: #8c1126;
+  margin: 0.75rem 0 0;
+}
+
+.claim-status-note {
+  margin: 0.75rem 0 0;
+  color: #4b5563;
+}
+
+.claim-status-card {
+  margin-top: 1.5rem;
+  padding: 1.75rem 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.claim-status-success {
+  text-align: center;
+}
+
+.claim-status-success h2 {
+  margin: 0 0 0.75rem;
+  color: #1a1a2e;
+  font-size: 1.45rem;
+}
+
+.claim-status-lead {
+  margin: 0.75rem 0 0;
+  color: #4b5563;
+}
+
+.claim-status-success p {
+  margin: 0.65rem 0 0;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.claim-status-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1.25rem;
+  margin: 1.5rem 0 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.claim-status-meta dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.claim-status-meta dd {
+  margin: 0.15rem 0 0;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.claim-status-invoice {
+  margin-top: 1.5rem;
+  padding: 1.15rem 1.1rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.claim-status-invoice h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: #1a1a2e;
+}
+
+.claim-status-invoice p {
+  margin: 0 0 0.9rem;
+  color: #4b5563;
+}
+
+.claim-status-invoice .btn {
+  display: inline-flex;
+}
+
+.claim-status-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.claim-status-back {
+  margin-top: 2rem;
+}
+
+.claim-status-back a {
+  color: #0c6e9e;
+  text-decoration: underline;
+}
+
 @media (max-width: 600px) {
   .rehab-card-top { flex-direction: column; }
   .rehab-claim-btn { width: 100%; text-align: center; }
@@ -1015,4 +1135,7 @@
   .rehab-intro-inner { flex-direction: column; gap: 0.5rem; }
   .modal { padding: 1.75rem 1.25rem; }
   .rehab-hero-content { padding-top: 2rem; padding-bottom: 2rem; }
+  .claim-status-meta {
+    grid-template-columns: 1fr;
+  }
 }

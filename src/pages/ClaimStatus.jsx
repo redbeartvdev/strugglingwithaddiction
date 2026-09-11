@@ -4,58 +4,46 @@ import { fetchApi, apiEnabled, getApiBase } from '../lib/api'
 import ListingPlanPicker from '../components/ListingPlanPicker'
 import './RehabCenters.css'
 
+function invoiceHref(invoice) {
+  if (!invoice) return ''
+  if (invoice.invoice_pdf) return invoice.invoice_pdf
+  if (invoice.hosted_invoice_url) return invoice.hosted_invoice_url
+  if (invoice.download_path) return `${getApiBase()}${invoice.download_path}`
+  return ''
+}
+
 export default function ClaimStatus() {
   const { ticket } = useParams()
   const [searchParams] = useSearchParams()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [phoneCode, setPhoneCode] = useState('')
-  const [phoneMessage, setPhoneMessage] = useState('')
+
+  const returnedPaid = searchParams.get('paid') === '1'
+  const canceled = searchParams.get('canceled') === '1'
 
   const load = () => {
     if (!apiEnabled()) {
       setError('API not configured')
       return
     }
-    fetchApi(`/api/rehab/claims/${encodeURIComponent(ticket)}`)
+    const qs = returnedPaid ? '?confirm_paid=1' : ''
+    fetchApi(`/api/rehab/claims/${encodeURIComponent(ticket)}${qs}`)
       .then(setData)
       .catch(e => setError(e.message))
   }
 
-  useEffect(() => { load() }, [ticket])
+  useEffect(() => { load() }, [ticket, returnedPaid])
+
+  const invoiceReady = Boolean(
+    data?.invoice?.download_path || data?.invoice?.invoice_pdf || data?.invoice?.hosted_invoice_url,
+  )
 
   useEffect(() => {
-    if (searchParams.get('paid') === '1') {
-      const t = setTimeout(load, 1500)
-      return () => clearTimeout(t)
-    }
-  }, [searchParams])
-
-  async function uploadCert(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setBusy(true)
-    setError('')
-    try {
-      const base = getApiBase()
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch(`${base}/api/rehab/claims/${encodeURIComponent(ticket)}/cert`, {
-        method: 'POST',
-        body: form,
-      })
-      const text = await res.text()
-      const json = text ? JSON.parse(text) : null
-      if (!res.ok) throw new Error(json?.detail || 'Upload failed')
-      setData(d => ({ ...d, status: json.status, message: json.message, payment_received: true }))
-      load()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
+    if (!returnedPaid || invoiceReady) return
+    const timers = [1500, 4000, 8000, 14000].map(ms => setTimeout(load, ms))
+    return () => timers.forEach(clearTimeout)
+  }, [returnedPaid, ticket, invoiceReady])
 
   async function subscribe(interval) {
     setBusy(true)
@@ -72,112 +60,139 @@ export default function ClaimStatus() {
     }
   }
 
-  async function sendPhoneCode() {
-    setBusy(true)
-    setError('')
-    try {
-      const res = await fetchApi(`/api/rehab/claims/${encodeURIComponent(ticket)}/phone/send`, { method: 'POST' })
-      setPhoneMessage(res.message)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function verifyPhoneCode(e) {
-    e.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      const res = await fetchApi(`/api/rehab/claims/${encodeURIComponent(ticket)}/phone/verify`, {
-        method: 'POST',
-        body: JSON.stringify({ code: phoneCode }),
-      })
-      setPhoneMessage(res.message)
-      setPhoneCode('')
-      load()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const needsPayment = data && !data.payment_received && data.checkout_ready
-  const canUploadCert = data && data.payment_received && (data.status === 'pending' || data.status === 'under_review')
+  const paymentReceived = Boolean(data?.payment_received) || returnedPaid
+  const needsPayment = data && !paymentReceived && data.checkout_ready
+  const approved = data?.status === 'approved'
+  const rejected = data?.status === 'rejected' || data?.status === 'abandoned'
+  const showPaidConfirmation = paymentReceived && !rejected
+  const invoice = data?.invoice
+  const downloadUrl = invoiceHref(invoice)
+  const ticketNumber = data?.ticket_number || ticket
+  const centerName = data?.center_name
 
   return (
-    <main className="rehab-page" style={{ padding: '4rem 1rem' }}>
-      <div className="container" style={{ maxWidth: needsPayment ? 760 : 560 }}>
-        <h1>Claim Status</h1>
-        {searchParams.get('paid') === '1' && (
-          <p style={{ color: '#166534', marginTop: 8 }}>Payment received — continue verification below.</p>
+    <main className="rehab-page claim-status-page">
+      <div className={`container claim-status-wrap${needsPayment ? ' is-plans' : ''}`}>
+        <h1>
+          {showPaidConfirmation && approved
+            ? 'Listing active'
+            : showPaidConfirmation
+              ? 'Thank you'
+              : 'Claim Status'}
+        </h1>
+        {error && <p className="claim-status-error">{error}</p>}
+
+        {canceled && !paymentReceived && (
+          <p className="claim-status-note">Checkout was canceled. Choose a plan below when you are ready to continue.</p>
         )}
-        {error && <p style={{ color: '#8c1126' }}>{error}</p>}
-        {data && (
-          <div className="card" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+
+        {showPaidConfirmation && (
+          <div className="claim-status-card claim-status-success">
+            <div className="modal-success-icon" aria-hidden="true">✓</div>
+            <h2>{approved ? 'Your listing is active' : 'Thank you for your payment'}</h2>
+            <p className="claim-status-lead">
+              {approved ? (
+                <>
+                  Your claim for {centerName ? <strong>{centerName}</strong> : 'your listing'} is approved.
+                  Sign in to the provider portal with the password you created.
+                </>
+              ) : (
+                <>
+                  Thank you. Your payment{centerName ? <> for <strong>{centerName}</strong></> : ''} is confirmed.
+                </>
+              )}
+            </p>
+            {!approved && (
+              <>
+                <p>
+                  Please wait for a confirmation email. That email includes your
+                  provider portal access link.
+                </p>
+                <p>
+                  You may access our portal with the password you created when you
+                  claimed this listing.
+                </p>
+              </>
+            )}
+            <dl className="claim-status-meta">
+              <div>
+                <dt>Ticket</dt>
+                <dd>{ticketNumber}</dd>
+              </div>
+              {centerName && (
+                <div>
+                  <dt>Center</dt>
+                  <dd>{centerName}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Status</dt>
+                <dd>{approved ? 'Approved' : 'Pending confirmation'}</dd>
+              </div>
+              <div>
+                <dt>Payment</dt>
+                <dd>Received</dd>
+              </div>
+            </dl>
+
+            <div className="claim-status-invoice">
+              <h3>Your invoice</h3>
+              {invoice && downloadUrl ? (
+                <>
+                  <p>
+                    {invoice.number ? <>Invoice {invoice.number}</> : 'Listing subscription invoice'}
+                    {invoice.amount_label ? <> · {invoice.amount_label}</> : null}
+                    {invoice.interval === 'year' ? ' billed annually' : invoice.interval === 'month' ? ' billed monthly' : ''}
+                  </p>
+                  <a
+                    className="btn btn-outline"
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Download invoice
+                  </a>
+                </>
+              ) : (
+                <p>
+                  Your invoice is being prepared. It will appear here shortly,
+                  and we will also email it to you.
+                </p>
+              )}
+            </div>
+
+            <div className="claim-status-actions">
+              <Link to="/portal" className="btn">Open provider portal</Link>
+            </div>
+          </div>
+        )}
+
+        {data && needsPayment && (
+          <div className="claim-status-card">
             <p><strong>Ticket:</strong> {data.ticket_number}</p>
             <p><strong>Center:</strong> {data.center_name}</p>
             <p><strong>Status:</strong> {data.status}</p>
-            <p><strong>Payment:</strong> {data.payment_received ? 'Received' : 'Required'}</p>
-            <p style={{ marginTop: '1rem' }}>{data.message}</p>
-
-            {needsPayment && (
-              <div style={{ marginTop: '1.25rem' }}>
-                <ListingPlanPicker
-                  centerName={data.center_name}
-                  ticket={data.ticket_number}
-                  busy={busy}
-                  onSelect={subscribe}
-                />
-              </div>
-            )}
-
-            {canUploadCert && (
-              <label style={{ display: 'block', marginTop: '1.25rem' }}>
-                Upload rehab certification (required)
-                <input type="file" accept=".pdf,image/*" disabled={busy} onChange={uploadCert} style={{ display: 'block', marginTop: 8 }} />
-              </label>
-            )}
-
-            {data.status !== 'approved' && data.payment_received && (
-              <div style={{ marginTop: '1.25rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                <p><strong>Ownership verification</strong></p>
-                <p style={{ fontSize: '.9rem' }}>Certificate: {data.certification_uploaded ? '✓ uploaded' : 'pending'}</p>
-                <p style={{ fontSize: '.9rem' }}>Work email domain: {data.email_domain_matched ? '✓ matches listing website' : 'does not yet match'}</p>
-                <p style={{ fontSize: '.9rem' }}>Facility phone callback: {data.phone_verified ? '✓ verified' : 'pending'}</p>
-                {!data.phone_verified && (
-                  <>
-                    <button type="button" className="btn" disabled={busy} onClick={sendPhoneCode} style={{ marginTop: 8 }}>
-                      Send callback code to facility
-                    </button>
-                    <form onSubmit={verifyPhoneCode} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <input
-                        aria-label="Facility callback code"
-                        value={phoneCode}
-                        onChange={e => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="6-digit code"
-                        required
-                      />
-                      <button type="submit" className="btn" disabled={busy || phoneCode.length !== 6}>Verify code</button>
-                    </form>
-                  </>
-                )}
-                {phoneMessage && <p style={{ fontSize: '.9rem', marginTop: 8 }}>{phoneMessage}</p>}
-              </div>
-            )}
-
-            {data.status === 'approved' && (
-              <p style={{ marginTop: 12 }}>
-                <Link to="/portal">Log in to your dashboard →</Link>
-              </p>
-            )}
+            <p><strong>Payment:</strong> Required</p>
+            <p className="claim-status-lead">{data.message}</p>
+            <ListingPlanPicker
+              centerName={data.center_name}
+              ticket={data.ticket_number}
+              busy={busy}
+              onSelect={subscribe}
+            />
           </div>
         )}
-        <p style={{ marginTop: '2rem' }}>
+
+        {data && rejected && (
+          <div className="claim-status-card">
+            <p><strong>Ticket:</strong> {data.ticket_number}</p>
+            <p><strong>Center:</strong> {data.center_name}</p>
+            <p><strong>Status:</strong> {data.status}</p>
+            <p className="claim-status-lead">{data.message}</p>
+          </div>
+        )}
+
+        <p className="claim-status-back">
           <Link to="/rehab-centers">← Back to directory</Link>
         </p>
       </div>

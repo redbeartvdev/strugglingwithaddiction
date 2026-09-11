@@ -328,8 +328,12 @@ def submit_claim(body: ClaimCreate, db: Annotated[Session, Depends(get_db)], use
 
 
 @router.get("/api/rehab/claims/{ticket}", response_model=ClaimStatusPublic)
-def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
-    from app.api.claim_journey import _claim_status_message
+def claim_status(
+    ticket: str,
+    db: Annotated[Session, Depends(get_db)],
+    confirm_paid: bool = Query(False),
+):
+    from app.api.claim_journey import public_claim_status
 
     claim = (
         db.query(RehabCenterClaim)
@@ -339,20 +343,7 @@ def claim_status(ticket: str, db: Annotated[Session, Depends(get_db)]):
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    paid = bool(claim.payment_received_at)
-    return ClaimStatusPublic(
-        ticket_number=claim.ticket_number,
-        status=claim.status,
-        center_name=claim.center.name,
-        submitted_at=claim.created_at,
-        reviewed_at=claim.reviewed_at,
-        message=_claim_status_message(claim),
-        certification_uploaded=bool(claim.business_license_url),
-        email_domain_matched=bool(claim.email_domain_matched),
-        phone_verified=bool(claim.phone_verified_at),
-        payment_received=paid,
-        checkout_ready=not paid and claim.status in (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified),
-    )
+    return public_claim_status(claim, db, confirm_paid=confirm_paid)
 
 
 @router.get("/api/admin/rehab-centers", response_model=RehabCenterAdminPage)

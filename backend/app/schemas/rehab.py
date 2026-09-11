@@ -254,6 +254,17 @@ class ClaimOut(BaseModel):
     message: str
 
 
+class ClaimInvoicePublic(BaseModel):
+    id: int | None = None
+    number: str | None = None
+    amount_label: str | None = None
+    interval: str | None = None
+    status: str | None = None
+    invoice_pdf: str | None = None
+    hosted_invoice_url: str | None = None
+    download_path: str | None = None
+
+
 class ClaimStatusPublic(BaseModel):
     ticket_number: str
     status: ClaimStatus
@@ -266,6 +277,7 @@ class ClaimStatusPublic(BaseModel):
     phone_verified: bool = False
     payment_received: bool = False
     checkout_ready: bool = False
+    invoice: ClaimInvoicePublic | None = None
 
 
 class ClaimAdmin(BaseModel):

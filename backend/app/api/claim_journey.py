@@ -6,18 +6,20 @@ import secrets
 from typing import Annotated
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.core.security import create_action_token, hash_password, verify_password
 from app.database import get_db
-from app.models.billing import BillingInterval, Subscription
+from app.models.billing import BillingInterval, BillingInvoice, Subscription
 from app.models.profile import UserProfile
 from app.models.rehab import ClaimStatus, FacilityRole, RehabCenter, RehabCenterClaim
 from app.models.user import User, UserRole
-from app.schemas.rehab import ClaimOut, ClaimStatusPublic
+from app.schemas.rehab import ClaimInvoicePublic, ClaimOut, ClaimStatusPublic
 from app.services.email import resolve_email_delivery, send_email
 from app.services.mailchimp import sync_contact
 from app.services.phone import send_callback_code
@@ -419,14 +421,20 @@ def checkout_claim(body: CheckoutClaimRequest, db: Annotated[Session, Depends(ge
     return {"checkout_url": session.url}
 
 
-def _claim_status_message(claim: RehabCenterClaim) -> str:
-    paid = bool(claim.payment_received_at)
+def _claim_status_message(claim: RehabCenterClaim, *, paid: bool | None = None) -> str:
+    paid = bool(claim.payment_received_at) if paid is None else paid
     if claim.status == ClaimStatus.pending:
         if not paid:
             return "Choose a monthly or yearly plan to continue. After payment, upload your rehab certification."
-        return "Payment received. Upload your rehab certification to continue verification."
+        return (
+            "Thank you. Please wait for a confirmation email — it includes your "
+            "provider portal access link. You may access the portal with the password you created."
+        )
     if claim.status == ClaimStatus.under_review:
-        return "Your claim is submitted and waiting for admin verification. We will email you when verification is complete."
+        return (
+            "Your claim is submitted and waiting for confirmation. Check your email for a "
+            "portal access link. You may sign in with the password you created."
+        )
     if claim.status == ClaimStatus.certified:
         if paid:
             return "Verified and paid — your listing is being activated."
@@ -440,8 +448,116 @@ def _claim_status_message(claim: RehabCenterClaim) -> str:
     return ""
 
 
-@router.get("/api/rehab/claims/{ticket}/detail", response_model=ClaimStatusPublic)
-def claim_status_detail(ticket: str, db: Annotated[Session, Depends(get_db)]):
+def _format_invoice_amount(cents: int | None) -> str:
+    return f"${(cents or 0) / 100:.2f}"
+
+
+def _subscription_marks_paid(db: Session, user_id: int | None) -> bool:
+    if not user_id:
+        return False
+    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    return bool(sub and sub.status in ("active", "trialing"))
+
+
+def _latest_invoice_for_claim(db: Session, claim: RehabCenterClaim) -> BillingInvoice | None:
+    clauses = []
+    if claim.submitter_user_id:
+        clauses.append(BillingInvoice.user_id == claim.submitter_user_id)
+    if claim.rehab_center_id:
+        clauses.append(BillingInvoice.rehab_center_id == claim.rehab_center_id)
+    if not clauses:
+        return None
+    return (
+        db.query(BillingInvoice)
+        .filter(or_(*clauses), BillingInvoice.status == "paid")
+        .order_by(BillingInvoice.paid_at.desc().nullslast(), BillingInvoice.id.desc())
+        .first()
+    )
+
+
+def _invoice_public(ticket: str, invoice: BillingInvoice | None) -> ClaimInvoicePublic | None:
+    if not invoice:
+        return None
+    cents = invoice.amount_paid if invoice.status == "paid" else invoice.amount_due
+    return ClaimInvoicePublic(
+        id=invoice.id,
+        number=invoice.number or invoice.stripe_invoice_id,
+        amount_label=_format_invoice_amount(cents),
+        interval=invoice.interval,
+        status=invoice.status,
+        invoice_pdf=invoice.invoice_pdf,
+        hosted_invoice_url=invoice.hosted_invoice_url,
+        download_path=f"/api/rehab/claims/{ticket}/invoice",
+    )
+
+
+def _try_sync_invoice_from_stripe(db: Session, claim: RehabCenterClaim) -> BillingInvoice | None:
+    if not claim.submitter_user_id:
+        return None
+    sub = db.query(Subscription).filter(Subscription.user_id == claim.submitter_user_id).first()
+    if not sub or not sub.stripe_customer_id:
+        return None
+    from app.api.billing import upsert_billing_invoice
+    from app.services.stripe_config import init_stripe_sdk
+
+    st = init_stripe_sdk(db)
+    if not st:
+        return None
+    try:
+        invoices = st.Invoice.list(customer=sub.stripe_customer_id, status="paid", limit=1)
+    except Exception:
+        return None
+    if not invoices.data:
+        return None
+    row = upsert_billing_invoice(
+        db,
+        invoices.data[0],
+        user_id=claim.submitter_user_id,
+        rehab_center_id=claim.rehab_center_id,
+        source="subscription",
+        product_label="Listing subscription",
+        interval=sub.interval.value if sub.interval else None,
+    )
+    if not claim.payment_received_at:
+        record_payment_on_claim(
+            db,
+            user_id=claim.submitter_user_id,
+            claim_ticket=claim.ticket_number,
+            rehab_center_id=claim.rehab_center_id,
+        )
+    db.commit()
+    db.refresh(claim)
+    return row
+
+
+def public_claim_status(
+    claim: RehabCenterClaim,
+    db: Session,
+    *,
+    confirm_paid: bool = False,
+) -> ClaimStatusPublic:
+    paid = bool(claim.payment_received_at) or _subscription_marks_paid(db, claim.submitter_user_id)
+    invoice = _latest_invoice_for_claim(db, claim)
+    if (confirm_paid or paid) and not invoice:
+        invoice = _try_sync_invoice_from_stripe(db, claim)
+        paid = paid or bool(claim.payment_received_at) or bool(invoice)
+    return ClaimStatusPublic(
+        ticket_number=claim.ticket_number,
+        status=claim.status,
+        center_name=claim.center.name if claim.center else "",
+        submitted_at=claim.created_at,
+        reviewed_at=claim.reviewed_at,
+        message=_claim_status_message(claim, paid=paid),
+        certification_uploaded=bool(claim.business_license_url),
+        email_domain_matched=bool(claim.email_domain_matched),
+        phone_verified=bool(claim.phone_verified_at),
+        payment_received=paid,
+        checkout_ready=not paid and claim.status in (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified),
+        invoice=_invoice_public(claim.ticket_number, invoice),
+    )
+
+
+def _claim_for_status(ticket: str, db: Session) -> RehabCenterClaim:
     claim = (
         db.query(RehabCenterClaim)
         .options(joinedload(RehabCenterClaim.center))
@@ -450,19 +566,40 @@ def claim_status_detail(ticket: str, db: Annotated[Session, Depends(get_db)]):
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    paid = bool(claim.payment_received_at)
-    return ClaimStatusPublic(
-        ticket_number=claim.ticket_number,
-        status=claim.status,
-        center_name=claim.center.name,
-        submitted_at=claim.created_at,
-        reviewed_at=claim.reviewed_at,
-        message=_claim_status_message(claim),
-        certification_uploaded=bool(claim.business_license_url),
-        email_domain_matched=bool(claim.email_domain_matched),
-        phone_verified=bool(claim.phone_verified_at),
-        payment_received=paid,
-        checkout_ready=not paid and claim.status in (ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified),
+    return claim
+
+
+@router.get("/api/rehab/claims/{ticket}/detail", response_model=ClaimStatusPublic)
+def claim_status_detail(
+    ticket: str,
+    db: Annotated[Session, Depends(get_db)],
+    confirm_paid: bool = Query(False),
+):
+    return public_claim_status(_claim_for_status(ticket, db), db, confirm_paid=confirm_paid)
+
+
+@router.get("/api/rehab/claims/{ticket}/invoice")
+def download_claim_invoice(ticket: str, db: Annotated[Session, Depends(get_db)]):
+    claim = _claim_for_status(ticket, db)
+    invoice = _latest_invoice_for_claim(db, claim)
+    if not invoice:
+        paid = bool(claim.payment_received_at) or _subscription_marks_paid(db, claim.submitter_user_id)
+        if paid:
+            invoice = _try_sync_invoice_from_stripe(db, claim)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice is not ready yet. Please wait a moment and try again.")
+    if invoice.invoice_pdf and not str(invoice.stripe_invoice_id or "").startswith("local_"):
+        return RedirectResponse(url=invoice.invoice_pdf)
+    if invoice.hosted_invoice_url:
+        return RedirectResponse(url=invoice.hosted_invoice_url)
+    from app.api.billing import _build_invoice_pdf_bytes
+
+    pdf = _build_invoice_pdf_bytes(db, invoice)
+    filename = f"{(invoice.number or 'invoice').replace(' ', '-')}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
