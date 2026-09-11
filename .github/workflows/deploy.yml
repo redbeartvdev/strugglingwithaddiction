@@ -85,3 +85,13 @@ jobs:
             --environment production \
             --service "${RAILWAY_SERVICE_ID}" || true
           exit 1
+
+      - name: Wipe email logs, finance invoices, and analytics
+        continue-on-error: true
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          pip install -q -r requirements.txt
+          railway run --service "${RAILWAY_SERVICE_ID}" python scripts/wipe_ops_data.py
