@@ -470,6 +470,7 @@ def run_migrations(engine: Engine) -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_mailing_list_members_contact ON mailing_list_members (contact_id)"))
 
     wipe_email_finance_analytics_once(engine)
+    delete_demo_example_invoices_once(engine)
 
 
 WIPE_OPS_JOB = "wipe_email_finance_analytics_20260911"
@@ -525,3 +526,78 @@ def wipe_email_finance_analytics_once(engine: Engine, *, force: bool = False) ->
             {"name": WIPE_OPS_JOB},
         )
     return counts
+
+
+DEMO_INVOICE_CLEANUP_JOB = "delete_demo_example_invoices_20260914"
+
+
+def delete_demo_example_invoices_once(engine: Engine, *, force: bool = False) -> dict[str, int]:
+    """Remove seeded demo invoices. Leaves those provider accounts and subscriptions active."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_one_time_jobs (
+                    name VARCHAR(100) PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        )
+        if not force:
+            already = conn.execute(
+                text("SELECT 1 FROM app_one_time_jobs WHERE name = :name"),
+                {"name": DEMO_INVOICE_CLEANUP_JOB},
+            ).first()
+            if already:
+                return {"skipped": 1}
+
+        existing = set(inspect(engine).get_table_names())
+        if "billing_invoices" not in existing or "users" not in existing:
+            return {"skipped": 1}
+
+        deleted_lines = 0
+        if "billing_invoice_lines" in existing:
+            deleted_lines = int(
+                conn.execute(
+                    text(
+                        """
+                        WITH doomed AS (
+                            SELECT bi.id
+                            FROM billing_invoices bi
+                            JOIN users u ON u.id = bi.user_id
+                            WHERE lower(u.email) IN ('hazelden@example.com', 'caron@example.com')
+                        )
+                        DELETE FROM billing_invoice_lines
+                        WHERE invoice_id IN (SELECT id FROM doomed)
+                        """
+                    )
+                ).rowcount
+                or 0
+            )
+
+        deleted_invoices = int(
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM billing_invoices
+                    WHERE user_id IN (
+                        SELECT id FROM users
+                        WHERE lower(email) IN ('hazelden@example.com', 'caron@example.com')
+                    )
+                    """
+                )
+            ).rowcount
+            or 0
+        )
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO app_one_time_jobs (name) VALUES (:name)
+                ON CONFLICT (name) DO UPDATE SET applied_at = NOW()
+                """
+            ),
+            {"name": DEMO_INVOICE_CLEANUP_JOB},
+        )
+    return {"invoices": deleted_invoices, "lines": deleted_lines}

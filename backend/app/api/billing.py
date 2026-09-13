@@ -1351,6 +1351,9 @@ def _ensure_local_invoices(db: Session) -> int:
     created = 0
     subs = db.query(Subscription).filter(Subscription.status.in_(("active", "trialing", "past_due"))).all()
     for sub in subs:
+        owner = db.query(User).filter(User.id == sub.user_id).first()
+        if owner and str(owner.email or "").lower().endswith("@example.com"):
+            continue
         existing = (
             db.query(BillingInvoice)
             .filter(BillingInvoice.user_id == sub.user_id, BillingInvoice.source == "subscription")
