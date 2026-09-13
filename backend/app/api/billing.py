@@ -26,6 +26,7 @@ from app.models.profile import UserProfile
 from app.models.rehab import ClaimStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellOrder, UpsellOrderStatus
 from app.models.user import User, UserRole
+from app.services.demo_accounts import DEMO_CENTER_SLUGS, is_demo_or_test_email
 from app.services.mailchimp import sync_contact
 from app.schemas.billing import (
     BillingInvoiceCreate,
@@ -1158,6 +1159,8 @@ def admin_subscribers(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
     result = []
     for s in subs:
         user = db.query(User).filter(User.id == s.user_id).first()
+        if user and is_demo_or_test_email(user.email):
+            continue
         profile = db.query(UserProfile).filter(UserProfile.user_id == s.user_id).first()
         center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == s.user_id).first()
         claim = (
@@ -1193,43 +1196,69 @@ def admin_finance_overview(_: AdminUser, db: Annotated[Session, Depends(get_db)]
     mrr_cents = 0
     monthly_count = 0
     yearly_count = 0
+    live_active = []
     for s in active_subs:
+        owner = db.query(User).filter(User.id == s.user_id).first()
+        if owner and is_demo_or_test_email(owner.email):
+            continue
+        live_active.append(s)
         if s.interval == BillingInterval.year:
             mrr_cents += int(9999 / 12)  # $99.99/yr
             yearly_count += 1
         else:
             mrr_cents += 999  # $9.99
             monthly_count += 1
+    active_subs = live_active
 
-    unpaid = (
+    unpaid_subs = (
         db.query(Subscription)
         .filter(Subscription.status.in_(("pending", "past_due", "unpaid", "inactive")))
-        .count()
+        .all()
     )
-    past_due = db.query(Subscription).filter(Subscription.status == "past_due").count()
+    unpaid = 0
+    past_due = 0
+    for s in unpaid_subs:
+        owner = db.query(User).filter(User.id == s.user_id).first()
+        if owner and is_demo_or_test_email(owner.email):
+            continue
+        unpaid += 1
+        if s.status == "past_due":
+            past_due += 1
 
     new_claimed = (
         db.query(RehabCenter)
-        .filter(RehabCenter.claimed.is_(True), RehabCenter.updated_at >= since)
+        .filter(
+            RehabCenter.claimed.is_(True),
+            RehabCenter.updated_at >= since,
+            ~RehabCenter.slug.in_(tuple(DEMO_CENTER_SLUGS)),
+        )
         .count()
     )
-    newly_verified = (
+    newly_verified = 0
+    for claim in (
         db.query(RehabCenterClaim)
         .filter(
             RehabCenterClaim.cert_verified_at.isnot(None),
             RehabCenterClaim.cert_verified_at >= since,
             RehabCenterClaim.payment_received_at.isnot(None),
         )
-        .count()
-    )
-    paid_awaiting_verify = (
+        .all()
+    ):
+        if is_demo_or_test_email(claim.work_email):
+            continue
+        newly_verified += 1
+    paid_awaiting_verify = 0
+    for claim in (
         db.query(RehabCenterClaim)
         .filter(
             RehabCenterClaim.payment_received_at.isnot(None),
             RehabCenterClaim.status.in_((ClaimStatus.pending, ClaimStatus.under_review, ClaimStatus.certified)),
         )
-        .count()
-    )
+        .all()
+    ):
+        if is_demo_or_test_email(claim.work_email):
+            continue
+        paid_awaiting_verify += 1
 
     upgrade_paid = (
         db.query(func.coalesce(func.sum(UpsellOrder.amount_cents), 0))
@@ -1290,6 +1319,8 @@ def admin_unpaid(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
     subs = db.query(Subscription).filter(Subscription.status.in_(("pending", "past_due", "unpaid", "inactive"))).all()
     for s in subs:
         user = db.query(User).filter(User.id == s.user_id).first()
+        if user and is_demo_or_test_email(user.email):
+            continue
         profile = db.query(UserProfile).filter(UserProfile.user_id == s.user_id).first()
         center = db.query(RehabCenter).filter(RehabCenter.owner_user_id == s.user_id).first()
         claim = (
@@ -1323,6 +1354,8 @@ def admin_unpaid(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
     )
     seen_users = {r["user_id"] for r in rows}
     for c in claims:
+        if is_demo_or_test_email(c.work_email):
+            continue
         if c.submitter_user_id and c.submitter_user_id in seen_users:
             continue
         rows.append({
@@ -1352,7 +1385,7 @@ def _ensure_local_invoices(db: Session) -> int:
     subs = db.query(Subscription).filter(Subscription.status.in_(("active", "trialing", "past_due"))).all()
     for sub in subs:
         owner = db.query(User).filter(User.id == sub.user_id).first()
-        if owner and str(owner.email or "").lower().endswith("@example.com"):
+        if owner and is_demo_or_test_email(owner.email):
             continue
         existing = (
             db.query(BillingInvoice)

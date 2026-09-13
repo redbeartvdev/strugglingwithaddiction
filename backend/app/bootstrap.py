@@ -16,6 +16,7 @@ from app.models.insurance import InsuranceCatalog
 from app.models.profile import UserProfile
 from app.models.rehab import RehabCenter, ListingStatus, CenterSource, ClaimStatus, RehabCenterClaim
 from app.models.user import User, UserRole
+from app.services.demo_accounts import is_demo_or_test_email
 
 USA_INSURANCE_SEED = [
     ("Aetna", "aetna", "/images/insurance/aetna.png", 10),
@@ -264,6 +265,13 @@ def bootstrap_stripe_settings(db: Session) -> None:
 
 
 def _ensure_active_subscription(db: Session, user: User) -> None:
+    if is_demo_or_test_email(user.email):
+        sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        if sub and sub.status in ("active", "trialing", "past_due"):
+            sub.status = "canceled"
+        if not user.is_active:
+            user.is_active = True
+        return
     plan = db.query(SubscriptionPlan).order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id).first()
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     if not sub:
@@ -314,7 +322,7 @@ def seed_rehab_centers(db: Session) -> None:
             db.add(center)
         db.commit()
 
-    # Always ensure claimed seed centers have city/state, rich fields, owners, and active subscriptions.
+    # Always ensure claimed seed centers have city/state, rich fields, and owners.
     for item in REHAB_SEED:
         center = db.query(RehabCenter).filter(RehabCenter.slug == item["slug"]).first()
         if not center:

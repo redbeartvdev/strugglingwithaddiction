@@ -21,6 +21,7 @@ from app.models.rehab import ClaimStatus, ListingStatus, RehabCenter, RehabCente
 from app.models.upsell import UpsellOrder, UpsellOrderStatus
 from app.models.user import User
 from app.api.rehab_helpers import inquiry_forms_globally_enabled
+from app.services.demo_accounts import is_demo_or_test_email
 from app.services.email_list import source_counts
 from app.services.mailchimp import resolve_mailchimp
 from app.services.stripe_config import stripe_status_payload
@@ -128,11 +129,10 @@ def admin_overview(_: AdminUser, db: Annotated[Session, Depends(get_db)]) -> dic
         .scalar()
         or 0
     )
-    pending_claims = (
-        db.query(func.count(RehabCenterClaim.id))
-        .filter(RehabCenterClaim.status.in_(PENDING_CLAIM_STATUSES))
-        .scalar()
-        or 0
+    pending_claims = sum(
+        1
+        for claim in db.query(RehabCenterClaim).filter(RehabCenterClaim.status.in_(PENDING_CLAIM_STATUSES)).all()
+        if not is_demo_or_test_email(claim.work_email)
     )
 
     abandon_base = db.query(func.count(CenterLead.id)).filter(ABANDONMENT_FILTER)
@@ -201,20 +201,28 @@ def admin_overview(_: AdminUser, db: Annotated[Session, Depends(get_db)]) -> dic
     mrr_cents = 0
     monthly_count = 0
     yearly_count = 0
+    live_active = []
     for sub in active_subs:
+        owner = db.query(User).filter(User.id == sub.user_id).first()
+        if owner and is_demo_or_test_email(owner.email):
+            continue
+        live_active.append(sub)
         if sub.interval == BillingInterval.year:
             mrr_cents += int(9999 / 12)
             yearly_count += 1
         else:
             mrr_cents += 999
             monthly_count += 1
-    past_due = db.query(func.count(Subscription.id)).filter(Subscription.status == "past_due").scalar() or 0
-    unpaid = (
-        db.query(func.count(Subscription.id))
-        .filter(Subscription.status.in_(("pending", "past_due", "unpaid", "inactive")))
-        .scalar()
-        or 0
-    )
+    active_subs = live_active
+    past_due = 0
+    unpaid = 0
+    for sub in db.query(Subscription).filter(Subscription.status.in_(("pending", "past_due", "unpaid", "inactive"))).all():
+        owner = db.query(User).filter(User.id == sub.user_id).first()
+        if owner and is_demo_or_test_email(owner.email):
+            continue
+        unpaid += 1
+        if sub.status == "past_due":
+            past_due += 1
     upsells_paid = (
         db.query(func.count(UpsellOrder.id))
         .filter(UpsellOrder.status == UpsellOrderStatus.paid)

@@ -471,6 +471,7 @@ def run_migrations(engine: Engine) -> None:
 
     wipe_email_finance_analytics_once(engine)
     delete_demo_example_invoices_once(engine)
+    reset_test_finance_once(engine)
 
 
 WIPE_OPS_JOB = "wipe_email_finance_analytics_20260911"
@@ -601,3 +602,132 @@ def delete_demo_example_invoices_once(engine: Engine, *, force: bool = False) ->
             {"name": DEMO_INVOICE_CLEANUP_JOB},
         )
     return {"invoices": deleted_invoices, "lines": deleted_lines}
+
+
+RESET_TEST_FINANCE_JOB = "reset_test_finance_20260914"
+
+
+def reset_test_finance_once(engine: Engine, *, force: bool = False) -> dict[str, int]:
+    """Remove test claims/users and cancel seeded demo subscriptions so finance starts at zero.
+
+    Leaves Hazelden/Caron provider accounts claimed and login-active.
+    """
+    counts = {"claims": 0, "users": 0, "canceled_demo_subs": 0, "leads": 0}
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_one_time_jobs (
+                    name VARCHAR(100) PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        )
+        if not force:
+            already = conn.execute(
+                text("SELECT 1 FROM app_one_time_jobs WHERE name = :name"),
+                {"name": RESET_TEST_FINANCE_JOB},
+            ).first()
+            if already:
+                return {"skipped": 1}
+
+        existing = set(inspect(engine).get_table_names())
+        test_user_sql = """
+            SELECT id FROM users
+            WHERE lower(email) LIKE '%+test%'
+               OR lower(email) LIKE '%redbeartv%'
+        """
+
+        if "billing_invoice_lines" in existing and "billing_invoices" in existing:
+            conn.execute(
+                text(
+                    f"""
+                    DELETE FROM billing_invoice_lines
+                    WHERE invoice_id IN (
+                        SELECT id FROM billing_invoices
+                        WHERE user_id IN ({test_user_sql})
+                    )
+                    """
+                )
+            )
+        if "billing_invoices" in existing:
+            conn.execute(
+                text(
+                    f"""
+                    DELETE FROM billing_invoices
+                    WHERE user_id IN ({test_user_sql})
+                    """
+                )
+            )
+        if "center_leads" in existing:
+            counts["leads"] = int(
+                conn.execute(
+                    text(
+                        """
+                        DELETE FROM center_leads
+                        WHERE lower(email) LIKE '%+test%'
+                           OR lower(email) LIKE '%redbeartv%'
+                        """
+                    )
+                ).rowcount
+                or 0
+            )
+        if "rehab_center_claims" in existing:
+            counts["claims"] = int(
+                conn.execute(
+                    text(
+                        """
+                        DELETE FROM rehab_center_claims
+                        WHERE ticket_number = 'CLM-2026-00006'
+                           OR lower(work_email) LIKE '%+test%'
+                           OR lower(work_email) LIKE '%redbeartv%'
+                           OR lower(full_name) LIKE 'dunn test%'
+                        """
+                    )
+                ).rowcount
+                or 0
+            )
+        if "registration_intents" in existing:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM registration_intents
+                    WHERE lower(email) LIKE '%+test%'
+                       OR lower(email) LIKE '%redbeartv%'
+                    """
+                )
+            )
+        if "users" in existing:
+            counts["users"] = int(
+                conn.execute(text(f"DELETE FROM users WHERE id IN ({test_user_sql})")).rowcount
+                or 0
+            )
+        if "subscriptions" in existing and "users" in existing:
+            counts["canceled_demo_subs"] = int(
+                conn.execute(
+                    text(
+                        """
+                        UPDATE subscriptions
+                        SET status = 'canceled'
+                        WHERE user_id IN (
+                            SELECT id FROM users
+                            WHERE lower(email) IN ('hazelden@example.com', 'caron@example.com')
+                        )
+                          AND status IN ('active', 'trialing', 'past_due', 'pending', 'unpaid', 'inactive')
+                        """
+                    )
+                ).rowcount
+                or 0
+            )
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO app_one_time_jobs (name) VALUES (:name)
+                ON CONFLICT (name) DO UPDATE SET applied_at = NOW()
+                """
+            ),
+            {"name": RESET_TEST_FINANCE_JOB},
+        )
+    return counts
