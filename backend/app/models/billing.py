@@ -75,6 +75,30 @@ class BillingInvoice(Base, TimestampMixin):
     hosted_invoice_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     invoice_pdf: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    source: Mapped[str] = mapped_column(String(32), default="subscription")  # subscription | upsell
+    source: Mapped[str] = mapped_column(String(32), default="subscription")  # subscription | upsell | mixed | custom
     product_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    lines: Mapped[list["BillingInvoiceLine"]] = relationship(
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+        order_by="BillingInvoiceLine.sort_order",
+    )
+
+
+class BillingInvoiceLine(Base, TimestampMixin):
+    """Editable line item on a sale / invoice."""
+
+    __tablename__ = "billing_invoice_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("billing_invoices.id", ondelete="CASCADE"), index=True)
+    catalog_key: Mapped[str] = mapped_column(String(64), default="custom")
+    description: Mapped[str] = mapped_column(String(255))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    interval: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="custom")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    invoice: Mapped["BillingInvoice"] = relationship(back_populates="lines")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from PIL import Image
@@ -38,6 +38,14 @@ def _rgb(rgb: tuple[float, float, float]) -> str:
 
 
 @dataclass
+class InvoicePdfLine:
+    description: str
+    amount_label: str
+    quantity: int = 1
+    interval: str = ""
+
+
+@dataclass
 class InvoicePdfData:
     number: str
     status: str
@@ -52,6 +60,7 @@ class InvoicePdfData:
     description: str = ""
     support_email: str = "support@strugglingwithaddiction.com"
     site_url: str = "https://strugglingwithaddiction.com"
+    lines: list[InvoicePdfLine] = field(default_factory=list)
 
 
 def _resolve_logo_path() -> Path | None:
@@ -148,7 +157,7 @@ def build_invoice_pdf(data: InvoicePdfData) -> bytes:
         text(margin, PAGE_H - 42, "Struggling With Addiction", size=14, bold=True, color=WHITE)
         text(margin, PAGE_H - 58, "SWA Studio", size=10, color=BLUE)
 
-    text_right(PAGE_W - margin, PAGE_H - 40, "INVOICE", size=22, bold=True, color=WHITE, approx_char_w=12)
+    text_right(PAGE_W - margin, PAGE_H - 40, "Invoice", size=22, bold=True, color=WHITE, approx_char_w=12)
     status = (data.status or "-").upper()
     text_right(PAGE_W - margin, PAGE_H - 60, status, size=10, bold=True, color=BLUE, approx_char_w=6)
 
@@ -200,21 +209,30 @@ def build_invoice_pdf(data: InvoicePdfData) -> bytes:
     header_row_h = 26
     fill_rect(margin, table_top - header_row_h, content_w, header_row_h, NAVY)
     text(margin + 12, table_top - 17, "Description", size=9, bold=True, color=WHITE)
-    text(margin + 300, table_top - 17, "Interval", size=9, bold=True, color=WHITE)
+    text(margin + 330, table_top - 17, "Qty", size=9, bold=True, color=WHITE)
     text_right(PAGE_W - margin - 12, table_top - 17, "Amount", size=9, bold=True, color=WHITE, approx_char_w=5.2)
 
-    y = table_top - header_row_h
-    fill_rect(margin, y - row_h, content_w, row_h, WHITE)
-    stroke_rect(margin, y - row_h, content_w, row_h, LINE)
-    product = data.product or "Subscription"
-    if data.center_name:
-        product = f"{product} - {data.center_name}"
-    text(margin + 12, y - 18, product[:58], size=10, bold=True)
-    text(margin + 300, y - 18, (data.interval or "-").title(), size=10, color=GRAY)
-    text_right(PAGE_W - margin - 12, y - 18, data.amount_label, size=10, bold=True, approx_char_w=5.5)
-    y -= row_h
+    pdf_lines = list(data.lines or [])
+    if not pdf_lines:
+        product = data.product or "Subscription"
+        if data.center_name:
+            product = f"{product} - {data.center_name}"
+        pdf_lines = [InvoicePdfLine(description=product, amount_label=data.amount_label, interval=data.interval or "")]
 
-    if data.description and data.description != data.product:
+    y = table_top - header_row_h
+    for index, line in enumerate(pdf_lines[:14]):
+        fill_rect(margin, y - row_h, content_w, row_h, LIGHT if index % 2 else WHITE)
+        stroke_rect(margin, y - row_h, content_w, row_h, LINE)
+        detail = (line.interval or "").replace("_", " ").title()
+        label = line.description[:48]
+        if detail and detail.lower() not in label.lower():
+            label = f"{label} ({detail})"[:58]
+        text(margin + 12, y - 18, label, size=10, bold=True)
+        text(margin + 334, y - 18, str(line.quantity or 1), size=10, color=GRAY)
+        text_right(PAGE_W - margin - 12, y - 18, line.amount_label, size=10, bold=True, approx_char_w=5.5)
+        y -= row_h
+
+    if data.description and data.description not in {line.description for line in pdf_lines}:
         fill_rect(margin, y - 22, content_w, 22, LIGHT)
         text(margin + 12, y - 15, data.description[:80], size=8, color=GRAY)
         y -= 22

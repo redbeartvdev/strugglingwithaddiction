@@ -91,10 +91,6 @@ export default function ClientBilling() {
     setBusyPdf(invoice.id)
     setErr('')
     try {
-      if (invoice.invoice_pdf) {
-        window.open(invoice.invoice_pdf, '_blank', 'noopener,noreferrer')
-        return
-      }
       const { blob, filename } = await apiBlob(`/api/billing/invoices/${invoice.id}/pdf`)
       downloadBlob(blob, filename || `${invoice.number || invoice.id}.pdf`)
     } catch (e) {

@@ -58,12 +58,12 @@ function applyEmailSettings(s) {
     postal_address: s.postal_address || '',
     site_name: s.site_name || '',
     logo_url: s.logo_url || '',
-    resend_api_key: '',
+    resend_api_key: s.resend_api_key || '',
     clear_resend_api_key: false,
     smtp_host: s.smtp_host || '',
     smtp_port: s.smtp_port || 587,
     smtp_user: s.smtp_user || '',
-    smtp_password: '',
+    smtp_password: s.smtp_password || '',
     clear_smtp_password: false,
     smtp_use_tls: s.smtp_use_tls !== false,
     social_facebook: s.social_facebook || '',
@@ -72,7 +72,7 @@ function applyEmailSettings(s) {
     social_instagram: s.social_instagram || '',
     social_linkedin: s.social_linkedin || '',
     mailchimp_enabled: !!s.mailchimp_enabled,
-    mailchimp_api_key: '',
+    mailchimp_api_key: s.mailchimp_api_key || '',
     clear_mailchimp_api_key: false,
     mailchimp_audience_id: s.mailchimp_audience_id || '',
     abandonment_emails_enabled: s.abandonment_emails_enabled !== false,
@@ -92,6 +92,7 @@ export default function AdminSettings() {
   const [emailForm, setEmailForm] = useState(emptyEmailForm)
   const [testTo, setTestTo] = useState('')
   const [mailchimpPing, setMailchimpPing] = useState('')
+  const [resendPing, setResendPing] = useState('')
 
   const [stripe, setStripe] = useState(null)
 
@@ -187,23 +188,26 @@ export default function AdminSettings() {
     setErr('')
     setMsg('')
     try {
+      const resendKey = emailForm.resend_api_key.trim()
+      const smtpPassword = emailForm.smtp_password.trim()
+      const mailchimpKey = emailForm.mailchimp_api_key.trim()
       const body = {
         provider: emailForm.provider,
         email_from: emailForm.email_from,
-        clear_resend_api_key: emailForm.clear_resend_api_key,
+        clear_resend_api_key: !resendKey && !!emailMeta?.resend_api_key,
         smtp_host: emailForm.smtp_host || null,
         smtp_port: Number(emailForm.smtp_port) || 587,
         smtp_user: emailForm.smtp_user || null,
-        clear_smtp_password: emailForm.clear_smtp_password,
+        clear_smtp_password: !smtpPassword && !!emailMeta?.smtp_password,
         smtp_use_tls: emailForm.smtp_use_tls,
         mailchimp_enabled: !!emailForm.mailchimp_enabled,
         mailchimp_audience_id: emailForm.mailchimp_audience_id || null,
         abandonment_emails_enabled: emailForm.abandonment_emails_enabled !== false,
-        clear_mailchimp_api_key: emailForm.clear_mailchimp_api_key,
+        clear_mailchimp_api_key: !mailchimpKey && !!emailMeta?.mailchimp_api_key,
       }
-      if (emailForm.resend_api_key.trim()) body.resend_api_key = emailForm.resend_api_key.trim()
-      if (emailForm.smtp_password.trim()) body.smtp_password = emailForm.smtp_password.trim()
-      if (emailForm.mailchimp_api_key.trim()) body.mailchimp_api_key = emailForm.mailchimp_api_key.trim()
+      if (resendKey) body.resend_api_key = resendKey
+      if (smtpPassword) body.smtp_password = smtpPassword
+      if (mailchimpKey) body.mailchimp_api_key = mailchimpKey
       const updated = await api('/api/admin/email-settings', {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -211,6 +215,7 @@ export default function AdminSettings() {
       setEmailMeta(updated)
       setEmailForm(applyEmailSettings(updated))
       setMailchimpPing('')
+      setResendPing('')
       setMsg('Email settings saved.')
     } catch (error) {
       setErr(error.message)
@@ -241,13 +246,14 @@ export default function AdminSettings() {
     setErr('')
     setMsg('')
     try {
+      const mailchimpKey = emailForm.mailchimp_api_key.trim()
       const body = {
         mailchimp_enabled: !!emailForm.mailchimp_enabled,
         mailchimp_audience_id: emailForm.mailchimp_audience_id || null,
         abandonment_emails_enabled: emailForm.abandonment_emails_enabled !== false,
-        clear_mailchimp_api_key: emailForm.clear_mailchimp_api_key,
+        clear_mailchimp_api_key: !mailchimpKey && !!emailMeta?.mailchimp_api_key,
       }
-      if (emailForm.mailchimp_api_key.trim()) body.mailchimp_api_key = emailForm.mailchimp_api_key.trim()
+      if (mailchimpKey) body.mailchimp_api_key = mailchimpKey
       const updated = await api('/api/admin/email-settings', {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -256,6 +262,26 @@ export default function AdminSettings() {
       setEmailForm(applyEmailSettings(updated))
       setMailchimpPing('')
       setMsg('Mailchimp settings saved.')
+    } catch (error) {
+      setErr(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function pingResend() {
+    setBusy(true)
+    setErr('')
+    setResendPing('')
+    try {
+      const res = await api('/api/admin/email-settings/resend/ping', { method: 'POST' })
+      const domainNote = res.domain_verified
+        ? `From domain ${res.from_domain} is verified`
+        : `From domain ${res.from_domain || 'unknown'} is not verified in this Resend account`
+      setResendPing(`Key accepted · ${domainNote}${res.verified_domains?.length ? ` · verified: ${res.verified_domains.join(', ')}` : ''}`)
+      if (!res.domain_verified) {
+        setErr('Resend accepted the key, but the From address domain is not verified. Add and verify it in Resend → Domains or mail will be rejected.')
+      }
     } catch (error) {
       setErr(error.message)
     } finally {
@@ -283,11 +309,11 @@ export default function AdminSettings() {
     setErr('')
     setMsg('')
     try {
-      await api('/api/admin/email-settings/test', {
+      const res = await api('/api/admin/email-settings/test', {
         method: 'POST',
         body: JSON.stringify({ to_email: testTo.trim() }),
       })
-      setMsg(`Test email sent to ${testTo.trim()}.`)
+      setMsg(res.message || `Test email sent to ${testTo.trim()}.`)
     } catch (error) {
       setErr(error.message)
     } finally {
@@ -342,26 +368,18 @@ export default function AdminSettings() {
         />{' '}
         Enable Mailchimp audience sync
       </label>
-      <label>
-        API key{emailMeta?.mailchimp_api_key_set ? ' (saved — leave blank to keep)' : ''}
-      </label>
+      <label>API key</label>
       <input
-        type="password"
+        type="text"
         autoComplete="off"
+        spellCheck={false}
         value={emailForm.mailchimp_api_key}
         onChange={e => setEmailForm(f => ({ ...f, mailchimp_api_key: e.target.value, clear_mailchimp_api_key: false }))}
-        placeholder={emailMeta?.mailchimp_api_key_set ? '••••••••' : 'abcd…-us21'}
+        placeholder="abcd…-us21"
       />
-      {emailMeta?.mailchimp_api_key_set && (
-        <label style={{ display: 'block', marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={emailForm.clear_mailchimp_api_key}
-            onChange={e => setEmailForm(f => ({ ...f, clear_mailchimp_api_key: e.target.checked }))}
-          />{' '}
-          Clear saved Mailchimp API key
-        </label>
-      )}
+      <p className="muted" style={{ marginTop: 4 }}>
+        Saved key stays visible here. Leave empty and save to remove it.
+      </p>
       <label style={{ marginTop: 8 }}>Audience / list ID</label>
       <input
         value={emailForm.mailchimp_audience_id}
@@ -538,30 +556,33 @@ export default function AdminSettings() {
             onChange={e => setEmailForm(f => ({ ...f, email_from: e.target.value }))}
             placeholder="noreply@strugglingwithaddiction.com"
           />
+          <p className="muted" style={{ marginTop: 4 }}>
+            This domain must be verified in Resend → Domains. The key saved below is used first; Railway RESEND_API_KEY is only a fallback.
+          </p>
 
           {showResend && (
             <>
               <p className="eyebrow" style={{ marginTop: 16 }}>Resend</p>
-              <label>
-                API key{emailMeta?.resend_api_key_set ? ' (saved — leave blank to keep)' : ''}
-              </label>
+              <label>API key</label>
               <input
-                type="password"
+                type="text"
                 autoComplete="off"
+                spellCheck={false}
                 value={emailForm.resend_api_key}
                 onChange={e => setEmailForm(f => ({ ...f, resend_api_key: e.target.value, clear_resend_api_key: false }))}
-                placeholder={emailMeta?.resend_api_key_set ? '••••••••' : 're_…'}
+                placeholder="re_…"
               />
-              {emailMeta?.resend_api_key_set && (
-                <label style={{ display: 'block', marginTop: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={emailForm.clear_resend_api_key}
-                    onChange={e => setEmailForm(f => ({ ...f, clear_resend_api_key: e.target.checked }))}
-                  />{' '}
-                  Clear saved Resend API key
-                </label>
-              )}
+              <p className="muted" style={{ marginTop: 4 }}>
+                {emailMeta?.resend_key_source === 'env' && !emailForm.resend_api_key
+                  ? 'Using Railway RESEND_API_KEY until you save a key here.'
+                  : 'Saved key stays visible here. Leave empty and save to remove it.'}
+              </p>
+              <div className="form-actions" style={{ marginTop: 8 }}>
+                <Button type="button" variant="ghost" onClick={pingResend} disabled={busy}>
+                  Test Resend connection
+                </Button>
+                {resendPing && <span className="success">{resendPing}</span>}
+              </div>
             </>
           )}
 
@@ -598,12 +619,11 @@ export default function AdminSettings() {
                   />
                 </div>
                 <div>
-                  <label>
-                    Password{emailMeta?.smtp_password_set ? ' (saved — leave blank to keep)' : ''}
-                  </label>
+                  <label>Password</label>
                   <input
-                    type="password"
-                    autoComplete="new-password"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={emailForm.smtp_password}
                     onChange={e => setEmailForm(f => ({ ...f, smtp_password: e.target.value, clear_smtp_password: false }))}
                   />
@@ -618,16 +638,6 @@ export default function AdminSettings() {
                 />{' '}
                 Use TLS (STARTTLS)
               </label>
-              {emailMeta?.smtp_password_set && (
-                <label style={{ display: 'block', marginTop: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={emailForm.clear_smtp_password}
-                    onChange={e => setEmailForm(f => ({ ...f, clear_smtp_password: e.target.checked }))}
-                  />{' '}
-                  Clear saved SMTP password
-                </label>
-              )}
             </>
           )}
 

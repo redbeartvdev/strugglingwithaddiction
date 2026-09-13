@@ -95,12 +95,12 @@ export default function AdminEmails() {
         postal_address: s.postal_address || '',
         site_name: s.site_name || '',
         logo_url: s.logo_url || '',
-        resend_api_key: '',
+        resend_api_key: s.resend_api_key || '',
         clear_resend_api_key: false,
         smtp_host: s.smtp_host || '',
         smtp_port: s.smtp_port || 587,
         smtp_user: s.smtp_user || '',
-        smtp_password: '',
+        smtp_password: s.smtp_password || '',
         clear_smtp_password: false,
         smtp_use_tls: s.smtp_use_tls !== false,
         social_facebook: s.social_facebook || '',
@@ -109,7 +109,7 @@ export default function AdminEmails() {
         social_instagram: s.social_instagram || '',
         social_linkedin: s.social_linkedin || '',
         mailchimp_enabled: !!s.mailchimp_enabled,
-        mailchimp_api_key: '',
+        mailchimp_api_key: s.mailchimp_api_key || '',
         clear_mailchimp_api_key: false,
         mailchimp_audience_id: s.mailchimp_audience_id || '',
         abandonment_emails_enabled: s.abandonment_emails_enabled !== false,
@@ -220,6 +220,9 @@ export default function AdminEmails() {
     setErr('')
     setMsg('')
     try {
+      const resendKey = form.resend_api_key.trim()
+      const smtpPassword = form.smtp_password.trim()
+      const mailchimpKey = form.mailchimp_api_key.trim()
       const payload = {
         provider: form.provider,
         email_from: form.email_from,
@@ -238,13 +241,13 @@ export default function AdminEmails() {
         mailchimp_enabled: !!form.mailchimp_enabled,
         mailchimp_audience_id: form.mailchimp_audience_id || null,
         abandonment_emails_enabled: form.abandonment_emails_enabled !== false,
-        clear_resend_api_key: form.clear_resend_api_key,
-        clear_smtp_password: form.clear_smtp_password,
-        clear_mailchimp_api_key: form.clear_mailchimp_api_key,
+        clear_resend_api_key: !resendKey && !!settingsMeta?.resend_api_key,
+        clear_smtp_password: !smtpPassword && !!settingsMeta?.smtp_password,
+        clear_mailchimp_api_key: !mailchimpKey && !!settingsMeta?.mailchimp_api_key,
       }
-      if (form.resend_api_key.trim()) payload.resend_api_key = form.resend_api_key.trim()
-      if (form.smtp_password.trim()) payload.smtp_password = form.smtp_password.trim()
-      if (form.mailchimp_api_key.trim()) payload.mailchimp_api_key = form.mailchimp_api_key.trim()
+      if (resendKey) payload.resend_api_key = resendKey
+      if (smtpPassword) payload.smtp_password = smtpPassword
+      if (mailchimpKey) payload.mailchimp_api_key = mailchimpKey
       const updated = await api('/api/admin/email-settings', {
         method: 'PATCH',
         body: JSON.stringify(payload),
@@ -252,9 +255,9 @@ export default function AdminEmails() {
       setSettingsMeta(updated)
       setForm(f => ({
         ...f,
-        resend_api_key: '',
-        smtp_password: '',
-        mailchimp_api_key: '',
+        resend_api_key: updated.resend_api_key || '',
+        smtp_password: updated.smtp_password || '',
+        mailchimp_api_key: updated.mailchimp_api_key || '',
         clear_resend_api_key: false,
         clear_smtp_password: false,
         clear_mailchimp_api_key: false,
@@ -594,6 +597,9 @@ export default function AdminEmails() {
                 onChange={e => setForm(f => ({ ...f, email_from: e.target.value }))}
                 placeholder="noreply@strugglingwithaddiction.com"
               />
+              <p className="muted" style={{ marginTop: 4 }}>
+                This domain must be verified in Resend → Domains.
+              </p>
             </div>
             <div>
               <label>Site name</label>
@@ -635,26 +641,20 @@ export default function AdminEmails() {
           {showResend && (
             <>
               <p className="eyebrow" style={{ marginTop: 16 }}>Resend</p>
-              <label>
-                API key{settingsMeta?.resend_api_key_set ? ' (saved — leave blank to keep)' : ''}
-              </label>
+              <label>API key</label>
               <input
-                type="password"
+                type="text"
                 autoComplete="off"
+                spellCheck={false}
                 value={form.resend_api_key}
                 onChange={e => setForm(f => ({ ...f, resend_api_key: e.target.value, clear_resend_api_key: false }))}
-                placeholder={settingsMeta?.resend_api_key_set ? '••••••••' : 're_…'}
+                placeholder="re_…"
               />
-              {settingsMeta?.resend_api_key_set && (
-                <label style={{ display: 'block', marginTop: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.clear_resend_api_key}
-                    onChange={e => setForm(f => ({ ...f, clear_resend_api_key: e.target.checked }))}
-                  />{' '}
-                  Clear saved Resend API key
-                </label>
-              )}
+              <p className="muted" style={{ marginTop: 4 }}>
+                {settingsMeta?.resend_key_source === 'env' && !form.resend_api_key
+                  ? 'Using Railway RESEND_API_KEY until you save a key here.'
+                  : 'Saved key stays visible here. Leave empty and save to remove it.'}
+              </p>
             </>
           )}
 
@@ -700,14 +700,13 @@ export default function AdminEmails() {
                 <div>
                   <label>
                     {form.provider === 'gmail_smtp' ? 'App password' : 'Password'}
-                    {settingsMeta?.smtp_password_set ? ' (saved — leave blank to keep)' : ''}
                   </label>
                   <input
-                    type="password"
-                    autoComplete="new-password"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={form.smtp_password}
                     onChange={e => setForm(f => ({ ...f, smtp_password: e.target.value, clear_smtp_password: false }))}
-                    placeholder={settingsMeta?.smtp_password_set ? '••••••••' : ''}
                   />
                 </div>
               </div>
@@ -720,16 +719,6 @@ export default function AdminEmails() {
                 />{' '}
                 Use TLS (STARTTLS)
               </label>
-              {settingsMeta?.smtp_password_set && (
-                <label style={{ display: 'block', marginTop: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.clear_smtp_password}
-                    onChange={e => setForm(f => ({ ...f, clear_smtp_password: e.target.checked }))}
-                  />{' '}
-                  Clear saved SMTP password
-                </label>
-              )}
             </>
           )}
 
@@ -749,26 +738,18 @@ export default function AdminEmails() {
             />{' '}
             Enable Mailchimp audience sync
           </label>
-          <label>
-            API key{settingsMeta?.mailchimp_api_key_set ? ' (saved — leave blank to keep)' : ''}
-          </label>
+          <label>API key</label>
           <input
-            type="password"
+            type="text"
             autoComplete="off"
+            spellCheck={false}
             value={form.mailchimp_api_key}
             onChange={e => setForm(f => ({ ...f, mailchimp_api_key: e.target.value, clear_mailchimp_api_key: false }))}
-            placeholder={settingsMeta?.mailchimp_api_key_set ? '••••••••' : 'abcd…-us21'}
+            placeholder="abcd…-us21"
           />
-          {settingsMeta?.mailchimp_api_key_set && (
-            <label style={{ display: 'block', marginTop: 8 }}>
-              <input
-                type="checkbox"
-                checked={form.clear_mailchimp_api_key}
-                onChange={e => setForm(f => ({ ...f, clear_mailchimp_api_key: e.target.checked }))}
-              />{' '}
-              Clear saved Mailchimp API key
-            </label>
-          )}
+          <p className="muted" style={{ marginTop: 4 }}>
+            Saved key stays visible here. Leave empty and save to remove it.
+          </p>
           <label style={{ marginTop: 8 }}>Audience / list ID</label>
           <input
             value={form.mailchimp_audience_id}

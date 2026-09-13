@@ -15,6 +15,7 @@ from app.models.client_portal import ClientLandingPage, ClientPost, ClientPostSt
 from app.models.billing import (
     BillingInterval,
     BillingInvoice,
+    BillingInvoiceLine,
     RegistrationIntent,
     Subscription,
     SubscriptionPlan,
@@ -51,6 +52,7 @@ __all__ = [
     "Subscription",
     "BillingInterval",
     "BillingInvoice",
+    "BillingInvoiceLine",
     "RegistrationIntent",
     "ClientLandingPage",
     "ClientPost",

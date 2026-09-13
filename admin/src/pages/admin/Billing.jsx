@@ -78,19 +78,153 @@ export default function AdminBilling() {
 
   const [busyInv, setBusyInv] = useState('')
   const [viewInv, setViewInv] = useState(null)
+  const [catalog, setCatalog] = useState([])
+  const [editor, setEditor] = useState(null)
+  const [centerQuery, setCenterQuery] = useState('')
+  const [centerHits, setCenterHits] = useState([])
+  const [savingSale, setSavingSale] = useState(false)
+
+  useEffect(() => {
+    if (tab !== 'invoices') return
+    api('/api/billing/admin/sale-catalog').then(d => setCatalog(d.items || [])).catch(() => {})
+  }, [tab])
+
+  useEffect(() => {
+    if (!editor || editor.id || !centerQuery.trim()) {
+      setCenterHits([])
+      return
+    }
+    const handle = setTimeout(() => {
+      api(`/api/admin/rehab-centers?q=${encodeURIComponent(centerQuery.trim())}&per_page=8`)
+        .then(d => setCenterHits(d.items || []))
+        .catch(() => setCenterHits([]))
+    }, 220)
+    return () => clearTimeout(handle)
+  }, [centerQuery, editor])
+
+  function emptyLine(item) {
+    return {
+      catalog_key: item?.key || 'custom',
+      description: item?.label || '',
+      quantity: 1,
+      unit_amount_cents: item?.amount_cents || 0,
+      interval: item?.interval || 'once',
+      source: item?.source || 'custom',
+    }
+  }
+
+  function openNewSale() {
+    setViewInv(null)
+    setCenterQuery('')
+    setEditor({
+      id: null,
+      rehab_center_id: null,
+      center_name: '',
+      email: '',
+      status: 'paid',
+      description: '',
+      lines: [emptyLine(catalog.find(i => i.key === 'subscription_yearly') || catalog[0])],
+    })
+  }
+
+  function openSale(inv) {
+    setViewInv(null)
+    setCenterQuery('')
+    setEditor({
+      id: inv.id,
+      number: inv.number,
+      rehab_center_id: inv.rehab_center_id,
+      center_name: inv.center_name || '',
+      email: inv.email || '',
+      status: inv.status || 'paid',
+      description: inv.description || '',
+      lines: (inv.lines && inv.lines.length)
+        ? inv.lines.map(line => ({
+          catalog_key: line.catalog_key,
+          description: line.description,
+          quantity: line.quantity || 1,
+          unit_amount_cents: line.unit_amount_cents || 0,
+          interval: line.interval || 'once',
+          source: line.source || 'custom',
+        }))
+        : [emptyLine({ key: 'custom', label: inv.product_label || 'Sale item', amount_cents: inv.amount_due || inv.amount_paid || 0, interval: inv.interval, source: inv.source })],
+    })
+  }
+
+  async function openSaleById(id) {
+    const detail = await api(`/api/billing/admin/invoices/${id}`)
+    openSale(detail)
+  }
+
+  function saleTotalCents(sale) {
+    return (sale?.lines || []).reduce((sum, line) => sum + (Number(line.quantity) || 1) * (Number(line.unit_amount_cents) || 0), 0)
+  }
+
+  function updateLine(index, patch) {
+    setEditor(cur => ({
+      ...cur,
+      lines: cur.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)),
+    }))
+  }
+
+  async function saveSale() {
+    if (!editor) return
+    if (!editor.lines.length) {
+      setErr('Add at least one payment item.')
+      return
+    }
+    if (!editor.id && !editor.rehab_center_id) {
+      setErr('Choose a rehab center for this sale.')
+      return
+    }
+    setSavingSale(true)
+    setErr('')
+    try {
+      const payload = {
+        status: editor.status,
+        rehab_center_id: editor.rehab_center_id || null,
+        description: editor.description || null,
+        lines: editor.lines.map(line => ({
+          catalog_key: line.catalog_key || 'custom',
+          description: line.description,
+          quantity: Number(line.quantity) || 1,
+          unit_amount_cents: Math.round(Number(line.unit_amount_cents) || 0),
+          interval: line.interval || null,
+          source: line.source || null,
+        })),
+      }
+      const saved = editor.id
+        ? await api(`/api/billing/admin/invoices/${editor.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+        : await api('/api/billing/admin/invoices', { method: 'POST', body: JSON.stringify(payload) })
+      openSale(saved)
+      loadTab('invoices')
+    } catch (ex) {
+      setErr(ex.message)
+    } finally {
+      setSavingSale(false)
+    }
+  }
+
+  async function deleteSale() {
+    if (!editor?.id) return
+    if (!confirm('Delete this sale and its payment items?')) return
+    setSavingSale(true)
+    setErr('')
+    try {
+      await api(`/api/billing/admin/invoices/${editor.id}`, { method: 'DELETE' })
+      setEditor(null)
+      loadTab('invoices')
+    } catch (ex) {
+      setErr(ex.message)
+    } finally {
+      setSavingSale(false)
+    }
+  }
 
   async function downloadInvoicePdf(inv, { inline = false } = {}) {
     setBusyInv(`${inv.id}-${inline ? 'view' : 'dl'}`)
     setErr('')
     try {
-      if (inv.invoice_pdf && !String(inv.stripe_invoice_id || '').startsWith('local_')) {
-        window.open(inv.invoice_pdf, '_blank', 'noopener,noreferrer')
-        return
-      }
-      if (inv.hosted_invoice_url && inline) {
-        window.open(inv.hosted_invoice_url, '_blank', 'noopener,noreferrer')
-        return
-      }
       const { blob, filename } = await apiBlob(`/api/billing/admin/invoices/${inv.id}/pdf?download=${inline ? 0 : 1}`)
       const url = URL.createObjectURL(blob)
       if (inline) {
@@ -278,9 +412,9 @@ export default function AdminBilling() {
       {tab === 'invoices' && (
         <div>
           <p className="muted" style={{ marginBottom: 12 }}>
-            All rehab-center invoices. Filter by paid vs not paid. Unpaid rows include a Stripe pay link.
+            Manage each sale: add listing subscriptions, service upgrades, or custom payment items. PDFs say Invoice, not Tax Invoice.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
             {[
               { id: 'all', label: `All (${invoiceCounts.all || invoices.length})` },
               { id: 'paid', label: `Paid (${invoiceCounts.paid || 0})` },
@@ -295,6 +429,7 @@ export default function AdminBilling() {
                 {item.label}
               </button>
             ))}
+            <Button type="button" onClick={openNewSale}>New sale</Button>
           </div>
           <div className="table-wrap">
             <table>
@@ -335,6 +470,14 @@ export default function AdminBilling() {
                         type="button"
                         variant="ghost"
                         size="sm"
+                        onClick={() => openSaleById(inv.id).catch(e => setErr(e.message))}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         disabled={busyInv === `${inv.id}-view`}
                         onClick={() => downloadInvoicePdf(inv, { inline: true })}
                       >
@@ -357,6 +500,176 @@ export default function AdminBilling() {
           </div>
           {invoices.length === 0 && (
             <p className="muted">No invoices in this filter.</p>
+          )}
+
+          {editor && (
+            <div className="card card-flat" style={{ marginTop: 16 }}>
+              <p className="eyebrow">{editor.id ? 'Edit sale' : 'New sale'}</p>
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>
+                {editor.number || 'Draft invoice'}
+                {editor.email ? ` · ${editor.email}` : ''}
+              </p>
+
+              {!editor.id && (
+                <div style={{ marginBottom: 16 }}>
+                  <label>Rehab center</label>
+                  <input
+                    value={centerQuery}
+                    onChange={e => setCenterQuery(e.target.value)}
+                    placeholder="Search center name…"
+                  />
+                  {editor.center_name && (
+                    <p className="muted" style={{ marginTop: 6 }}>Selected: {editor.center_name}</p>
+                  )}
+                  {centerHits.length > 0 && (
+                    <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                      {centerHits.map(center => (
+                        <button
+                          key={center.id}
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ justifyContent: 'flex-start' }}
+                          onClick={() => {
+                            setEditor(cur => ({ ...cur, rehab_center_id: center.id, center_name: center.name }))
+                            setCenterQuery(center.name)
+                            setCenterHits([])
+                          }}
+                        >
+                          {center.name}
+                          {center.location_display ? ` · ${center.location_display}` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {editor.id && (
+                <p className="muted" style={{ marginBottom: 12 }}>{editor.center_name || 'No center linked'}</p>
+              )}
+
+              <div className="form-grid-2" style={{ marginBottom: 16 }}>
+                <div>
+                  <label>Status</label>
+                  <select value={editor.status} onChange={e => setEditor(cur => ({ ...cur, status: e.target.value }))}>
+                    <option value="paid">Paid</option>
+                    <option value="open">Open / unpaid</option>
+                    <option value="draft">Draft</option>
+                    <option value="void">Void</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Internal note</label>
+                  <input
+                    value={editor.description}
+                    onChange={e => setEditor(cur => ({ ...cur, description: e.target.value }))}
+                    placeholder="Optional note on this sale"
+                  />
+                </div>
+              </div>
+
+              <p className="eyebrow">Payment items</p>
+              <div className="table-wrap" style={{ marginTop: 8 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Amount</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editor.lines.map((line, index) => (
+                      <tr key={`${line.catalog_key}-${index}`}>
+                        <td>
+                          <input
+                            value={line.description}
+                            onChange={e => updateLine(index, { description: e.target.value })}
+                          />
+                          <p className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                            {(line.interval || 'once').replace('_', ' ')} · {line.source || 'custom'}
+                          </p>
+                        </td>
+                        <td style={{ width: 80 }}>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={e => updateLine(index, { quantity: Number(e.target.value) || 1 })}
+                          />
+                        </td>
+                        <td style={{ width: 140 }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={((Number(line.unit_amount_cents) || 0) / 100).toFixed(2)}
+                            onChange={e => updateLine(index, { unit_amount_cents: Math.round(Number(e.target.value || 0) * 100) })}
+                          />
+                        </td>
+                        <td>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditor(cur => ({ ...cur, lines: cur.lines.filter((_, i) => i !== index) }))}
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, alignItems: 'center' }}>
+                <select
+                  defaultValue=""
+                  onChange={e => {
+                    const item = catalog.find(c => c.key === e.target.value)
+                    e.target.value = ''
+                    if (item) setEditor(cur => ({ ...cur, lines: [...cur.lines, emptyLine(item)] }))
+                  }}
+                >
+                  <option value="" disabled>Add existing item…</option>
+                  {catalog.filter(item => item.group === 'subscription').map(item => (
+                    <option key={item.key} value={item.key}>{item.label} · ${(item.amount_cents / 100).toFixed(2)}</option>
+                  ))}
+                  {catalog.filter(item => item.group === 'services').map(item => (
+                    <option key={item.key} value={item.key}>{item.label} · ${(item.amount_cents / 100).toFixed(2)}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEditor(cur => ({ ...cur, lines: [...cur.lines, emptyLine(catalog.find(i => i.key === 'custom'))] }))}
+                >
+                  Add custom payment
+                </Button>
+                <strong style={{ marginLeft: 'auto' }}>
+                  Total {money(`USD ${(saleTotalCents(editor) / 100).toFixed(2)}`)}
+                </strong>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+                <Button type="button" onClick={saveSale} disabled={savingSale}>
+                  {savingSale ? 'Saving…' : editor.id ? 'Save sale' : 'Create sale'}
+                </Button>
+                {editor.id && (
+                  <Button type="button" variant="ghost" onClick={() => downloadInvoicePdf({ id: editor.id, number: editor.number }, { inline: true })}>
+                    View invoice
+                  </Button>
+                )}
+                {editor.id && (
+                  <Button type="button" variant="ghost" onClick={deleteSale} disabled={savingSale}>
+                    Delete sale
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" onClick={() => setEditor(null)}>Close</Button>
+              </div>
+            </div>
           )}
 
           {viewInv && (

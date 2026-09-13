@@ -142,25 +142,15 @@ export default function ClaimStatus() {
               </div>
             </dl>
 
-            <div className="claim-status-bottom">
-              <div className="claim-status-invoice">
+            <div className="claim-status-invoice">
+              <div className="claim-status-invoice-copy">
                 <h3>Your invoice</h3>
                 {invoice && downloadUrl ? (
-                  <>
-                    <p>
-                      {invoice.number ? <>Invoice {invoice.number}</> : 'Listing subscription invoice'}
-                      {invoice.amount_label ? <> · {invoice.amount_label}</> : null}
-                      {invoice.interval === 'year' ? ' billed annually' : invoice.interval === 'month' ? ' billed monthly' : ''}
-                    </p>
-                    <a
-                      className="btn btn-outline"
-                      href={downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Download invoice
-                    </a>
-                  </>
+                  <p>
+                    {invoice.number ? <>Invoice {invoice.number}</> : 'Listing subscription invoice'}
+                    {invoice.amount_label ? <> · {invoice.amount_label}</> : null}
+                    {invoice.interval === 'year' ? ' billed annually' : invoice.interval === 'month' ? ' billed monthly' : ''}
+                  </p>
                 ) : (
                   <p>
                     Your invoice is being prepared. It will appear here shortly,
@@ -169,6 +159,16 @@ export default function ClaimStatus() {
                 )}
               </div>
               <div className="claim-status-actions">
+                {invoice && downloadUrl && (
+                  <a
+                    className="btn btn-outline"
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Download invoice
+                  </a>
+                )}
                 <Link to="/portal" className="btn">Open provider portal</Link>
               </div>
             </div>

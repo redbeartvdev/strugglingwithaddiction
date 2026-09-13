@@ -9,10 +9,13 @@ class PlatformEmailSettingsOut(BaseModel):
     postal_address: str
     site_name: str
     logo_url: str | None
+    resend_api_key: str | None = None
     resend_api_key_set: bool
+    resend_key_source: str | None = None
     smtp_host: str | None
     smtp_port: int
     smtp_user: str | None
+    smtp_password: str | None = None
     smtp_password_set: bool
     smtp_use_tls: bool
     social_facebook: str | None
@@ -24,6 +27,7 @@ class PlatformEmailSettingsOut(BaseModel):
     env_resend_configured: bool
     env_smtp_configured: bool
     mailchimp_enabled: bool = False
+    mailchimp_api_key: str | None = None
     mailchimp_api_key_set: bool = False
     mailchimp_audience_id: str | None = None
     mailchimp_configured: bool = False

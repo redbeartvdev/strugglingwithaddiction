@@ -26,11 +26,13 @@ from app.services.email import (
     DEFAULT_TEMPLATES,
     get_platform_email_settings,
     list_template_catalog,
+    ping_resend,
     render_template,
     reset_template_content,
     resolve_email_delivery,
     save_template_content,
     send_email,
+    _sanitize_secret,
 )
 from app.services.mailchimp import list_audiences, ping_audience, resolve_mailchimp
 from app.services.storage import get_public_url, upload_file
@@ -42,17 +44,24 @@ def _settings_out(db: Session) -> PlatformEmailSettingsOut:
     row = get_platform_email_settings(db)
     delivery = resolve_email_delivery(db)
     mailchimp = resolve_mailchimp(db)
+    db_resend = _sanitize_secret(row.resend_api_key if row else None)
+    db_smtp_password = _sanitize_secret(row.smtp_password if row else None)
+    db_mailchimp = _sanitize_secret(row.mailchimp_api_key if row else None)
+    stored_provider = ((row.provider if row and row.provider else None) or delivery["provider"] or "auto").strip().lower()
     return PlatformEmailSettingsOut(
-        provider=delivery["provider"],
+        provider=stored_provider,
         email_from=delivery["email_from"],
         postal_address=delivery["postal_address"],
         site_name=delivery["site_name"],
         logo_url=delivery["logo_url"],
-        resend_api_key_set=bool(row and row.resend_api_key) or delivery["env_resend_configured"],
+        resend_api_key=db_resend or None,
+        resend_api_key_set=bool(db_resend) or delivery["env_resend_configured"],
+        resend_key_source=delivery.get("resend_key_source"),
         smtp_host=delivery["smtp_host"] or None,
         smtp_port=delivery["smtp_port"],
         smtp_user=delivery["smtp_user"] or None,
-        smtp_password_set=bool((row and row.smtp_password) or delivery["smtp_password"]),
+        smtp_password=db_smtp_password or None,
+        smtp_password_set=bool(db_smtp_password or delivery["smtp_password"]),
         smtp_use_tls=delivery["smtp_use_tls"],
         social_facebook=delivery["social"]["facebook"] or None,
         social_twitter=delivery["social"]["twitter"] or None,
@@ -63,7 +72,8 @@ def _settings_out(db: Session) -> PlatformEmailSettingsOut:
         env_resend_configured=delivery["env_resend_configured"],
         env_smtp_configured=delivery["env_smtp_configured"],
         mailchimp_enabled=mailchimp["enabled"],
-        mailchimp_api_key_set=bool(mailchimp["api_key"]),
+        mailchimp_api_key=db_mailchimp or None,
+        mailchimp_api_key_set=bool(db_mailchimp or mailchimp["api_key"]),
         mailchimp_audience_id=mailchimp["audience_id"] or None,
         mailchimp_configured=mailchimp["configured"],
         env_mailchimp_configured=mailchimp["env_configured"],
@@ -110,18 +120,29 @@ def update_email_settings(
 
     if clear_resend:
         row.resend_api_key = None
-    elif resend_key is not None and resend_key.strip():
-        row.resend_api_key = resend_key.strip()
+    elif resend_key is not None:
+        cleaned = _sanitize_secret(resend_key)
+        if cleaned:
+            if not cleaned.startswith("re_"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Resend API keys start with re_. Paste the full key from resend.com/api-keys.",
+                )
+            row.resend_api_key = cleaned
 
     if clear_smtp:
         row.smtp_password = None
-    elif smtp_password is not None and smtp_password.strip():
-        row.smtp_password = smtp_password.strip()
+    elif smtp_password is not None:
+        cleaned_smtp = _sanitize_secret(smtp_password)
+        if cleaned_smtp:
+            row.smtp_password = cleaned_smtp
 
     if clear_mailchimp:
         row.mailchimp_api_key = None
-    elif mailchimp_key is not None and mailchimp_key.strip():
-        row.mailchimp_api_key = mailchimp_key.strip()
+    elif mailchimp_key is not None:
+        cleaned_mc = _sanitize_secret(mailchimp_key)
+        if cleaned_mc:
+            row.mailchimp_api_key = cleaned_mc
 
     db.add(row)
     db.commit()
@@ -167,11 +188,28 @@ def send_test_email(
         respect_preferences=False,
     )
     delivery = resolve_email_delivery(db)
+    if not ok:
+        last = (
+            db.query(EmailLog)
+            .filter(EmailLog.to_email == str(body.to_email))
+            .order_by(EmailLog.id.desc())
+            .first()
+        )
+        detail = (last.error if last and last.error else None) or "Test email failed"
+        raise HTTPException(status_code=400, detail=detail)
     return {
-        "ok": ok,
+        "ok": True,
         "effective_provider": delivery["effective_provider"],
-        "message": "Test email queued" if ok else "Test email failed or was skipped",
+        "message": f"Test email sent via {delivery['effective_provider']}",
     }
+
+
+@router.post("/api/admin/email-settings/resend/ping")
+def ping_resend_connection(_: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    try:
+        return ping_resend(db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)[:400]) from exc
 
 
 @router.post("/api/admin/email-settings/mailchimp/ping")

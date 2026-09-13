@@ -90,6 +90,46 @@ class StripeConnectRequest(BaseModel):
     mode: str = "live"
 
 
+class BillingInvoiceLineIn(BaseModel):
+    catalog_key: str = "custom"
+    description: str | None = None
+    quantity: int = Field(default=1, ge=1, le=999)
+    unit_amount_cents: int | None = Field(default=None, ge=0)
+    interval: str | None = None
+    source: str | None = None
+
+
+class BillingInvoiceLineOut(BaseModel):
+    id: int | None = None
+    catalog_key: str
+    description: str
+    quantity: int
+    unit_amount_cents: int
+    amount_cents: int
+    amount_label: str
+    interval: str | None = None
+    source: str
+    sort_order: int = 0
+
+
+class BillingInvoiceCreate(BaseModel):
+    rehab_center_id: int | None = None
+    user_id: int | None = None
+    status: str = "paid"
+    interval: str | None = None
+    description: str | None = None
+    lines: list[BillingInvoiceLineIn] = Field(default_factory=list)
+
+
+class BillingInvoiceUpdate(BaseModel):
+    status: str | None = None
+    rehab_center_id: int | None = None
+    user_id: int | None = None
+    description: str | None = None
+    interval: str | None = None
+    lines: list[BillingInvoiceLineIn] | None = None
+
+
 class BillingInvoiceOut(BaseModel):
     id: int
     stripe_invoice_id: str
@@ -115,5 +155,7 @@ class BillingInvoiceOut(BaseModel):
     center_name: str | None = None
     rehab_center_id: int | None = None
     created_at: datetime | None = None
+    editable: bool = True
+    lines: list[BillingInvoiceLineOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

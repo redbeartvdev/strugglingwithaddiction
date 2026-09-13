@@ -3,9 +3,10 @@ from typing import Annotated, Any
 import csv
 import io
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,14 +14,25 @@ from app.config import get_settings
 from app.core.deps import AdminUser, ClientUser, CurrentUser
 from app.core.security import hash_password
 from app.database import get_db
-from app.models.billing import BillingInterval, BillingInvoice, RegistrationIntent, Subscription, SubscriptionPlan
+from app.models.billing import (
+    BillingInterval,
+    BillingInvoice,
+    BillingInvoiceLine,
+    RegistrationIntent,
+    Subscription,
+    SubscriptionPlan,
+)
 from app.models.profile import UserProfile
 from app.models.rehab import ClaimStatus, RehabCenter, RehabCenterClaim
 from app.models.upsell import UpsellOrder, UpsellOrderStatus
 from app.models.user import User, UserRole
 from app.services.mailchimp import sync_contact
 from app.schemas.billing import (
+    BillingInvoiceCreate,
+    BillingInvoiceLineIn,
+    BillingInvoiceLineOut,
     BillingInvoiceOut,
+    BillingInvoiceUpdate,
     CheckoutRequest,
     RegisterBillingRequest,
     StripeConnectRequest,
@@ -30,7 +42,7 @@ from app.schemas.billing import (
     SubscriptionPlanOut,
     SubscriptionPlanUpdate,
 )
-from app.services.invoice_pdf import InvoicePdfData, build_invoice_pdf
+from app.services.invoice_pdf import InvoicePdfData, InvoicePdfLine, build_invoice_pdf
 from app.services.simple_pdf import build_simple_pdf
 from app.services.stripe_config import (
     apply_catalog_prices,
@@ -99,6 +111,149 @@ def _format_money(amount_cents: int | None, currency: str | None = "usd") -> str
     cents = int(amount_cents or 0)
     cur = (currency or "usd").upper()
     return f"{cur} {cents / 100:.2f}"
+
+
+SALE_CATALOG = [
+    {
+        "key": "subscription_monthly",
+        "label": "SWA Base Listing (monthly)",
+        "amount_cents": 999,
+        "interval": "month",
+        "source": "subscription",
+        "group": "subscription",
+    },
+    {
+        "key": "subscription_yearly",
+        "label": "SWA Base Listing (yearly)",
+        "amount_cents": 9999,
+        "interval": "year",
+        "source": "subscription",
+        "group": "subscription",
+    },
+    {
+        "key": "verified_badge",
+        "label": "Verified / Accredited Badge",
+        "amount_cents": 19900,
+        "interval": "month",
+        "source": "upsell",
+        "group": "services",
+    },
+    {
+        "key": "featured_placement",
+        "label": "Featured Placement",
+        "amount_cents": 24900,
+        "interval": "month",
+        "source": "upsell",
+        "group": "services",
+    },
+    {
+        "key": "featured_article",
+        "label": "Featured Article",
+        "amount_cents": 95000,
+        "interval": "once",
+        "source": "upsell",
+        "group": "services",
+    },
+    {
+        "key": "article_aeo",
+        "label": "Article Syndication + AEO",
+        "amount_cents": 250000,
+        "interval": "once",
+        "source": "upsell",
+        "group": "services",
+    },
+    {
+        "key": "custom",
+        "label": "Custom payment",
+        "amount_cents": 0,
+        "interval": "once",
+        "source": "custom",
+        "group": "custom",
+    },
+]
+SALE_CATALOG_BY_KEY = {item["key"]: item for item in SALE_CATALOG}
+
+
+def _catalog_item(key: str | None) -> dict[str, Any]:
+    return SALE_CATALOG_BY_KEY.get((key or "custom").strip()) or SALE_CATALOG_BY_KEY["custom"]
+
+
+def _line_amount_cents(line: BillingInvoiceLine) -> int:
+    return max(0, int(line.quantity or 1)) * max(0, int(line.unit_amount_cents or 0))
+
+
+def _line_out(line: BillingInvoiceLine, currency: str = "usd") -> BillingInvoiceLineOut:
+    amount = _line_amount_cents(line)
+    return BillingInvoiceLineOut(
+        id=line.id,
+        catalog_key=line.catalog_key,
+        description=line.description,
+        quantity=line.quantity,
+        unit_amount_cents=line.unit_amount_cents,
+        amount_cents=amount,
+        amount_label=_format_money(amount, currency),
+        interval=line.interval,
+        source=line.source,
+        sort_order=line.sort_order,
+    )
+
+
+def _invoice_source_from_lines(lines: list[BillingInvoiceLine]) -> str:
+    sources = {((line.source or "custom").strip() or "custom") for line in lines}
+    if len(sources) == 1:
+        return next(iter(sources))
+    if "subscription" in sources and sources <= {"subscription", "upsell", "custom"}:
+        return "mixed"
+    return "custom"
+
+
+def _recalc_invoice_totals(row: BillingInvoice) -> None:
+    lines = list(row.lines or [])
+    total = sum(_line_amount_cents(line) for line in lines)
+    row.amount_due = total
+    row.amount_paid = total if row.status == "paid" else 0
+    if lines:
+        row.product_label = lines[0].description
+        row.interval = next((line.interval for line in lines if line.interval), row.interval)
+        row.source = _invoice_source_from_lines(lines)
+
+
+def _ensure_invoice_lines(row: BillingInvoice) -> list[BillingInvoiceLine]:
+    existing = list(row.lines or [])
+    if existing:
+        return existing
+    amount = row.amount_paid if row.status == "paid" else row.amount_due
+    line = BillingInvoiceLine(
+        catalog_key="custom",
+        description=row.product_label or row.description or "Listing subscription",
+        quantity=1,
+        unit_amount_cents=int(amount or 0),
+        interval=row.interval,
+        source=row.source or "subscription",
+        sort_order=0,
+    )
+    row.lines.append(line)
+    return list(row.lines)
+
+
+def _replace_invoice_lines(row: BillingInvoice, items: list[BillingInvoiceLineIn]) -> None:
+    row.lines.clear()
+    for index, item in enumerate(items):
+        catalog = _catalog_item(item.catalog_key)
+        description = (item.description or "").strip() or catalog["label"]
+        unit = catalog["amount_cents"] if item.unit_amount_cents is None and catalog["key"] != "custom" else int(item.unit_amount_cents or 0)
+        row.lines.append(
+            BillingInvoiceLine(
+                catalog_key=catalog["key"],
+                description=description,
+                quantity=item.quantity,
+                unit_amount_cents=unit,
+                interval=(item.interval or catalog["interval"] or None),
+                source=(item.source or catalog["source"]),
+                sort_order=index,
+            )
+        )
+    _recalc_invoice_totals(row)
 
 
 def _invoice_row(inv) -> dict:
@@ -217,8 +372,9 @@ def upsert_billing_invoice(
     row.rehab_center_id = rehab_center_id or row.rehab_center_id
     row.number = data.get("number") or row.number
     row.status = status
-    row.amount_due = int(data.get("amount_due") or 0)
-    row.amount_paid = int(data.get("amount_paid") or 0)
+    if not row.lines:
+        row.amount_due = int(data.get("amount_due") or 0)
+        row.amount_paid = int(data.get("amount_paid") or 0)
     row.currency = (data.get("currency") or "usd").lower()
     row.interval = interval or row.interval
     row.period_start = _stripe_timestamp(data.get("period_start")) or row.period_start
@@ -233,6 +389,9 @@ def upsert_billing_invoice(
 
 
 def _invoice_out(row: BillingInvoice, email: str | None = None, center_name: str | None = None) -> BillingInvoiceOut:
+    lines = _ensure_invoice_lines(row)
+    if lines:
+        _recalc_invoice_totals(row)
     amount = row.amount_paid if row.status == "paid" else row.amount_due
     return BillingInvoiceOut(
         id=row.id,
@@ -259,6 +418,8 @@ def _invoice_out(row: BillingInvoice, email: str | None = None, center_name: str
         center_name=center_name,
         rehab_center_id=row.rehab_center_id,
         created_at=row.created_at,
+        editable=True,
+        lines=[_line_out(line, row.currency) for line in lines],
     )
 
 
@@ -587,8 +748,6 @@ def download_invoice_pdf(invoice_id: str, user: ClientUser, db: Annotated[Sessio
             .first()
         )
         if local:
-            if local.invoice_pdf and not str(local.stripe_invoice_id).startswith("local_"):
-                return RedirectResponse(url=local.invoice_pdf)
             pdf = _build_invoice_pdf_bytes(db, local)
             filename = f"{local.number or local.stripe_invoice_id}.pdf".replace(" ", "-")
             return Response(
@@ -611,16 +770,15 @@ def download_invoice_pdf(invoice_id: str, user: ClientUser, db: Annotated[Sessio
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    st, sub_row = _require_stripe_customer(user, db)
-    try:
-        inv = st.Invoice.retrieve(invoice_id)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=404, detail="Invoice not found") from exc
-    if inv.customer != sub_row.stripe_customer_id:
-        raise HTTPException(status_code=403, detail="Invoice does not belong to this account")
-    if not inv.invoice_pdf:
-        raise HTTPException(status_code=404, detail="PDF not available for this invoice yet")
-    return RedirectResponse(url=inv.invoice_pdf)
+    if local_by_stripe:
+        pdf = _build_invoice_pdf_bytes(db, local_by_stripe)
+        filename = f"{local_by_stripe.number or invoice_id}.pdf".replace(" ", "-")
+        return Response(
+            content=pdf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    raise HTTPException(status_code=404, detail="Invoice not found")
 
 
 @router.get("/history.pdf")
@@ -1246,6 +1404,16 @@ def _build_invoice_pdf_bytes(db: Session, row: BillingInvoice) -> bytes:
     if user:
         profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
         bill_name = (profile.display_name if profile and profile.display_name else "") or ""
+    lines = _ensure_invoice_lines(row)
+    pdf_lines = [
+        InvoicePdfLine(
+            description=line.description,
+            amount_label=_format_money(_line_amount_cents(line), row.currency),
+            quantity=line.quantity,
+            interval=line.interval or "",
+        )
+        for line in lines
+    ]
     return build_invoice_pdf(
         InvoicePdfData(
             number=row.number or row.stripe_invoice_id or str(row.id),
@@ -1261,6 +1429,7 @@ def _build_invoice_pdf_bytes(db: Session, row: BillingInvoice) -> bytes:
             description=row.description or "",
             support_email=settings.email_from or "noreply@strugglingwithaddiction.com",
             site_url=settings.public_site_url or "https://strugglingwithaddiction.com",
+            lines=pdf_lines,
         )
     )
 
@@ -1342,7 +1511,11 @@ def admin_list_invoices(
     unpaid_count = db.query(BillingInvoice).filter(BillingInvoice.status.in_(tuple(UNPAID_INVOICE_STATUSES))).count()
     all_count = db.query(BillingInvoice).count()
 
-    q = db.query(BillingInvoice).order_by(BillingInvoice.paid_at.desc().nullslast(), BillingInvoice.id.desc())
+    q = (
+        db.query(BillingInvoice)
+        .options(joinedload(BillingInvoice.lines))
+        .order_by(BillingInvoice.paid_at.desc().nullslast(), BillingInvoice.id.desc())
+    )
     paid_filter = (paid_filter or "all").strip().lower()
     if paid_filter in ("paid", "yes"):
         q = q.filter(BillingInvoice.status == "paid")
@@ -1379,20 +1552,128 @@ def admin_list_invoices(
     }
 
 
+def _invoice_party(db: Session, row: BillingInvoice) -> tuple[str | None, str | None]:
+    email = None
+    center_name = None
+    if row.user_id:
+        user = db.query(User).filter(User.id == row.user_id).first()
+        email = user.email if user else None
+    if row.rehab_center_id:
+        center = db.query(RehabCenter).filter(RehabCenter.id == row.rehab_center_id).first()
+        center_name = center.name if center else None
+    return email, center_name
+
+
+def _invoice_detail(db: Session, row: BillingInvoice) -> BillingInvoiceOut:
+    _ensure_invoice_lines(row)
+    _recalc_invoice_totals(row)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    email, center_name = _invoice_party(db, row)
+    return _invoice_out(row, email=email, center_name=center_name)
+
+
+@router.get("/admin/sale-catalog")
+def admin_sale_catalog(_: AdminUser):
+    return {"items": SALE_CATALOG}
+
+
 @router.get("/admin/invoices/{invoice_id}")
 def admin_get_invoice(invoice_id: int, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
     row = db.query(BillingInvoice).filter(BillingInvoice.id == invoice_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    email = None
-    center_name = None
-    if row.user_id:
-        u = db.query(User).filter(User.id == row.user_id).first()
-        email = u.email if u else None
-    if row.rehab_center_id:
-        c = db.query(RehabCenter).filter(RehabCenter.id == row.rehab_center_id).first()
-        center_name = c.name if c else None
-    return _invoice_out(row, email=email, center_name=center_name)
+    return _invoice_detail(db, row)
+
+
+@router.post("/admin/invoices")
+def admin_create_invoice(body: BillingInvoiceCreate, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    if not body.lines:
+        raise HTTPException(status_code=400, detail="Add at least one payment item")
+    center = None
+    if body.rehab_center_id:
+        center = db.query(RehabCenter).filter(RehabCenter.id == body.rehab_center_id).first()
+        if not center:
+            raise HTTPException(status_code=404, detail="Rehab center not found")
+    user_id = body.user_id or (center.owner_user_id if center else None)
+    if user_id and not db.query(User).filter(User.id == user_id).first():
+        raise HTTPException(status_code=404, detail="User not found")
+    now = datetime.now(timezone.utc)
+    status = (body.status or "paid").strip().lower()
+    if status not in {"draft", "open", "paid", "void"}:
+        raise HTTPException(status_code=400, detail="Status must be draft, open, paid, or void")
+    row = BillingInvoice(
+        stripe_invoice_id=f"local_sale_{uuid.uuid4().hex[:16]}",
+        user_id=user_id,
+        rehab_center_id=body.rehab_center_id or (center.id if center else None),
+        number=f"SWA-{int(now.timestamp())}",
+        status=status,
+        currency="usd",
+        interval=body.interval,
+        period_start=now,
+        paid_at=now if status == "paid" else None,
+        source="custom",
+        description=body.description,
+    )
+    db.add(row)
+    db.flush()
+    _replace_invoice_lines(row, body.lines)
+    return _invoice_detail(db, row)
+
+
+@router.patch("/admin/invoices/{invoice_id}")
+def admin_update_invoice(
+    invoice_id: int,
+    body: BillingInvoiceUpdate,
+    _: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.query(BillingInvoice).filter(BillingInvoice.id == invoice_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if body.status is not None:
+        status = body.status.strip().lower()
+        if status not in {"draft", "open", "paid", "void"}:
+            raise HTTPException(status_code=400, detail="Status must be draft, open, paid, or void")
+        row.status = status
+        if status == "paid" and not row.paid_at:
+            row.paid_at = datetime.now(timezone.utc)
+        if status != "paid":
+            row.paid_at = None
+    if body.rehab_center_id is not None:
+        center = db.query(RehabCenter).filter(RehabCenter.id == body.rehab_center_id).first()
+        if not center:
+            raise HTTPException(status_code=404, detail="Rehab center not found")
+        row.rehab_center_id = center.id
+        if not body.user_id and center.owner_user_id:
+            row.user_id = center.owner_user_id
+    if body.user_id is not None:
+        if body.user_id and not db.query(User).filter(User.id == body.user_id).first():
+            raise HTTPException(status_code=404, detail="User not found")
+        row.user_id = body.user_id or None
+    if body.description is not None:
+        row.description = body.description
+    if body.interval is not None:
+        row.interval = body.interval
+    if body.lines is not None:
+        if not body.lines:
+            raise HTTPException(status_code=400, detail="A sale needs at least one payment item")
+        _replace_invoice_lines(row, body.lines)
+    else:
+        _ensure_invoice_lines(row)
+        _recalc_invoice_totals(row)
+    return _invoice_detail(db, row)
+
+
+@router.delete("/admin/invoices/{invoice_id}")
+def admin_delete_invoice(invoice_id: int, _: AdminUser, db: Annotated[Session, Depends(get_db)]):
+    row = db.query(BillingInvoice).filter(BillingInvoice.id == invoice_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    db.delete(row)
+    db.commit()
+    return {"ok": True, "id": invoice_id}
 
 
 @router.post("/admin/invoices/{invoice_id}/pay-link")
@@ -1422,27 +1703,6 @@ def admin_invoice_pdf(invoice_id: int, _: AdminUser, db: Annotated[Session, Depe
     if not row:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    # Prefer official Stripe PDF when available
-    if row.invoice_pdf and not str(row.stripe_invoice_id).startswith("local_"):
-        if download:
-            return RedirectResponse(url=row.invoice_pdf)
-        return {"url": row.invoice_pdf, "hosted_invoice_url": row.hosted_invoice_url}
-
-    st = _stripe(db)
-    if st and row.stripe_invoice_id and not str(row.stripe_invoice_id).startswith("local_"):
-        try:
-            inv = st.Invoice.retrieve(row.stripe_invoice_id)
-            if inv.invoice_pdf:
-                row.invoice_pdf = inv.invoice_pdf
-                row.hosted_invoice_url = inv.hosted_invoice_url or row.hosted_invoice_url
-                db.commit()
-                if download:
-                    return RedirectResponse(url=inv.invoice_pdf)
-                return {"url": inv.invoice_pdf, "hosted_invoice_url": inv.hosted_invoice_url}
-        except Exception:
-            pass
-
-    # Local / generated PDF
     pdf = _build_invoice_pdf_bytes(db, row)
     filename = f"{row.number or row.stripe_invoice_id or invoice_id}.pdf".replace(" ", "-")
     disposition = "attachment" if download else "inline"

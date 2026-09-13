@@ -408,6 +408,28 @@ def run_migrations(engine: Engine) -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_list_contacts_status ON email_list_contacts (status)"))
 
     insp = inspect(engine)
+    if "billing_invoice_lines" not in insp.get_table_names() and "billing_invoices" in insp.get_table_names():
+        with engine.begin() as conn:
+            conn.execute(text(
+                """
+                CREATE TABLE billing_invoice_lines (
+                    id SERIAL PRIMARY KEY,
+                    invoice_id INTEGER NOT NULL REFERENCES billing_invoices(id) ON DELETE CASCADE,
+                    catalog_key VARCHAR(64) NOT NULL DEFAULT 'custom',
+                    description VARCHAR(255) NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 1,
+                    unit_amount_cents INTEGER NOT NULL DEFAULT 0,
+                    interval VARCHAR(16),
+                    source VARCHAR(32) NOT NULL DEFAULT 'custom',
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            ))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_billing_invoice_lines_invoice ON billing_invoice_lines (invoice_id)"))
+
+    insp = inspect(engine)
     if "mailing_lists" not in insp.get_table_names():
         with engine.begin() as conn:
             conn.execute(text(
@@ -453,6 +475,7 @@ def run_migrations(engine: Engine) -> None:
 WIPE_OPS_JOB = "wipe_email_finance_analytics_20260911"
 OPS_DATA_TABLES = (
     "email_logs",
+    "billing_invoice_lines",
     "billing_invoices",
     "center_page_views",
     "site_page_views",

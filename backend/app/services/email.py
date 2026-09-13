@@ -10,7 +10,7 @@ from datetime import datetime
 from email.message import EmailMessage
 from string import Formatter
 from typing import Any
-from urllib import error, request
+import httpx
 
 from sqlalchemy.orm import Session
 
@@ -488,11 +488,86 @@ def get_platform_email_settings(db: Session | None) -> PlatformEmailSettings | N
     return row
 
 
+def _sanitize_secret(value: str | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().strip('"').strip("'")
+
+
 def _first_nonempty(*values: str | None, fallback: str = "") -> str:
     for value in values:
-        if value is not None and str(value).strip():
-            return str(value).strip()
+        cleaned = _sanitize_secret(value) if value is not None else ""
+        if cleaned:
+            return cleaned
     return fallback
+
+
+def _resend_from_header(delivery: dict[str, Any]) -> str:
+    raw = (delivery.get("email_from") or "").strip()
+    if not raw:
+        raw = "noreply@strugglingwithaddiction.com"
+    if "<" in raw and ">" in raw:
+        return raw
+    name = (
+        (delivery.get("site_name") or "Struggling With Addiction")
+        .replace("<", "")
+        .replace(">", "")
+        .replace('"', "")
+        .strip()
+    )
+    return f"{name} <{raw}>" if name else raw
+
+
+def _from_email_address(from_header: str) -> str:
+    raw = (from_header or "").strip()
+    if "<" in raw and ">" in raw:
+        return raw.split("<", 1)[1].split(">", 1)[0].strip()
+    return raw
+
+
+def _resend_error_detail(status: int, raw: str) -> str:
+    text = (raw or "")[:800]
+    try:
+        parsed = json.loads(text)
+        msg = str(
+            parsed.get("message")
+            or parsed.get("detail")
+            or parsed.get("title")
+            or parsed.get("name")
+            or text
+        )
+    except Exception:  # noqa: BLE001
+        msg = text or "request failed"
+    hint = ""
+    lower = msg.lower()
+    if "error 1010" in lower or ("browser" in lower and "blocked" in lower):
+        hint = " Cloudflare blocked the HTTP client. Email sending now uses httpx with a standard User-Agent."
+    elif status in (401, 403) and ("api key" in lower or "unauthorized" in lower or "invalid" in lower):
+        hint = " The API key was rejected — paste a full Resend key that starts with re_."
+    elif "domain" in lower or "not verified" in lower:
+        hint = " Verify the From address domain in Resend → Domains."
+    return f"Resend HTTP {status}: {msg}{hint}"
+
+
+def _resend_http(method: str, path: str, api_key: str, payload: dict[str, Any] | None = None, timeout: float = 20) -> Any:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "application/json",
+        "User-Agent": "strugglingwithaddiction/email",
+    }
+    try:
+        with httpx.Client(timeout=timeout, headers=headers) as client:
+            response = client.request(method, f"https://api.resend.com{path}", json=payload)
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"Could not reach Resend: {exc}") from exc
+    if response.status_code >= 300:
+        raise RuntimeError(_resend_error_detail(response.status_code, response.text))
+    if not response.content:
+        return None
+    try:
+        return response.json()
+    except ValueError:
+        return None
 
 
 def _absolute_asset_url(url: str) -> str:
@@ -517,8 +592,8 @@ def resolve_email_delivery(db: Session | None = None) -> dict[str, Any]:
         _first_nonempty(row.logo_url if row else None, fallback=default_logo)
     )
 
-    # Env key wins so Railway RESEND_API_KEY always reaches transactional mail.
-    resend_key = _first_nonempty(settings.resend_api_key, row.resend_api_key if row else None)
+    # Admin-saved key wins so Settings → Email is what actually sends.
+    resend_key = _first_nonempty(row.resend_api_key if row else None, settings.resend_api_key)
     smtp_host = _first_nonempty(row.smtp_host if row else None, settings.smtp_host)
     smtp_port = (row.smtp_port if row and row.smtp_port else None) or settings.smtp_port or 587
     smtp_user = _first_nonempty(row.smtp_user if row else None, settings.smtp_user)
@@ -538,11 +613,13 @@ def resolve_email_delivery(db: Session | None = None) -> dict[str, Any]:
         "linkedin": _first_nonempty(row.social_linkedin if row else None, fallback=DEFAULT_SOCIAL["linkedin"]),
     }
 
-    # Transactional mail is Resend-only whenever a key is configured.
-    if resend_key:
-        provider = "resend"
+    if provider == "resend":
+        effective = "resend" if resend_key else "none"
+    elif provider in ("gmail_smtp", "smtp"):
+        effective = "smtp" if smtp_host else "none"
+    elif resend_key:
         effective = "resend"
-    elif provider in ("gmail_smtp", "smtp") and smtp_host:
+    elif smtp_host:
         effective = "smtp"
     else:
         effective = "none"
@@ -557,6 +634,7 @@ def resolve_email_delivery(db: Session | None = None) -> dict[str, Any]:
         "site_name": site_name,
         "logo_url": logo_url,
         "resend_api_key": resend_key,
+        "resend_key_source": "saved" if _sanitize_secret(row.resend_api_key if row else None) else ("env" if resend_key else None),
         "smtp_host": smtp_host,
         "smtp_port": int(smtp_port),
         "smtp_user": smtp_user,
@@ -982,8 +1060,11 @@ def _send_resend(
     delivery: dict[str, Any],
     reply_to: str | None = None,
 ) -> None:
+    api_key = _sanitize_secret(delivery.get("resend_api_key"))
+    if not api_key:
+        raise RuntimeError("Resend API key is missing. Save a key in Email settings.")
     payload_body: dict[str, Any] = {
-        "from": delivery["email_from"],
+        "from": _resend_from_header(delivery),
         "to": [to_email],
         "subject": subject,
         "text": text_body,
@@ -991,23 +1072,38 @@ def _send_resend(
     }
     if reply_to:
         payload_body["reply_to"] = reply_to
-    payload = json.dumps(payload_body).encode("utf-8")
-    req = request.Request(
-        "https://api.resend.com/emails",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {delivery['resend_api_key']}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
+    _resend_http("POST", "/emails", api_key, payload_body)
+
+
+def ping_resend(db: Session | None = None) -> dict[str, Any]:
+    delivery = resolve_email_delivery(db)
+    api_key = _sanitize_secret(delivery.get("resend_api_key"))
+    if not api_key:
+        raise RuntimeError("Resend API key is missing. Save a key in Email settings or set RESEND_API_KEY.")
+    payload = _resend_http("GET", "/domains", api_key, timeout=15)
+
+    domains = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(domains, list):
+        domains = []
+    from_header = _resend_from_header(delivery)
+    from_email = _from_email_address(from_header)
+    from_domain = from_email.split("@")[-1].lower() if "@" in from_email else ""
+    verified_names = sorted(
+        {
+            str(item.get("name") or "").lower()
+            for item in domains
+            if isinstance(item, dict) and str(item.get("status") or "").lower() == "verified"
+        }
+        - {""}
     )
-    try:
-        with request.urlopen(req, timeout=20) as resp:
-            if resp.status >= 300:
-                raise RuntimeError(f"Resend HTTP {resp.status}")
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise RuntimeError(f"Resend HTTP {exc.code}: {detail}") from exc
+    return {
+        "ok": True,
+        "from": from_header,
+        "from_domain": from_domain,
+        "domain_verified": bool(from_domain and from_domain in verified_names),
+        "verified_domains": verified_names,
+        "key_source": delivery.get("resend_key_source"),
+    }
 
 
 def send_email(
@@ -1110,9 +1206,11 @@ def send_email(
     try:
         if delivery["effective_provider"] == "resend":
             _send_resend(to_email, subject, body, html_body, delivery, reply_to=reply_to)
+        elif delivery["effective_provider"] == "smtp":
+            _send_smtp(to_email, subject, body, html_body, delivery, reply_to=reply_to)
         else:
             status = "failed"
-            err_text = "Resend is not configured. Set RESEND_API_KEY or save a Resend key in Email settings."
+            err_text = "No email provider is ready. Save a Resend API key (starts with re_) or SMTP settings."
             logger.error("EMAIL[%s] to=%s failed: %s", template_key, to_email, err_text)
     except Exception as exc:  # noqa: BLE001
         status = "failed"
